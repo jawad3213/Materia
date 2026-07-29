@@ -1,8 +1,7 @@
 package com.materia.backend.contexts.masterdata.domain.exceptions;
 
-
 /**
- * Exception levÃ©e lorsque le stock est insuffisant pour une opÃ©ration
+ * Exception thrown when stock is insufficient for an operation
  */
 public class InsufficientStockException extends RuntimeException {
 
@@ -11,9 +10,9 @@ public class InsufficientStockException extends RuntimeException {
     private final int availableQuantity;
 
     public InsufficientStockException(String materialCode, int requestedQuantity, int availableQuantity) {
-        super("Stock insuffisant pour le matÃ©riau " + materialCode +
-                ". DemandÃ©: " + requestedQuantity +
-                ", Disponible: " + availableQuantity);
+        super("Insufficient stock for material " + materialCode +
+                ". Requested: " + requestedQuantity +
+                ", Available: " + availableQuantity);
         this.materialCode = materialCode;
         this.requestedQuantity = requestedQuantity;
         this.availableQuantity = availableQuantity;
@@ -31,4 +30,3 @@ public class InsufficientStockException extends RuntimeException {
         return availableQuantity;
     }
 }
-

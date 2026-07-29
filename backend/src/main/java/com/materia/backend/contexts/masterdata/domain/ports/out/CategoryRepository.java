@@ -3,52 +3,50 @@ package com.materia.backend.contexts.masterdata.domain.ports.out;
 import com.materia.backend.contexts.masterdata.domain.entities.Category;
 import com.materia.backend.contexts.masterdata.domain.enums.CategoryType;
 
-
 import com.materia.backend.common.domain.BaseRepository;
 
 import java.util.List;
 import java.util.Optional;
 
 /**
- * Port de sortie pour la persistance des catÃ©gories
- * Architecture Hexagonale - Le domaine dÃ©finit le contrat,
- * l'infrastructure l'implÃ©mente
+ * Output Port for category persistence
+ * Hexagonal Architecture - The domain defines the contract,
+ * the infrastructure implements it
  */
 public interface CategoryRepository extends BaseRepository<Category> {
 
     /**
-     * Recherche une catÃ©gorie par son code
+     * Finds a category by its code
      */
     Optional<Category> findByCode(String code);
 
     /**
-     * Recherche les catÃ©gories racines (sans parent)
+     * Finds root categories (without parent)
      */
     List<Category> findRootCategories();
 
     /**
-     * Recherche les sous-catÃ©gories d'un parent
+     * Finds sub-categories of a parent
      */
     List<Category> findByParentId(String parentId);
 
     /**
-     * Recherche les catÃ©gories par type
+     * Finds categories by type
      */
     List<Category> findByCategoryType(CategoryType categoryType);
 
     /**
-     * Recherche les catÃ©gories actives
+     * Finds active categories
      */
     List<Category> findByStatus(String status);
 
     /**
-     * VÃ©rifie si un code catÃ©gorie existe dÃ©jÃ 
+     * Checks if a category code already exists
      */
     boolean existsByCode(String code);
 
     /**
-     * Recherche par mot-clÃ© (nom, description)
+     * Searches by keyword (name, description)
      */
     List<Category> search(String keyword);
 }
-

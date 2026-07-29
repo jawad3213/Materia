@@ -1,4 +1,5 @@
 package com.materia.backend.contexts.masterdata.domain.entities;
+
 import com.materia.backend.contexts.masterdata.domain.enums.CurrencyCode;
 
 import com.materia.backend.common.domain.BaseEntity;
@@ -7,8 +8,8 @@ import java.util.Objects;
 import java.util.UUID;
 
 /**
- * Supplier - Version SimplifiÃ©e (MVP)
- * Architecture Hexagonale - Couche Domaine
+ * Supplier - Simplified Version (MVP)
+ * Hexagonal Architecture - Domain Layer
  *
  * @author SAP MM Team
  * @version 1.0
@@ -16,40 +17,40 @@ import java.util.UUID;
 public class Supplier extends BaseEntity {
 
     // ============================================================
-    // CONSTANTES
+    // CONSTANTS
     // ============================================================
 
     public static final String STATUS_ACTIVE = "ACTIVE";
     public static final String STATUS_INACTIVE = "INACTIVE";
 
     // ============================================================
-    // ATTRIBUTS
+    // ATTRIBUTES
     // ============================================================
 
     // ---- IDENTIFICATION ----
-    private String code;            // Code unique
-    private String name;            // Nom du fournisseur
-    private String description;     // Description courte
+    private String code;            // Unique code
+    private String name;            // Supplier name
+    private String description;     // Short description
 
     // ---- CONTACT ----
-    private String contactPerson;   // Personne contact
+    private String contactPerson;   // Contact person
     private String contactEmail;    // Email
-    private String contactPhone;    // TÃ©lÃ©phone
+    private String contactPhone;    // Phone
 
-    // ---- ADRESSE ----
-    private String address;         // Adresse complÃ¨te
-    private String city;            // Ville
-    private String country;         // Pays
-    private String postalCode;      // Code postal
+    // ---- ADDRESS ----
+    private String address;         // Full address
+    private String city;            // City
+    private String country;         // Country
+    private String postalCode;      // Postal code
 
-    // ---- CONDITIONS COMMERCIALES ----
-    private String paymentTerms;    // Conditions de paiement
-    private Integer paymentDelay;   // DÃ©lai de paiement (jours)
+    // ---- COMMERCIAL TERMS ----
+    private String paymentTerms;    // Payment terms
+    private Integer paymentDelay;   // Payment delay (days)
     private CurrencyCode currencyCode;
     private String status;          // ACTIVE / INACTIVE
 
     // ============================================================
-    // CONSTRUCTEUR DÃ‰FAUT
+    // DEFAULT CONSTRUCTOR
     // ============================================================
 
     public Supplier() {
@@ -60,7 +61,7 @@ public class Supplier extends BaseEntity {
     }
 
     // ============================================================
-    // BUILDER SIMPLIFIÃ‰
+    // SIMPLIFIED BUILDER
     // ============================================================
 
     public static class Builder {
@@ -77,7 +78,7 @@ public class Supplier extends BaseEntity {
         private String postalCode;
         private String paymentTerms;
         private Integer paymentDelay = 30;
-        private CurrencyCode currencyCode = com.materia.backend.contexts.masterdata.domain.enums.CurrencyCode.MAD;
+        private CurrencyCode currencyCode = CurrencyCode.MAD;
         private String status = STATUS_ACTIVE;
         private String createdBy;
         private LocalDateTime createdAt;
@@ -148,7 +149,7 @@ public class Supplier extends BaseEntity {
             return this;
         }
 
-        // Builder pour CurrencyCode (enum)
+        // Builder for CurrencyCode (enum)
         public Builder currencyCode(CurrencyCode currencyCode) {
             this.currencyCode = currencyCode != null ? currencyCode : CurrencyCode.MAD;
             return this;
@@ -179,20 +180,20 @@ public class Supplier extends BaseEntity {
             if (this.createdAt == null) this.createdAt = LocalDateTime.now();
             if (this.updatedAt == null) this.updatedAt = LocalDateTime.now();
 
-            // Valeurs par dÃ©faut
+            // Default values
             if (this.currencyCode == null) this.currencyCode = CurrencyCode.MAD;
             if (this.paymentDelay == null) this.paymentDelay = 30;
             if (this.status == null) this.status = STATUS_ACTIVE;
 
             // Validation
             if (this.code == null || this.code.trim().isEmpty()) {
-                throw new IllegalArgumentException("Le code est obligatoire");
+                throw new IllegalArgumentException("Code is required");
             }
             if (this.name == null || this.name.trim().isEmpty()) {
-                throw new IllegalArgumentException("Le nom est obligatoire");
+                throw new IllegalArgumentException("Name is required");
             }
             if (this.country == null || this.country.trim().isEmpty()) {
-                throw new IllegalArgumentException("Le pays est obligatoire");
+                throw new IllegalArgumentException("Country is required");
             }
 
             return new Supplier(this);
@@ -214,7 +215,7 @@ public class Supplier extends BaseEntity {
         this.postalCode = builder.postalCode;
         this.paymentTerms = builder.paymentTerms;
         this.paymentDelay = builder.paymentDelay;
-        this.currencyCode = builder.currencyCode;  // âœ… Enum
+        this.currencyCode = builder.currencyCode;
         this.status = builder.status;
         this.setCreatedAt(builder.createdAt);
         this.setUpdatedAt(builder.updatedAt);
@@ -230,7 +231,7 @@ public class Supplier extends BaseEntity {
     }
 
     // ============================================================
-    // MÃ‰THODES DOMAINE
+    // DOMAIN METHODS
     // ============================================================
 
     public boolean isActive() {
@@ -276,7 +277,7 @@ public class Supplier extends BaseEntity {
 
     public void setCode(String code) {
         if (code == null || code.trim().isEmpty()) {
-            throw new IllegalArgumentException("Le code est obligatoire");
+            throw new IllegalArgumentException("Code is required");
         }
         this.code = code;
         this.setUpdatedAt(LocalDateTime.now());
@@ -288,7 +289,7 @@ public class Supplier extends BaseEntity {
 
     public void setName(String name) {
         if (name == null || name.trim().isEmpty()) {
-            throw new IllegalArgumentException("Le nom est obligatoire");
+            throw new IllegalArgumentException("Name is required");
         }
         this.name = name;
         this.setUpdatedAt(LocalDateTime.now());
@@ -331,7 +332,7 @@ public class Supplier extends BaseEntity {
         this.setUpdatedAt(LocalDateTime.now());
     }
 
-    // ---- ADRESSE ----
+    // ---- ADDRESS ----
     public String getAddress() {
         return address;
     }
@@ -368,7 +369,7 @@ public class Supplier extends BaseEntity {
         this.setUpdatedAt(LocalDateTime.now());
     }
 
-    // ---- CONDITIONS COMMERCIALES ----
+    // ---- COMMERCIAL TERMS ----
     public String getPaymentTerms() {
         return paymentTerms;
     }
@@ -387,14 +388,14 @@ public class Supplier extends BaseEntity {
         this.setUpdatedAt(LocalDateTime.now());
     }
 
-    // âœ… Getter et Setter pour CurrencyCode (enum)
+    // Getter and Setter for CurrencyCode (enum)
     public CurrencyCode getCurrencyCode() {
         return currencyCode;
     }
 
     public void setCurrencyCode(CurrencyCode currencyCode) {
         if (currencyCode == null) {
-            throw new IllegalArgumentException("La devise est obligatoire");
+            throw new IllegalArgumentException("Currency is required");
         }
         this.currencyCode = currencyCode;
         this.setUpdatedAt(LocalDateTime.now());

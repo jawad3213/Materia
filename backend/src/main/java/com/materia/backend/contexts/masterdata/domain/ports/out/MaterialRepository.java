@@ -3,57 +3,55 @@ package com.materia.backend.contexts.masterdata.domain.ports.out;
 import com.materia.backend.contexts.masterdata.domain.entities.Material;
 import com.materia.backend.contexts.masterdata.domain.enums.MaterialStatus;
 
-
 import com.materia.backend.common.domain.BaseRepository;
 
 import java.util.List;
 import java.util.Optional;
 
 /**
- * Port de sortie pour la persistance des matÃ©riaux
- * Architecture Hexagonale - Le domaine dÃ©finit le contrat,
- * l'infrastructure l'implÃ©mente
+ * Output Port for material persistence
+ * Hexagonal Architecture - The domain defines the contract,
+ * the infrastructure implements it
  */
 public interface MaterialRepository extends BaseRepository<Material> {
 
     /**
-     * Recherche un matÃ©riau par son code
+     * Finds a material by its code
      */
     Optional<Material> findByCode(String code);
 
     /**
-     * Recherche les matÃ©riaux par catÃ©gorie
+     * Finds materials by category
      */
     List<Material> findByCategoryId(String categoryId);
 
     /**
-     * Recherche les matÃ©riaux par fournisseur
+     * Finds materials by supplier
      */
     List<Material> findBySupplierId(String supplierId);
 
     /**
-     * Recherche les matÃ©riaux par statut
+     * Finds materials by status
      */
     List<Material> findByStatus(MaterialStatus status);
 
     /**
-     * VÃ©rifie si un code matÃ©riau existe dÃ©jÃ 
+     * Checks if a material code already exists
      */
     boolean existsByCode(String code);
 
     /**
-     * Recherche par mot-clÃ© (nom, description, keywords)
+     * Searches by keyword (name, description, keywords)
      */
     List<Material> search(String keyword);
 
     /**
-     * Recherche les matÃ©riaux dont le stock est infÃ©ruier au seuil minimum
+     * Finds materials whose stock is below the minimum threshold
      */
     List<Material> findBelowMinimumStock();
 
     /**
-     * Recherche les matÃ©riaux dont le stock est infÃ©rieur au point de rÃ©approvisionnement
+     * Finds materials whose stock is below the reorder point
      */
     List<Material> findBelowReorderPoint();
 }
-

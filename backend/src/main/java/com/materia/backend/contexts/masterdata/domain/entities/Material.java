@@ -6,7 +6,6 @@ import com.materia.backend.contexts.masterdata.domain.enums.UnitOfMeasure;
 import com.materia.backend.contexts.masterdata.domain.valueObjects.MaterialCode;
 import com.materia.backend.contexts.masterdata.domain.valueObjects.Money;
 
-
 import com.materia.backend.common.domain.BaseEntity;
 import java.time.LocalDateTime;
 import java.util.Objects;
@@ -15,7 +14,7 @@ import java.util.UUID;
 public class Material extends BaseEntity {
 
     // ============================================================
-    // ATTRIBUTS SPÃ‰CIFIQUES
+    // SPECIFIC ATTRIBUTES
     // ============================================================
 
     // ---- IDENTIFICATION ----
@@ -33,7 +32,7 @@ public class Material extends BaseEntity {
     private String supplierName;
     private MaterialStatus status;
 
-    // ---- UNITÃ‰S ----
+    // ---- UNITS ----
     private UnitOfMeasure unitOfMeasure;
 
     // ---- STOCK ----
@@ -57,11 +56,11 @@ public class Material extends BaseEntity {
     private String obsoletedReason;
 
     // ============================================================
-    // CONSTRUCTEURS
+    // CONSTRUCTORS
     // ============================================================
 
     /**
-     * Constructeur par dÃ©faut (pour JPA / sÃ©rialisation)
+     * Default constructor (for JPA / serialization)
      */
     public Material() {
         super();
@@ -80,7 +79,7 @@ public class Material extends BaseEntity {
     }
 
     /**
-     * Constructeur privÃ© (via Builder)
+     * Private constructor (via Builder)
      */
     private Material(Builder builder) {
         super();
@@ -101,7 +100,7 @@ public class Material extends BaseEntity {
         this.supplierName = builder.supplierName;
         this.status = builder.status;
 
-        // ---- UNITÃ‰S ----
+        // ---- UNITS ----
         this.unitOfMeasure = builder.unitOfMeasure;
 
         // ---- STOCK ----
@@ -158,7 +157,7 @@ public class Material extends BaseEntity {
         private String supplierName;
         private MaterialStatus status = MaterialStatus.ACTIVE;
 
-        // ---- UNITÃ‰S ----
+        // ---- UNITS ----
         private UnitOfMeasure unitOfMeasure;
 
         // ---- STOCK ----
@@ -190,196 +189,83 @@ public class Material extends BaseEntity {
         // BUILDERS - IDENTIFICATION
         // ============================================================
 
-        public Builder id(UUID id) {
-            this.id = id;
-            return this;
-        }
-
-        public Builder code(MaterialCode code) {
-            this.code = code;
-            return this;
-        }
-
+        public Builder id(UUID id) { this.id = id; return this; }
+        public Builder code(MaterialCode code) { this.code = code; return this; }
         public Builder code(String code) {
             this.code = code != null && !code.trim().isEmpty() ? MaterialCode.of(code) : null;
             return this;
         }
-
-        public Builder name(String name) {
-            this.name = name;
-            return this;
-        }
-
-        public Builder description(String description) {
-            this.description = description;
-            return this;
-        }
-
-        public Builder shortDescription(String shortDescription) {
-            this.shortDescription = shortDescription;
-            return this;
-        }
-
-        public Builder searchKeywords(String searchKeywords) {
-            this.searchKeywords = searchKeywords;
-            return this;
-        }
-
-        public Builder alternativeName(String alternativeName) {
-            this.alternativeName = alternativeName;
-            return this;
-        }
+        public Builder name(String name) { this.name = name; return this; }
+        public Builder description(String description) { this.description = description; return this; }
+        public Builder shortDescription(String shortDescription) { this.shortDescription = shortDescription; return this; }
+        public Builder searchKeywords(String searchKeywords) { this.searchKeywords = searchKeywords; return this; }
+        public Builder alternativeName(String alternativeName) { this.alternativeName = alternativeName; return this; }
 
         // ============================================================
         // BUILDERS - CLASSIFICATION
         // ============================================================
 
-        public Builder categoryId(String categoryId) {
-            this.categoryId = categoryId;
-            return this;
-        }
-
-        public Builder categoryName(String categoryName) {
-            this.categoryName = categoryName;
-            return this;
-        }
-
-        public Builder supplierId(String supplierId) {
-            this.supplierId = supplierId;
-            return this;
-        }
-
-        public Builder supplierName(String supplierName) {
-            this.supplierName = supplierName;
-            return this;
-        }
-
+        public Builder categoryId(String categoryId) { this.categoryId = categoryId; return this; }
+        public Builder categoryName(String categoryName) { this.categoryName = categoryName; return this; }
+        public Builder supplierId(String supplierId) { this.supplierId = supplierId; return this; }
+        public Builder supplierName(String supplierName) { this.supplierName = supplierName; return this; }
         public Builder status(MaterialStatus status) {
             this.status = status != null ? status : MaterialStatus.ACTIVE;
             return this;
         }
 
         // ============================================================
-        // BUILDERS - UNITÃ‰S
+        // BUILDERS - UNITS
         // ============================================================
 
-        public Builder unitOfMeasure(UnitOfMeasure unitOfMeasure) {
-            this.unitOfMeasure = unitOfMeasure;
-            return this;
-        }
+        public Builder unitOfMeasure(UnitOfMeasure unitOfMeasure) { this.unitOfMeasure = unitOfMeasure; return this; }
 
         // ============================================================
         // BUILDERS - STOCK
         // ============================================================
 
-        public Builder currentStock(Integer currentStock) {
-            this.currentStock = currentStock != null ? currentStock : 0;
-            return this;
-        }
-
-        public Builder availableStock(Integer availableStock) {
-            this.availableStock = availableStock != null ? availableStock : 0;
-            return this;
-        }
-
-        public Builder minimumStock(Integer minimumStock) {
-            this.minimumStock = minimumStock != null ? minimumStock : 10;
-            return this;
-        }
-
-        public Builder maximumStock(Integer maximumStock) {
-            this.maximumStock = maximumStock != null ? maximumStock : 1000;
-            return this;
-        }
-
-        public Builder reorderPoint(Integer reorderPoint) {
-            this.reorderPoint = reorderPoint != null ? reorderPoint : 20;
-            return this;
-        }
-
-        public Builder safetyStock(Integer safetyStock) {
-            this.safetyStock = safetyStock != null ? safetyStock : 5;
-            return this;
-        }
-
-        public Builder economicOrderQuantity(Integer economicOrderQuantity) {
-            this.economicOrderQuantity = economicOrderQuantity != null ? economicOrderQuantity : 100;
-            return this;
-        }
+        public Builder currentStock(Integer currentStock) { this.currentStock = currentStock != null ? currentStock : 0; return this; }
+        public Builder availableStock(Integer availableStock) { this.availableStock = availableStock != null ? availableStock : 0; return this; }
+        public Builder minimumStock(Integer minimumStock) { this.minimumStock = minimumStock != null ? minimumStock : 10; return this; }
+        public Builder maximumStock(Integer maximumStock) { this.maximumStock = maximumStock != null ? maximumStock : 1000; return this; }
+        public Builder reorderPoint(Integer reorderPoint) { this.reorderPoint = reorderPoint != null ? reorderPoint : 20; return this; }
+        public Builder safetyStock(Integer safetyStock) { this.safetyStock = safetyStock != null ? safetyStock : 5; return this; }
+        public Builder economicOrderQuantity(Integer economicOrderQuantity) { this.economicOrderQuantity = economicOrderQuantity != null ? economicOrderQuantity : 100; return this; }
 
         // ============================================================
         // BUILDERS - FINANCES
         // ============================================================
 
-        public Builder standardPrice(Money standardPrice) {
-            this.standardPrice = standardPrice != null ? standardPrice : Money.zero(CurrencyCode.MAD);
-            return this;
-        }
-
-        public Builder costPrice(Money costPrice) {
-            this.costPrice = costPrice != null ? costPrice : Money.zero(CurrencyCode.MAD);
-            return this;
-        }
-
-        public Builder lastPurchasePrice(Money lastPurchasePrice) {
-            this.lastPurchasePrice = lastPurchasePrice != null ? lastPurchasePrice : Money.zero(CurrencyCode.MAD);
-            return this;
-        }
-
-        public Builder averagePurchasePrice(Money averagePurchasePrice) {
-            this.averagePurchasePrice = averagePurchasePrice != null ? averagePurchasePrice : Money.zero(CurrencyCode.MAD);
-            return this;
-        }
+        public Builder standardPrice(Money standardPrice) { this.standardPrice = standardPrice != null ? standardPrice : Money.zero(CurrencyCode.MAD); return this; }
+        public Builder costPrice(Money costPrice) { this.costPrice = costPrice != null ? costPrice : Money.zero(CurrencyCode.MAD); return this; }
+        public Builder lastPurchasePrice(Money lastPurchasePrice) { this.lastPurchasePrice = lastPurchasePrice != null ? lastPurchasePrice : Money.zero(CurrencyCode.MAD); return this; }
+        public Builder averagePurchasePrice(Money averagePurchasePrice) { this.averagePurchasePrice = averagePurchasePrice != null ? averagePurchasePrice : Money.zero(CurrencyCode.MAD); return this; }
 
         // ============================================================
         // BUILDERS - OBSOLESCENCE
         // ============================================================
 
-        public Builder obsoletedAt(LocalDateTime obsoletedAt) {
-            this.obsoletedAt = obsoletedAt;
-            return this;
-        }
-
-        public Builder obsoletedBy(String obsoletedBy) {
-            this.obsoletedBy = obsoletedBy;
-            return this;
-        }
-
-        public Builder obsoletedReason(String obsoletedReason) {
-            this.obsoletedReason = obsoletedReason;
-            return this;
-        }
+        public Builder obsoletedAt(LocalDateTime obsoletedAt) { this.obsoletedAt = obsoletedAt; return this; }
+        public Builder obsoletedBy(String obsoletedBy) { this.obsoletedBy = obsoletedBy; return this; }
+        public Builder obsoletedReason(String obsoletedReason) { this.obsoletedReason = obsoletedReason; return this; }
 
         // ============================================================
         // BUILDERS - AUDIT
         // ============================================================
 
-        public Builder createdBy(String createdBy) {
-            this.createdBy = createdBy;
-            return this;
-        }
-
-        public Builder createdAt(LocalDateTime createdAt) {
-            this.createdAt = createdAt;
-            return this;
-        }
-
-        public Builder updatedAt(LocalDateTime updatedAt) {
-            this.updatedAt = updatedAt;
-            return this;
-        }
+        public Builder createdBy(String createdBy) { this.createdBy = createdBy; return this; }
+        public Builder createdAt(LocalDateTime createdAt) { this.createdAt = createdAt; return this; }
+        public Builder updatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; return this; }
 
         // ============================================================
         // BUILD
         // ============================================================
 
         public Material build() {
-            // ---- ID GÃ‰NÃ‰RATION ----
-            if (this.id == null) {
-                this.id = UUID.randomUUID();
-            }
+            // ---- ID GENERATION ----
+            if (this.id == null) { this.id = UUID.randomUUID(); }
 
-            // ---- VALEURS PAR DÃ‰FAUT ----
+            // ---- DEFAULT VALUES ----
             if (this.currentStock == null) this.currentStock = 0;
             if (this.availableStock == null) this.availableStock = 0;
             if (this.minimumStock == null) this.minimumStock = 10;
@@ -394,12 +280,8 @@ public class Material extends BaseEntity {
             if (this.status == null) this.status = MaterialStatus.ACTIVE;
 
             // ---- DATES ----
-            if (this.createdAt == null) {
-                this.createdAt = LocalDateTime.now();
-            }
-            if (this.updatedAt == null) {
-                this.updatedAt = LocalDateTime.now();
-            }
+            if (this.createdAt == null) { this.createdAt = LocalDateTime.now(); }
+            if (this.updatedAt == null) { this.updatedAt = LocalDateTime.now(); }
 
             // ---- VALIDATIONS ----
             validateRequiredFields();
@@ -407,14 +289,12 @@ public class Material extends BaseEntity {
 
             // ---- OBSOLESCENCE ----
             if (MaterialStatus.OBSOLETE.equals(this.status)) {
-                if (this.obsoletedAt == null) {
-                    this.obsoletedAt = LocalDateTime.now();
-                }
+                if (this.obsoletedAt == null) { this.obsoletedAt = LocalDateTime.now(); }
                 if (this.obsoletedBy == null || this.obsoletedBy.trim().isEmpty()) {
-                    throw new IllegalArgumentException("L'utilisateur ayant rendu obsolÃ¨te est obligatoire");
+                    throw new IllegalArgumentException("The user who marked this material as obsolete is required");
                 }
                 if (this.obsoletedReason == null || this.obsoletedReason.trim().isEmpty()) {
-                    throw new IllegalArgumentException("La raison de l'obsolescence est obligatoire");
+                    throw new IllegalArgumentException("The reason for obsolescence is required");
                 }
             }
 
@@ -423,101 +303,101 @@ public class Material extends BaseEntity {
 
         private void validateRequiredFields() {
             if (this.code == null) {
-                throw new IllegalArgumentException("Le code du matÃ©riau est obligatoire");
+                throw new IllegalArgumentException("Material code is required");
             }
             if (this.name == null || this.name.trim().isEmpty()) {
-                throw new IllegalArgumentException("Le nom du matÃ©riau est obligatoire");
+                throw new IllegalArgumentException("Material name is required");
             }
             if (this.categoryId == null || this.categoryId.trim().isEmpty()) {
-                throw new IllegalArgumentException("La catÃ©gorie est obligatoire");
+                throw new IllegalArgumentException("Category is required");
             }
             if (this.unitOfMeasure == null) {
-                throw new IllegalArgumentException("L'unitÃ© de mesure est obligatoire");
+                throw new IllegalArgumentException("Unit of measure is required");
             }
         }
 
         private void validateStockConsistency() {
             if (this.minimumStock > this.maximumStock) {
                 throw new IllegalArgumentException(
-                        "Le stock minimum (" + this.minimumStock +
-                                ") ne peut pas Ãªtre supÃ©rieur au stock maximum (" + this.maximumStock + ")"
+                        "Minimum stock (" + this.minimumStock +
+                                ") cannot be greater than maximum stock (" + this.maximumStock + ")"
                 );
             }
             if (this.reorderPoint > this.minimumStock) {
                 throw new IllegalArgumentException(
-                        "Le point de rÃ©approvisionnement (" + this.reorderPoint +
-                                ") ne peut pas Ãªtre supÃ©rieur au stock minimum (" + this.minimumStock + ")"
+                        "Reorder point (" + this.reorderPoint +
+                                ") cannot be greater than minimum stock (" + this.minimumStock + ")"
                 );
             }
             if (this.safetyStock > this.minimumStock) {
                 throw new IllegalArgumentException(
-                        "Le stock de sÃ©curitÃ© (" + this.safetyStock +
-                                ") ne peut pas Ãªtre supÃ©rieur au stock minimum (" + this.minimumStock + ")"
+                        "Safety stock (" + this.safetyStock +
+                                ") cannot be greater than minimum stock (" + this.minimumStock + ")"
                 );
             }
             if (this.currentStock < 0) {
-                throw new IllegalArgumentException("Le stock actuel ne peut pas Ãªtre nÃ©gatif");
+                throw new IllegalArgumentException("Current stock cannot be negative");
             }
             if (this.availableStock < 0) {
-                throw new IllegalArgumentException("Le stock disponible ne peut pas Ãªtre nÃ©gatif");
+                throw new IllegalArgumentException("Available stock cannot be negative");
             }
             if (this.availableStock > this.currentStock) {
                 throw new IllegalArgumentException(
-                        "Le stock disponible (" + this.availableStock +
-                                ") ne peut pas Ãªtre supÃ©rieur au stock actuel (" + this.currentStock + ")"
+                        "Available stock (" + this.availableStock +
+                                ") cannot be greater than current stock (" + this.currentStock + ")"
                 );
             }
         }
     }
 
     /**
-     * Point d'entrÃ©e pour crÃ©er un nouveau Builder
+     * Entry point to create a new Builder
      */
     public static Builder builder() {
         return new Builder();
     }
 
     // ============================================================
-    // MÃ‰THODES DOMAINE (Comportement MÃ©tier)
+    // DOMAIN METHODS (Business Behavior)
     // ============================================================
 
     /**
-     * Calcule le stock disponible (currentStock - reservedStock)
+     * Calculates the available stock (currentStock - reservedStock)
      */
     public void calculateAvailableStock() {
         this.availableStock = this.currentStock;
     }
 
     /**
-     * VÃ©rifie si le stock est en dessous du seuil d'alerte
+     * Checks if stock is below the alert threshold
      */
     public boolean isBelowMinimumStock() {
         return currentStock < minimumStock;
     }
 
     /**
-     * VÃ©rifie si le stock est en dessous du point de rÃ©approvisionnement
+     * Checks if stock is below the reorder point
      */
     public boolean isBelowReorderPoint() {
         return currentStock < reorderPoint;
     }
 
     /**
-     * VÃ©rifie si le stock dÃ©passe le maximum
+     * Checks if stock exceeds the maximum
      */
     public boolean isAboveMaximumStock() {
         return currentStock > maximumStock;
     }
 
     /**
-     * Augmente le stock (ex: aprÃ¨s rÃ©ception)
+     * Increases stock (e.g. after receipt)
      */
     public void increaseStock(Integer quantity) {
         if (isObsolete()) {
-            throw new IllegalStateException("Impossible d'augmenter le stock d'un matÃ©riau obsolÃ¨te");
+            throw new IllegalStateException("Cannot increase stock of an obsolete material");
         }
         if (quantity == null || quantity <= 0) {
-            throw new IllegalArgumentException("La quantitÃ© doit Ãªtre positive");
+            throw new IllegalArgumentException("Quantity must be positive");
         }
         this.currentStock += quantity;
         this.availableStock += quantity;
@@ -525,17 +405,17 @@ public class Material extends BaseEntity {
     }
 
     /**
-     * Diminue le stock (ex: aprÃ¨s sortie)
+     * Decreases stock (e.g. after issue)
      */
     public void decreaseStock(Integer quantity) {
         if (isObsolete()) {
-            throw new IllegalStateException("Impossible de diminuer le stock d'un matÃ©riau obsolÃ¨te");
+            throw new IllegalStateException("Cannot decrease stock of an obsolete material");
         }
         if (quantity == null || quantity <= 0) {
-            throw new IllegalArgumentException("La quantitÃ© doit Ãªtre positive");
+            throw new IllegalArgumentException("Quantity must be positive");
         }
         if (this.currentStock < quantity) {
-            throw new IllegalStateException("Stock insuffisant. Disponible: " + this.currentStock);
+            throw new IllegalStateException("Insufficient stock. Available: " + this.currentStock);
         }
         this.currentStock -= quantity;
         this.availableStock -= quantity;
@@ -543,12 +423,10 @@ public class Material extends BaseEntity {
     }
 
     /**
-     * Calcule le besoin de rÃ©approvisionnement
+     * Calculates the replenishment need
      */
     public int calculateReorderQuantity() {
-        if (isObsolete()) {
-            return 0;
-        }
+        if (isObsolete()) { return 0; }
         if (currentStock < reorderPoint) {
             return reorderPoint - currentStock + safetyStock;
         }
@@ -556,32 +434,26 @@ public class Material extends BaseEntity {
     }
 
     /**
-     * Calcule le taux de rotation du stock
+     * Calculates the stock turnover rate
      */
     public double calculateTurnoverRate(int annualConsumption) {
-        if (currentStock == 0) {
-            return 0;
-        }
+        if (currentStock == 0) { return 0; }
         return (double) annualConsumption / currentStock;
     }
 
     /**
-     * Formate le prix standard avec le symbole de la devise
+     * Formats the standard price with the currency symbol
      */
     public String getFormattedPrice() {
-        if (standardPrice == null) {
-            return "0.00";
-        }
+        if (standardPrice == null) { return "0.00"; }
         return standardPrice.format();
     }
 
     /**
-     * Formate le prix standard avec le code de la devise
+     * Formats the standard price with the currency code
      */
     public String getFormattedPriceWithCode() {
-        if (standardPrice == null) {
-            return "0.00";
-        }
+        if (standardPrice == null) { return "0.00"; }
         return standardPrice.formatWithCode();
     }
 
@@ -592,97 +464,64 @@ public class Material extends BaseEntity {
     // ---- IDENTIFICATION ----
     public MaterialCode getCode() { return code; }
     public void setCode(MaterialCode code) {
-        if (code == null) {
-            throw new IllegalArgumentException("Le code du matÃ©riau est obligatoire");
-        }
+        if (code == null) { throw new IllegalArgumentException("Material code is required"); }
         this.code = code;
         this.setUpdatedAt(LocalDateTime.now());
     }
 
     public void setCode(String code) {
-        if (code == null || code.trim().isEmpty()) {
-            throw new IllegalArgumentException("Le code du matÃ©riau est obligatoire");
-        }
+        if (code == null || code.trim().isEmpty()) { throw new IllegalArgumentException("Material code is required"); }
         this.code = MaterialCode.of(code);
         this.setUpdatedAt(LocalDateTime.now());
     }
 
     public String getName() { return name; }
     public void setName(String name) {
-        if (name == null || name.trim().isEmpty()) {
-            throw new IllegalArgumentException("Le nom du matÃ©riau est obligatoire");
-        }
+        if (name == null || name.trim().isEmpty()) { throw new IllegalArgumentException("Material name is required"); }
         this.name = name;
         this.setUpdatedAt(LocalDateTime.now());
     }
 
     public String getDescription() { return description; }
-    public void setDescription(String description) {
-        this.description = description;
-        this.setUpdatedAt(LocalDateTime.now());
-    }
+    public void setDescription(String description) { this.description = description; this.setUpdatedAt(LocalDateTime.now()); }
 
     public String getShortDescription() { return shortDescription; }
-    public void setShortDescription(String shortDescription) {
-        this.shortDescription = shortDescription;
-        this.setUpdatedAt(LocalDateTime.now());
-    }
+    public void setShortDescription(String shortDescription) { this.shortDescription = shortDescription; this.setUpdatedAt(LocalDateTime.now()); }
 
     public String getSearchKeywords() { return searchKeywords; }
-    public void setSearchKeywords(String searchKeywords) {
-        this.searchKeywords = searchKeywords;
-        this.setUpdatedAt(LocalDateTime.now());
-    }
+    public void setSearchKeywords(String searchKeywords) { this.searchKeywords = searchKeywords; this.setUpdatedAt(LocalDateTime.now()); }
 
     public String getAlternativeName() { return alternativeName; }
-    public void setAlternativeName(String alternativeName) {
-        this.alternativeName = alternativeName;
-        this.setUpdatedAt(LocalDateTime.now());
-    }
+    public void setAlternativeName(String alternativeName) { this.alternativeName = alternativeName; this.setUpdatedAt(LocalDateTime.now()); }
 
     // ---- CLASSIFICATION ----
     public String getCategoryId() { return categoryId; }
     public void setCategoryId(String categoryId) {
-        if (categoryId == null || categoryId.trim().isEmpty()) {
-            throw new IllegalArgumentException("La catÃ©gorie est obligatoire");
-        }
+        if (categoryId == null || categoryId.trim().isEmpty()) { throw new IllegalArgumentException("Category is required"); }
         this.categoryId = categoryId;
         this.setUpdatedAt(LocalDateTime.now());
     }
 
     public String getCategoryName() { return categoryName; }
-    public void setCategoryName(String categoryName) {
-        this.categoryName = categoryName;
-        this.setUpdatedAt(LocalDateTime.now());
-    }
+    public void setCategoryName(String categoryName) { this.categoryName = categoryName; this.setUpdatedAt(LocalDateTime.now()); }
 
     public String getSupplierId() { return supplierId; }
-    public void setSupplierId(String supplierId) {
-        this.supplierId = supplierId;
-        this.setUpdatedAt(LocalDateTime.now());
-    }
+    public void setSupplierId(String supplierId) { this.supplierId = supplierId; this.setUpdatedAt(LocalDateTime.now()); }
 
     public String getSupplierName() { return supplierName; }
-    public void setSupplierName(String supplierName) {
-        this.supplierName = supplierName;
-        this.setUpdatedAt(LocalDateTime.now());
-    }
+    public void setSupplierName(String supplierName) { this.supplierName = supplierName; this.setUpdatedAt(LocalDateTime.now()); }
 
     public MaterialStatus getStatus() { return status; }
     public void setStatus(MaterialStatus status) {
-        if (status == null) {
-            throw new IllegalArgumentException("Le statut est obligatoire");
-        }
+        if (status == null) { throw new IllegalArgumentException("Status is required"); }
         this.status = status;
         this.setUpdatedAt(LocalDateTime.now());
     }
 
-    // ---- UNITÃ‰S ----
+    // ---- UNITS ----
     public UnitOfMeasure getUnitOfMeasure() { return unitOfMeasure; }
     public void setUnitOfMeasure(UnitOfMeasure unitOfMeasure) {
-        if (unitOfMeasure == null) {
-            throw new IllegalArgumentException("L'unitÃ© de mesure est obligatoire");
-        }
+        if (unitOfMeasure == null) { throw new IllegalArgumentException("Unit of measure is required"); }
         this.unitOfMeasure = unitOfMeasure;
         this.setUpdatedAt(LocalDateTime.now());
     }
@@ -690,112 +529,60 @@ public class Material extends BaseEntity {
     // ---- STOCK ----
     public Integer getCurrentStock() { return currentStock; }
     public void setCurrentStock(Integer currentStock) {
-        if (isObsolete()) {
-            throw new IllegalStateException("Impossible de modifier le stock d'un matÃ©riau obsolÃ¨te");
-        }
+        if (isObsolete()) { throw new IllegalStateException("Cannot modify stock of an obsolete material"); }
         this.currentStock = currentStock != null ? currentStock : 0;
         this.setUpdatedAt(LocalDateTime.now());
     }
 
     public Integer getAvailableStock() { return availableStock; }
-    public void setAvailableStock(Integer availableStock) {
-        this.availableStock = availableStock != null ? availableStock : 0;
-        this.setUpdatedAt(LocalDateTime.now());
-    }
+    public void setAvailableStock(Integer availableStock) { this.availableStock = availableStock != null ? availableStock : 0; this.setUpdatedAt(LocalDateTime.now()); }
 
     public Integer getMinimumStock() { return minimumStock; }
-    public void setMinimumStock(Integer minimumStock) {
-        this.minimumStock = minimumStock != null ? minimumStock : 10;
-        this.setUpdatedAt(LocalDateTime.now());
-    }
+    public void setMinimumStock(Integer minimumStock) { this.minimumStock = minimumStock != null ? minimumStock : 10; this.setUpdatedAt(LocalDateTime.now()); }
 
     public Integer getMaximumStock() { return maximumStock; }
-    public void setMaximumStock(Integer maximumStock) {
-        this.maximumStock = maximumStock != null ? maximumStock : 1000;
-        this.setUpdatedAt(LocalDateTime.now());
-    }
+    public void setMaximumStock(Integer maximumStock) { this.maximumStock = maximumStock != null ? maximumStock : 1000; this.setUpdatedAt(LocalDateTime.now()); }
 
     public Integer getReorderPoint() { return reorderPoint; }
-    public void setReorderPoint(Integer reorderPoint) {
-        this.reorderPoint = reorderPoint != null ? reorderPoint : 20;
-        this.setUpdatedAt(LocalDateTime.now());
-    }
+    public void setReorderPoint(Integer reorderPoint) { this.reorderPoint = reorderPoint != null ? reorderPoint : 20; this.setUpdatedAt(LocalDateTime.now()); }
 
     public Integer getSafetyStock() { return safetyStock; }
-    public void setSafetyStock(Integer safetyStock) {
-        this.safetyStock = safetyStock != null ? safetyStock : 5;
-        this.setUpdatedAt(LocalDateTime.now());
-    }
+    public void setSafetyStock(Integer safetyStock) { this.safetyStock = safetyStock != null ? safetyStock : 5; this.setUpdatedAt(LocalDateTime.now()); }
 
     public Integer getEconomicOrderQuantity() { return economicOrderQuantity; }
-    public void setEconomicOrderQuantity(Integer economicOrderQuantity) {
-        this.economicOrderQuantity = economicOrderQuantity != null ? economicOrderQuantity : 100;
-        this.setUpdatedAt(LocalDateTime.now());
-    }
+    public void setEconomicOrderQuantity(Integer economicOrderQuantity) { this.economicOrderQuantity = economicOrderQuantity != null ? economicOrderQuantity : 100; this.setUpdatedAt(LocalDateTime.now()); }
 
     // ---- FINANCES ----
     public Money getStandardPrice() { return standardPrice; }
-    public void setStandardPrice(Money standardPrice) {
-        this.standardPrice = standardPrice != null ? standardPrice : Money.zero(CurrencyCode.MAD);
-        this.setUpdatedAt(LocalDateTime.now());
-    }
+    public void setStandardPrice(Money standardPrice) { this.standardPrice = standardPrice != null ? standardPrice : Money.zero(CurrencyCode.MAD); this.setUpdatedAt(LocalDateTime.now()); }
 
     public Money getCostPrice() { return costPrice; }
-    public void setCostPrice(Money costPrice) {
-        this.costPrice = costPrice != null ? costPrice : Money.zero(CurrencyCode.MAD);
-        this.setUpdatedAt(LocalDateTime.now());
-    }
+    public void setCostPrice(Money costPrice) { this.costPrice = costPrice != null ? costPrice : Money.zero(CurrencyCode.MAD); this.setUpdatedAt(LocalDateTime.now()); }
 
     public Money getLastPurchasePrice() { return lastPurchasePrice; }
-    public void setLastPurchasePrice(Money lastPurchasePrice) {
-        this.lastPurchasePrice = lastPurchasePrice != null ? lastPurchasePrice : Money.zero(CurrencyCode.MAD);
-        this.setUpdatedAt(LocalDateTime.now());
-    }
+    public void setLastPurchasePrice(Money lastPurchasePrice) { this.lastPurchasePrice = lastPurchasePrice != null ? lastPurchasePrice : Money.zero(CurrencyCode.MAD); this.setUpdatedAt(LocalDateTime.now()); }
 
     public Money getAveragePurchasePrice() { return averagePurchasePrice; }
-    public void setAveragePurchasePrice(Money averagePurchasePrice) {
-        this.averagePurchasePrice = averagePurchasePrice != null ? averagePurchasePrice : Money.zero(CurrencyCode.MAD);
-        this.setUpdatedAt(LocalDateTime.now());
-    }
+    public void setAveragePurchasePrice(Money averagePurchasePrice) { this.averagePurchasePrice = averagePurchasePrice != null ? averagePurchasePrice : Money.zero(CurrencyCode.MAD); this.setUpdatedAt(LocalDateTime.now()); }
 
     // ---- OBSOLESCENCE ----
     public LocalDateTime getObsoletedAt() { return obsoletedAt; }
-    public void setObsoletedAt(LocalDateTime obsoletedAt) {
-        this.obsoletedAt = obsoletedAt;
-        this.setUpdatedAt(LocalDateTime.now());
-    }
+    public void setObsoletedAt(LocalDateTime obsoletedAt) { this.obsoletedAt = obsoletedAt; this.setUpdatedAt(LocalDateTime.now()); }
 
     public String getObsoletedBy() { return obsoletedBy; }
-    public void setObsoletedBy(String obsoletedBy) {
-        this.obsoletedBy = obsoletedBy;
-        this.setUpdatedAt(LocalDateTime.now());
-    }
+    public void setObsoletedBy(String obsoletedBy) { this.obsoletedBy = obsoletedBy; this.setUpdatedAt(LocalDateTime.now()); }
 
     public String getObsoletedReason() { return obsoletedReason; }
-    public void setObsoletedReason(String obsoletedReason) {
-        this.obsoletedReason = obsoletedReason;
-        this.setUpdatedAt(LocalDateTime.now());
-    }
+    public void setObsoletedReason(String obsoletedReason) { this.obsoletedReason = obsoletedReason; this.setUpdatedAt(LocalDateTime.now()); }
 
     // ============================================================
-    // MÃ‰THODES DE VÃ‰RIFICATION
+    // VERIFICATION METHODS
     // ============================================================
 
-    public boolean isActive() {
-        return MaterialStatus.ACTIVE.equals(this.status) && !this.isDeleted();
-    }
-
-    public boolean isObsolete() {
-        return MaterialStatus.OBSOLETE.equals(this.status);
-    }
-
-    public boolean isOrderable() {
-        return isActive() && !isObsolete() && !this.isDeleted();
-    }
-
-    public boolean isOutOfStock() {
-        return this.currentStock <= 0;
-    }
+    public boolean isActive() { return MaterialStatus.ACTIVE.equals(this.status) && !this.isDeleted(); }
+    public boolean isObsolete() { return MaterialStatus.OBSOLETE.equals(this.status); }
+    public boolean isOrderable() { return isActive() && !isObsolete() && !this.isDeleted(); }
+    public boolean isOutOfStock() { return this.currentStock <= 0; }
 
     // ============================================================
     // EQUALS & HASHCODE

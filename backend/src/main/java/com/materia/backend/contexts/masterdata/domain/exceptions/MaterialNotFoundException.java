@@ -1,15 +1,14 @@
 package com.materia.backend.contexts.masterdata.domain.exceptions;
 
-
 /**
- * Exception levÃ©e lorsqu'un matÃ©riau n'est pas trouvÃ©
+ * Exception thrown when a material is not found
  */
 public class MaterialNotFoundException extends RuntimeException {
 
     private final String identifier;
 
     public MaterialNotFoundException(String identifier) {
-        super("MatÃ©riau non trouvÃ© : " + identifier);
+        super("Material not found: " + identifier);
         this.identifier = identifier;
     }
 
@@ -17,4 +16,3 @@ public class MaterialNotFoundException extends RuntimeException {
         return identifier;
     }
 }
-

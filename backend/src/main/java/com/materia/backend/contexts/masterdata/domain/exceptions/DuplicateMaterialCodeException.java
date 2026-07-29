@@ -1,15 +1,14 @@
 package com.materia.backend.contexts.masterdata.domain.exceptions;
 
-
 /**
- * Exception levÃ©e lorsqu'un code matÃ©riau existe dÃ©jÃ 
+ * Exception thrown when a material code already exists
  */
 public class DuplicateMaterialCodeException extends RuntimeException {
 
     private final String code;
 
     public DuplicateMaterialCodeException(String code) {
-        super("Le code matÃ©riau existe dÃ©jÃ  : " + code);
+        super("Material code already exists: " + code);
         this.code = code;
     }
 
@@ -17,4 +16,3 @@ public class DuplicateMaterialCodeException extends RuntimeException {
         return code;
     }
 }
-

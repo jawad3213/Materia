@@ -1,14 +1,13 @@
 package com.materia.backend.contexts.masterdata.domain.enums;
 
-
 import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * Devises (Currency Codes)
- * Version simplifiÃ©e - MAD, EUR, USD
+ * Currency Codes
+ * Simplified version - MAD, EUR, USD
  *
  * @author SAP MM Team
  * @version 1.0
@@ -16,15 +15,15 @@ import java.util.stream.Collectors;
 public enum CurrencyCode {
 
     // ============================================================
-    // DEVISE DISPONIBLES
+    // AVAILABLE CURRENCIES
     // ============================================================
 
-    MAD("MAD", "Dirham Marocain", "DH", 2),
-    EUR("EUR", "Euro", "â‚¬", 2),
-    USD("USD", "Dollar US", "$", 2);
+    MAD("MAD", "Moroccan Dirham", "DH", 2),
+    EUR("EUR", "Euro", "\u20AC", 2),
+    USD("USD", "US Dollar", "$", 2);
 
     // ============================================================
-    // ATTRIBUTS
+    // ATTRIBUTES
     // ============================================================
 
     private final String code;
@@ -33,7 +32,7 @@ public enum CurrencyCode {
     private final int decimalPlaces;
 
     // ============================================================
-    // CONSTRUCTEUR
+    // CONSTRUCTOR
     // ============================================================
 
     CurrencyCode(String code, String label, String symbol, int decimalPlaces) {
@@ -47,149 +46,112 @@ public enum CurrencyCode {
     // GETTERS
     // ============================================================
 
-    public String getCode() {
-        return code;
-    }
-
-    public String getLabel() {
-        return label;
-    }
-
-    public String getSymbol() {
-        return symbol;
-    }
-
-    public int getDecimalPlaces() {
-        return decimalPlaces;
-    }
+    public String getCode() { return code; }
+    public String getLabel() { return label; }
+    public String getSymbol() { return symbol; }
+    public int getDecimalPlaces() { return decimalPlaces; }
 
     // ============================================================
-    // MÃ‰THODES UTILITAIRES
+    // UTILITY METHODS
     // ============================================================
 
     /**
-     * RÃ©cupÃ¨re une devise par son code
+     * Retrieves a currency by its code
      */
     public static CurrencyCode fromCode(String code) {
         if (code == null || code.isEmpty()) {
-            throw new IllegalArgumentException("Le code devise est obligatoire");
+            throw new IllegalArgumentException("Currency code is required");
         }
         for (CurrencyCode currency : values()) {
-            if (currency.code.equals(code.toUpperCase())) {
-                return currency;
-            }
+            if (currency.code.equals(code.toUpperCase())) { return currency; }
         }
-        throw new IllegalArgumentException("Devise inconnue : " + code +
-                ". Valeurs autorisÃ©es: MAD, EUR, USD");
+        throw new IllegalArgumentException("Unknown currency: " + code + ". Allowed values: MAD, EUR, USD");
     }
 
     /**
-     * RÃ©cupÃ¨re une devise par son label
+     * Retrieves a currency by its label
      */
     public static CurrencyCode fromLabel(String label) {
         if (label == null || label.isEmpty()) {
-            throw new IllegalArgumentException("Le label est obligatoire");
+            throw new IllegalArgumentException("Label is required");
         }
         for (CurrencyCode currency : values()) {
-            if (currency.label.equalsIgnoreCase(label)) {
-                return currency;
-            }
+            if (currency.label.equalsIgnoreCase(label)) { return currency; }
         }
-        throw new IllegalArgumentException("Devise inconnue : " + label);
+        throw new IllegalArgumentException("Unknown currency: " + label);
     }
 
     /**
-     * VÃ©rifie si un code existe
+     * Checks if a code exists
      */
     public static boolean isValidCode(String code) {
-        if (code == null || code.isEmpty()) {
-            return false;
-        }
-        return Arrays.stream(values())
-                .anyMatch(currency -> currency.code.equals(code.toUpperCase()));
+        if (code == null || code.isEmpty()) { return false; }
+        return Arrays.stream(values()).anyMatch(currency -> currency.code.equals(code.toUpperCase()));
     }
 
     /**
-     * RÃ©cupÃ¨re tous les codes
+     * Retrieves all codes
      */
     public static List<String> getCodes() {
-        return Arrays.stream(values())
-                .map(CurrencyCode::getCode)
-                .collect(Collectors.toList());
+        return Arrays.stream(values()).map(CurrencyCode::getCode).collect(Collectors.toList());
     }
 
     /**
-     * RÃ©cupÃ¨re tous les labels
+     * Retrieves all labels
      */
     public static List<String> getLabels() {
-        return Arrays.stream(values())
-                .map(CurrencyCode::getLabel)
-                .collect(Collectors.toList());
+        return Arrays.stream(values()).map(CurrencyCode::getLabel).collect(Collectors.toList());
     }
 
     /**
-     * RÃ©cupÃ¨re la devise par dÃ©faut (EUR)
+     * Retrieves the default currency (EUR)
      */
-    public static CurrencyCode getDefault() {
-        return EUR;
-    }
+    public static CurrencyCode getDefault() { return EUR; }
 
     /**
-     * Formate un montant avec le symbole
-     * Exemple: DH 850.00
+     * Formats an amount with the symbol
+     * Example: DH 850.00
      */
     public String format(BigDecimal amount) {
-        if (amount == null) {
-            return symbol + " 0.00";
-        }
+        if (amount == null) { return symbol + " 0.00"; }
         String pattern = "%." + decimalPlaces + "f";
         return symbol + " " + String.format(pattern, amount);
     }
 
     /**
-     * Formate un montant avec le code
-     * Exemple: MAD 850.00
+     * Formats an amount with the code
+     * Example: MAD 850.00
      */
     public String formatWithCode(BigDecimal amount) {
-        if (amount == null) {
-            return code + " 0.00";
-        }
+        if (amount == null) { return code + " 0.00"; }
         String pattern = "%." + decimalPlaces + "f";
         return code + " " + String.format(pattern, amount);
     }
 
     /**
-     * Formate un montant sans symbole
-     * Exemple: 850.00
+     * Formats an amount without symbol
+     * Example: 850.00
      */
     public String formatPlain(BigDecimal amount) {
-        if (amount == null) {
-            return "0.00";
-        }
+        if (amount == null) { return "0.00"; }
         String pattern = "%." + decimalPlaces + "f";
         return String.format(pattern, amount);
     }
 
     /**
-     * VÃ©rifie si c'est le Dirham Marocain
+     * Checks if this is the Moroccan Dirham
      */
-    public boolean isMAD() {
-        return this == MAD;
-    }
+    public boolean isMAD() { return this == MAD; }
 
     /**
-     * VÃ©rifie si c'est l'Euro
+     * Checks if this is the Euro
      */
-    public boolean isEuro() {
-        return this == EUR;
-    }
+    public boolean isEuro() { return this == EUR; }
 
     /**
-     * VÃ©rifie si c'est le Dollar US
+     * Checks if this is the US Dollar
      */
-    public boolean isUSD() {
-        return this == USD;
-    }
+    public boolean isUSD() { return this == USD; }
 
     // ============================================================
     // TOSTRING

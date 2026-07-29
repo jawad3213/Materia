@@ -2,7 +2,6 @@ package com.materia.backend.contexts.masterdata.domain.entities;
 
 import com.materia.backend.contexts.masterdata.domain.enums.CategoryType;
 
-
 import com.materia.backend.common.domain.BaseEntity;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -12,9 +11,9 @@ import java.util.UUID;
 
 /**
  * Category Domain Entity
- * Architecture Hexagonale - Couche Domaine
+ * Hexagonal Architecture - Domain Layer
  *
- * CatÃ©gorie de matÃ©riaux pour organisation hiÃ©rarchique
+ * Material category for hierarchical organization
  *
  * @author SAP MM Team
  * @version 1.0
@@ -22,43 +21,43 @@ import java.util.UUID;
 public class Category extends BaseEntity {
 
     // ============================================================
-    // CONSTANTES
+    // CONSTANTS
     // ============================================================
 
     public static final String STATUS_ACTIVE = "ACTIVE";
     public static final String STATUS_INACTIVE = "INACTIVE";
 
     // ============================================================
-    // ATTRIBUTS
+    // ATTRIBUTES
     // ============================================================
 
     // ---- IDENTIFICATION ----
-    private String code;                // Code unique de la catÃ©gorie (ex: CAT-001)
-    private String name;                // Nom de la catÃ©gorie (ex: MatiÃ¨res premiÃ¨res)
-    private String description;         // Description dÃ©taillÃ©e
-    private String shortDescription;    // Description courte pour les listes
+    private String code;                // Unique category code (e.g. CAT-001)
+    private String name;                // Category name (e.g. Raw Materials)
+    private String description;         // Detailed description
+    private String shortDescription;    // Short description for lists
 
-    // ---- HIÃ‰RARCHIE ----
-    private String parentId;            // ID de la catÃ©gorie parente (null pour racine)
-    private String parentCode;          // Code de la catÃ©gorie parente (dÃ©normalisÃ©)
-    private Integer level;              // Niveau dans l'arborescence (0 = racine)
-    private String path;                // Chemin hiÃ©rarchique (ex: /CAT-001/CAT-002/)
-    private List<String> childrenIds;   // IDs des sous-catÃ©gories
+    // ---- HIERARCHY ----
+    private String parentId;            // Parent category ID (null for root)
+    private String parentCode;          // Parent category code (denormalized)
+    private Integer level;              // Level in the tree (0 = root)
+    private String path;                // Hierarchical path (e.g. /CAT-001/CAT-002/)
+    private List<String> childrenIds;   // Sub-category IDs
 
     // ---- CLASSIFICATION ----
-    private CategoryType categoryType;      // TYPE: RAW_MATERIAL, FINISHED_GOOD, etc.
+    private CategoryType categoryType;  // TYPE: RAW_MATERIAL, FINISHED_GOOD, etc.
     private String status;              // ACTIVE / INACTIVE
-    private String color;               // Couleur pour l'affichage
-    private String icon;                // IcÃ´ne pour l'interface
+    private String color;               // Display color
+    private String icon;                // UI icon
 
-    // ---- STATISTIQUES ----
-    private Integer materialCount;      // Nombre de matÃ©riaux dans cette catÃ©gorie
-    private Integer subCategoryCount;   // Nombre de sous-catÃ©gories
-    private Integer totalItems;         // Nombre total d'items (matÃ©riaux + sous-catÃ©gories)
+    // ---- STATISTICS ----
+    private Integer materialCount;      // Number of materials in this category
+    private Integer subCategoryCount;   // Number of sub-categories
+    private Integer totalItems;         // Total items (materials + sub-categories)
 
 
     // ============================================================
-    // CONSTRUCTEUR DÃ‰FAUT
+    // DEFAULT CONSTRUCTOR
     // ============================================================
 
     public Category() {
@@ -72,7 +71,7 @@ public class Category extends BaseEntity {
     }
 
     // ============================================================
-    // CONSTRUCTEUR PRIVÃ‰ (via Builder)
+    // PRIVATE CONSTRUCTOR (via Builder)
     // ============================================================
 
     private Category(Builder builder) {
@@ -140,7 +139,7 @@ public class Category extends BaseEntity {
         public Builder description(String description) { this.description = description; return this; }
         public Builder shortDescription(String shortDescription) { this.shortDescription = shortDescription; return this; }
 
-        // ---- HIÃ‰RARCHIE ----
+        // ---- HIERARCHY ----
         public Builder parentId(String parentId) { this.parentId = parentId; return this; }
         public Builder parentCode(String parentCode) { this.parentCode = parentCode; return this; }
         public Builder level(Integer level) { this.level = level; return this; }
@@ -156,7 +155,7 @@ public class Category extends BaseEntity {
         public Builder color(String color) { this.color = color; return this; }
         public Builder icon(String icon) { this.icon = icon; return this; }
 
-        // ---- STATISTIQUES ----
+        // ---- STATISTICS ----
         public Builder materialCount(Integer materialCount) { this.materialCount = materialCount; return this; }
         public Builder subCategoryCount(Integer subCategoryCount) { this.subCategoryCount = subCategoryCount; return this; }
         public Builder totalItems(Integer totalItems) { this.totalItems = totalItems; return this; }
@@ -177,17 +176,17 @@ public class Category extends BaseEntity {
             if (this.totalItems == null) this.totalItems = 0;
             if (this.level == null) this.level = 0;
 
-            // Calcul du chemin si parentId fourni
+            // Calculate path if parentId is provided
             if (this.parentId != null && this.path == null) {
                 this.path = "/" + this.code + "/";
             }
 
             // Validation
             if (this.code == null || this.code.trim().isEmpty()) {
-                throw new IllegalArgumentException("Le code de la catÃ©gorie est obligatoire");
+                throw new IllegalArgumentException("Category code is required");
             }
             if (this.name == null || this.name.trim().isEmpty()) {
-                throw new IllegalArgumentException("Le nom de la catÃ©gorie est obligatoire");
+                throw new IllegalArgumentException("Category name is required");
             }
 
             return new Category(this);
@@ -199,18 +198,18 @@ public class Category extends BaseEntity {
     }
 
     // ============================================================
-    // MÃ‰THODES DOMAINE
+    // DOMAIN METHODS
     // ============================================================
 
     /**
-     * VÃ©rifie si la catÃ©gorie est active
+     * Checks if the category is active
      */
     public boolean isActive() {
         return STATUS_ACTIVE.equals(this.status);
     }
 
     /**
-     * Active la catÃ©gorie
+     * Activates the category
      */
     public void activate() {
         this.status = STATUS_ACTIVE;
@@ -218,7 +217,7 @@ public class Category extends BaseEntity {
     }
 
     /**
-     * DÃ©sactive la catÃ©gorie
+     * Deactivates the category
      */
     public void deactivate() {
         this.status = STATUS_INACTIVE;
@@ -226,25 +225,25 @@ public class Category extends BaseEntity {
     }
 
     /**
-     * VÃ©rifie si c'est une catÃ©gorie racine
+     * Checks if this is a root category
      */
     public boolean isRoot() {
         return this.parentId == null || this.parentId.isEmpty();
     }
 
     /**
-     * VÃ©rifie si la catÃ©gorie a des sous-catÃ©gories
+     * Checks if the category has sub-categories
      */
     public boolean hasChildren() {
         return this.childrenIds != null && !this.childrenIds.isEmpty();
     }
 
     /**
-     * Ajoute une sous-catÃ©gorie
+     * Adds a sub-category
      */
     public void addChild(String childId) {
         if (childId == null || childId.isEmpty()) {
-            throw new IllegalArgumentException("L'ID de la sous-catÃ©gorie est obligatoire");
+            throw new IllegalArgumentException("Sub-category ID is required");
         }
         if (this.childrenIds == null) {
             this.childrenIds = new ArrayList<>();
@@ -258,11 +257,11 @@ public class Category extends BaseEntity {
     }
 
     /**
-     * Supprime une sous-catÃ©gorie
+     * Removes a sub-category
      */
     public void removeChild(String childId) {
         if (childId == null || childId.isEmpty()) {
-            throw new IllegalArgumentException("L'ID de la sous-catÃ©gorie est obligatoire");
+            throw new IllegalArgumentException("Sub-category ID is required");
         }
         if (this.childrenIds != null) {
             this.childrenIds.remove(childId);
@@ -273,7 +272,7 @@ public class Category extends BaseEntity {
     }
 
     /**
-     * Met Ã  jour les statistiques
+     * Updates the statistics
      */
     public void updateStatistics(int materialCount, int subCategoryCount) {
         this.materialCount = materialCount;
@@ -283,7 +282,7 @@ public class Category extends BaseEntity {
     }
 
     /**
-     * IncrÃ©mente le nombre de matÃ©riaux
+     * Increments the material count
      */
     public void incrementMaterialCount() {
         this.materialCount = (this.materialCount == null ? 0 : this.materialCount) + 1;
@@ -292,7 +291,7 @@ public class Category extends BaseEntity {
     }
 
     /**
-     * DÃ©crÃ©mente le nombre de matÃ©riaux
+     * Decrements the material count
      */
     public void decrementMaterialCount() {
         if (this.materialCount != null && this.materialCount > 0) {
@@ -303,7 +302,7 @@ public class Category extends BaseEntity {
     }
 
     /**
-     * Calcule le niveau de profondeur
+     * Calculates the depth level
      */
     public int getDepth() {
         if (this.path == null || this.path.isEmpty()) {
@@ -313,7 +312,7 @@ public class Category extends BaseEntity {
     }
 
     /**
-     * Obtient le nom complet avec le chemin
+     * Gets the full name with path
      */
     public String getFullPathName() {
         if (isRoot()) {
@@ -330,7 +329,7 @@ public class Category extends BaseEntity {
     public String getCode() { return code; }
     public void setCode(String code) {
         if (code == null || code.trim().isEmpty()) {
-            throw new IllegalArgumentException("Le code de la catÃ©gorie est obligatoire");
+            throw new IllegalArgumentException("Category code is required");
         }
         this.code = code;
         this.setUpdatedAt(LocalDateTime.now());
@@ -339,7 +338,7 @@ public class Category extends BaseEntity {
     public String getName() { return name; }
     public void setName(String name) {
         if (name == null || name.trim().isEmpty()) {
-            throw new IllegalArgumentException("Le nom de la catÃ©gorie est obligatoire");
+            throw new IllegalArgumentException("Category name is required");
         }
         this.name = name;
         this.setUpdatedAt(LocalDateTime.now());
@@ -357,7 +356,7 @@ public class Category extends BaseEntity {
         this.setUpdatedAt(LocalDateTime.now());
     }
 
-    // ---- HIÃ‰RARCHIE ----
+    // ---- HIERARCHY ----
     public String getParentId() { return parentId; }
     public void setParentId(String parentId) {
         this.parentId = parentId;
@@ -415,7 +414,7 @@ public class Category extends BaseEntity {
         this.setUpdatedAt(LocalDateTime.now());
     }
 
-    // ---- STATISTIQUES ----
+    // ---- STATISTICS ----
     public Integer getMaterialCount() { return materialCount; }
     public void setMaterialCount(Integer materialCount) {
         this.materialCount = materialCount != null ? materialCount : 0;

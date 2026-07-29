@@ -1,26 +1,25 @@
 package com.materia.backend.contexts.masterdata.domain.enums;
 
-
 /**
- * Statuts possibles pour un matÃ©riau
- * Gestion du cycle de vie d'un matÃ©riau
+ * Possible statuses for a material
+ * Material lifecycle management
  *
- * ðŸ“ Position: masterData-service/domain/enums/MaterialStatus.java
+ * Location: masterdata/domain/enums/MaterialStatus.java
  */
 public enum MaterialStatus {
 
     // ============================================================
-    // STATUTS PRINCIPAUX (5 SEULEMENT)
+    // MAIN STATUSES (5 ONLY)
     // ============================================================
 
-    DRAFT("DRAFT", "Brouillon", "MatÃ©riau en cours de crÃ©ation"),
-    ACTIVE("ACTIVE", "Actif", "MatÃ©riau disponible et utilisable"),
-    INACTIVE("INACTIVE", "Inactif", "MatÃ©riau temporairement indisponible"),
-    BLOCKED("BLOCKED", "BloquÃ©", "MatÃ©riau bloquÃ© pour raison de sÃ©curitÃ© ou qualitÃ©"),
-    OBSOLETE("OBSOLETE", "ObsolÃ¨te", "MatÃ©riau remplacÃ© ou abandonnÃ©");
+    DRAFT("DRAFT", "Draft", "Material being created"),
+    ACTIVE("ACTIVE", "Active", "Material available and usable"),
+    INACTIVE("INACTIVE", "Inactive", "Material temporarily unavailable"),
+    BLOCKED("BLOCKED", "Blocked", "Material blocked for safety or quality reasons"),
+    OBSOLETE("OBSOLETE", "Obsolete", "Material replaced or discontinued");
 
     // ============================================================
-    // ATTRIBUTS
+    // ATTRIBUTES
     // ============================================================
 
     private final String code;
@@ -28,7 +27,7 @@ public enum MaterialStatus {
     private final String description;
 
     // ============================================================
-    // CONSTRUCTEUR
+    // CONSTRUCTOR
     // ============================================================
 
     MaterialStatus(String code, String label, String description) {
@@ -41,133 +40,96 @@ public enum MaterialStatus {
     // GETTERS
     // ============================================================
 
-    public String getCode() {
-        return code;
-    }
-
-    public String getLabel() {
-        return label;
-    }
-
-    public String getDescription() {
-        return description;
-    }
+    public String getCode() { return code; }
+    public String getLabel() { return label; }
+    public String getDescription() { return description; }
 
     // ============================================================
-    // MÃ‰THODES UTILITAIRES
+    // UTILITY METHODS
     // ============================================================
 
     /**
-     * RÃ©cupÃ¨re un statut par son code
+     * Retrieves a status by its code
      */
     public static MaterialStatus fromCode(String code) {
         if (code == null) return null;
         for (MaterialStatus status : values()) {
-            if (status.getCode().equals(code)) {
-                return status;
-            }
+            if (status.getCode().equals(code)) { return status; }
         }
-        throw new IllegalArgumentException("Statut inconnu: " + code);
+        throw new IllegalArgumentException("Unknown status: " + code);
     }
 
     /**
-     * VÃ©rifie si un code de statut existe
+     * Checks if a status code exists
      */
     public static boolean isValid(String code) {
         if (code == null) return false;
         for (MaterialStatus status : values()) {
-            if (status.getCode().equals(code)) {
-                return true;
-            }
+            if (status.getCode().equals(code)) { return true; }
         }
         return false;
     }
 
     /**
-     * RÃ©cupÃ¨re tous les statuts actifs (utilisables)
+     * Retrieves all active (usable) statuses
      */
     public static MaterialStatus[] getActiveStatuses() {
-        return new MaterialStatus[] {
-                ACTIVE
-        };
+        return new MaterialStatus[] { ACTIVE };
     }
 
     /**
-     * RÃ©cupÃ¨re tous les statuts bloquants
+     * Retrieves all blocking statuses
      */
     public static MaterialStatus[] getBlockingStatuses() {
-        return new MaterialStatus[] {
-                BLOCKED,
-                OBSOLETE
-        };
+        return new MaterialStatus[] { BLOCKED, OBSOLETE };
     }
 
     /**
-     * RÃ©cupÃ¨re tous les statuts modifiables
+     * Retrieves all modifiable statuses
      */
     public static MaterialStatus[] getModifiableStatuses() {
-        return new MaterialStatus[] {
-                DRAFT,
-                ACTIVE,
-                INACTIVE
-        };
+        return new MaterialStatus[] { DRAFT, ACTIVE, INACTIVE };
     }
 
     // ============================================================
-    // MÃ‰THODES D'INSTANCE
+    // INSTANCE METHODS
     // ============================================================
 
     /**
-     * VÃ©rifie si le matÃ©riau est utilisable
+     * Checks if the material is usable
      */
-    public boolean isUsable() {
-        return this == ACTIVE;
-    }
+    public boolean isUsable() { return this == ACTIVE; }
 
     /**
-     * VÃ©rifie si le matÃ©riau est en cours de validation
+     * Checks if the material is under review
      */
-    public boolean isInReview() {
-        return this == DRAFT;
-    }
+    public boolean isInReview() { return this == DRAFT; }
 
     /**
-     * VÃ©rifie si le matÃ©riau est en fin de vie
+     * Checks if the material is end-of-life
      */
-    public boolean isEndOfLife() {
-        return this == OBSOLETE;
-    }
+    public boolean isEndOfLife() { return this == OBSOLETE; }
 
     /**
-     * VÃ©rifie si le matÃ©riau est bloquÃ©
+     * Checks if the material is blocked
      */
-    public boolean isBlocked() {
-        return this == BLOCKED || this == OBSOLETE;
-    }
+    public boolean isBlocked() { return this == BLOCKED || this == OBSOLETE; }
 
     /**
-     * VÃ©rifie si le statut est valide pour une commande
+     * Checks if the status is valid for ordering
      */
-    public boolean isOrderable() {
-        return this == ACTIVE;
-    }
+    public boolean isOrderable() { return this == ACTIVE; }
 
     /**
-     * VÃ©rifie si le statut est valide pour une rÃ©ception
+     * Checks if the status is valid for receiving
      */
-    public boolean isReceivable() {
-        return this == ACTIVE;
-    }
+    public boolean isReceivable() { return this == ACTIVE; }
 
     /**
-     * VÃ©rifie si le matÃ©riau peut Ãªtre modifiÃ©
+     * Checks if the material can be modified
      */
-    public boolean isModifiable() {
-        return this == DRAFT || this == ACTIVE || this == INACTIVE;
-    }
+    public boolean isModifiable() { return this == DRAFT || this == ACTIVE || this == INACTIVE; }
 
     @Override
-    public String toString() {
-        return code + " - " + label;
-    }
+    public String toString() { return code + " - " + label; }
 }

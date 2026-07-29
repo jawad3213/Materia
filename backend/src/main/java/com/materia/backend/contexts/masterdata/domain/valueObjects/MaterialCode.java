@@ -2,8 +2,6 @@ package com.materia.backend.contexts.masterdata.domain.valueObjects;
 
 import com.materia.backend.contexts.masterdata.domain.enums.CategoryType;
 
-
-
 import java.util.Objects;
 import java.util.regex.Pattern;
 
@@ -11,7 +9,7 @@ import java.util.regex.Pattern;
 public class MaterialCode {
 
     // ============================================================
-    // CONSTANTES
+    // CONSTANTS
     // ============================================================
 
     private static final String PATTERN_STRING = "^[A-Z]{3}-[0-9]{4}$";
@@ -25,13 +23,13 @@ public class MaterialCode {
     public static final String SPARE_PART_PREFIX = "SPR";
 
     // ============================================================
-    // ATTRIBUT
+    // ATTRIBUTE
     // ============================================================
 
     private final String value;
 
     // ============================================================
-    // CONSTRUCTEUR PRIVÃ‰
+    // PRIVATE CONSTRUCTOR
     // ============================================================
 
     private MaterialCode(String value) {
@@ -49,9 +47,7 @@ public class MaterialCode {
 
     public static MaterialCode fromPrefixAndNumber(String prefix, int number) {
         if (number < 0 || number > 9999) {
-            throw new IllegalArgumentException(
-                    "Le numÃ©ro doit Ãªtre entre 0 et 9999"
-            );
+            throw new IllegalArgumentException("Number must be between 0 and 9999");
         }
         String code = prefix + "-" + String.format("%04d", number);
         return new MaterialCode(code);
@@ -90,67 +86,36 @@ public class MaterialCode {
 
     private void validate(String value) {
         if (value == null) {
-            throw new IllegalArgumentException(
-                    "Le code du matÃ©riau est obligatoire"
-            );
+            throw new IllegalArgumentException("Material code is required");
         }
         value = value.trim();
         if (value.isEmpty()) {
-            throw new IllegalArgumentException(
-                    "Le code du matÃ©riau ne peut pas Ãªtre vide"
-            );
+            throw new IllegalArgumentException("Material code cannot be empty");
         }
         if (!PATTERN.matcher(value).matches()) {
             throw new IllegalArgumentException(
-                    "Format invalide pour le code matÃ©riau: " + value +
-                            ". Format attendu: XXX-0000 (ex: MAT-0001)"
+                    "Invalid format for material code: " + value +
+                            ". Expected format: XXX-0000 (e.g. MAT-0001)"
             );
         }
     }
 
     // ============================================================
-    // MÃ‰THODES MÃ‰TIER
+    // BUSINESS METHODS
     // ============================================================
 
-    public String getPrefix() {
-        return value.substring(0, 3);
-    }
+    public String getPrefix() { return value.substring(0, 3); }
+    public String getNumber() { return value.substring(4); }
+    public int getNumberAsInt() { return Integer.parseInt(getNumber()); }
+    public boolean startsWith(String prefix) { return value.startsWith(prefix); }
 
-    public String getNumber() {
-        return value.substring(4);
-    }
+    public boolean isRawMaterial() { return startsWith(RAW_MATERIAL_PREFIX); }
+    public boolean isFinishedGood() { return startsWith(FINISHED_GOOD_PREFIX); }
+    public boolean isComponent() { return startsWith(COMPONENT_PREFIX); }
+    public boolean isPackaging() { return startsWith(PACKAGING_PREFIX); }
+    public boolean isSparePart() { return startsWith(SPARE_PART_PREFIX); }
 
-    public int getNumberAsInt() {
-        return Integer.parseInt(getNumber());
-    }
-
-    public boolean startsWith(String prefix) {
-        return value.startsWith(prefix);
-    }
-
-    public boolean isRawMaterial() {
-        return startsWith(RAW_MATERIAL_PREFIX);
-    }
-
-    public boolean isFinishedGood() {
-        return startsWith(FINISHED_GOOD_PREFIX);
-    }
-
-    public boolean isComponent() {
-        return startsWith(COMPONENT_PREFIX);
-    }
-
-    public boolean isPackaging() {
-        return startsWith(PACKAGING_PREFIX);
-    }
-
-    public boolean isSparePart() {
-        return startsWith(SPARE_PART_PREFIX);
-    }
-
-    public MaterialCode increment() {
-        return generateNext(this);
-    }
+    public MaterialCode increment() { return generateNext(this); }
 
     public MaterialCode withNewPrefix(String newPrefix) {
         return fromPrefixAndNumber(newPrefix, getNumberAsInt());
@@ -160,9 +125,7 @@ public class MaterialCode {
     // GETTER
     // ============================================================
 
-    public String getValue() {
-        return value;
-    }
+    public String getValue() { return value; }
 
     // ============================================================
     // EQUALS & HASHCODE
@@ -177,16 +140,12 @@ public class MaterialCode {
     }
 
     @Override
-    public int hashCode() {
-        return Objects.hash(value);
-    }
+    public int hashCode() { return Objects.hash(value); }
 
     // ============================================================
     // TOSTRING
     // ============================================================
 
     @Override
-    public String toString() {
-        return value;
-    }
+    public String toString() { return value; }
 }

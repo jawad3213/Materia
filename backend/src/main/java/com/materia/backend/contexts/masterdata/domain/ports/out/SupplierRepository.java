@@ -2,48 +2,45 @@ package com.materia.backend.contexts.masterdata.domain.ports.out;
 
 import com.materia.backend.contexts.masterdata.domain.entities.Supplier;
 
-
 import com.materia.backend.common.domain.BaseRepository;
-
 
 import java.util.List;
 import java.util.Optional;
 
 /**
- * Port de sortie pour la persistance des fournisseurs
- * Architecture Hexagonale - Le domaine dÃ©finit le contrat,
- * l'infrastructure l'implÃ©mente
+ * Output Port for supplier persistence
+ * Hexagonal Architecture - The domain defines the contract,
+ * the infrastructure implements it
  */
 public interface SupplierRepository extends BaseRepository<Supplier> {
 
     /**
-     * Recherche un fournisseur par son code
+     * Finds a supplier by its code
      */
     Optional<Supplier> findByCode(String code);
 
     /**
-     * Recherche les fournisseurs actifs
+     * Finds active suppliers
      */
     List<Supplier> findByStatus(String status);
 
     /**
-     * Recherche les fournisseurs par pays
+     * Finds suppliers by country
      */
     List<Supplier> findByCountry(String country);
 
     /**
-     * Recherche les fournisseurs par ville
+     * Finds suppliers by city
      */
     List<Supplier> findByCity(String city);
 
     /**
-     * VÃ©rifie si un code fournisseur existe dÃ©jÃ 
+     * Checks if a supplier code already exists
      */
     boolean existsByCode(String code);
 
     /**
-     * Recherche par mot-clÃ© (nom, description, contact)
+     * Searches by keyword (name, description, contact)
      */
     List<Supplier> search(String keyword);
 }
-

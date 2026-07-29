@@ -5,105 +5,105 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * UnitÃ©s de mesure standardisÃ©es
- * ISO 80000 - Grandeurs et unitÃ©s
+ * Standardized Units of Measure
+ * ISO 80000 - Quantities and Units
  *
- * ðŸ“ Position: masterData-service/domain/enums/UnitOfMeasure.java
+ * Location: masterdata/domain/enums/UnitOfMeasure.java
  */
 public enum UnitOfMeasure {
 
     // ============================================================
-    // MASSE / POIDS
+    // MASS / WEIGHT
     // ============================================================
-    KG("KG", "Kilogramme", "Mass"),
-    G("G", "Gramme", "Mass"),
+    KG("KG", "Kilogram", "Mass"),
+    G("G", "Gram", "Mass"),
     T("T", "Tonne", "Mass"),
-    MG("MG", "Milligramme", "Mass"),
-    LB("LB", "Livre", "Mass"),
-    OZ("OZ", "Once", "Mass"),
+    MG("MG", "Milligram", "Mass"),
+    LB("LB", "Pound", "Mass"),
+    OZ("OZ", "Ounce", "Mass"),
 
     // ============================================================
-    // VOLUME / LIQUIDES
+    // VOLUME / LIQUIDS
     // ============================================================
-    L("L", "Litre", "Volume"),
-    ML("ML", "Millilitre", "Volume"),
-    M3("M3", "MÃ¨tre cube", "Volume"),
-    DM3("DM3", "DÃ©cimÃ¨tre cube", "Volume"),
-    CM3("CM3", "CentimÃ¨tre cube", "Volume"),
+    L("L", "Liter", "Volume"),
+    ML("ML", "Milliliter", "Volume"),
+    M3("M3", "Cubic Meter", "Volume"),
+    DM3("DM3", "Cubic Decimeter", "Volume"),
+    CM3("CM3", "Cubic Centimeter", "Volume"),
     GAL("GAL", "Gallon", "Volume"),
-    FT3("FT3", "Pied cube", "Volume"),
+    FT3("FT3", "Cubic Foot", "Volume"),
 
     // ============================================================
-    // LONGUEUR / DISTANCE
+    // LENGTH / DISTANCE
     // ============================================================
-    M("M", "MÃ¨tre", "Length"),
-    CM("CM", "CentimÃ¨tre", "Length"),
-    MM("MM", "MillimÃ¨tre", "Length"),
-    KM("KM", "KilomÃ¨tre", "Length"),
+    M("M", "Meter", "Length"),
+    CM("CM", "Centimeter", "Length"),
+    MM("MM", "Millimeter", "Length"),
+    KM("KM", "Kilometer", "Length"),
     IN("IN", "Inch", "Length"),
-    FT("FT", "Pied", "Length"),
+    FT("FT", "Foot", "Length"),
     YD("YD", "Yard", "Length"),
 
     // ============================================================
-    // SURFACE
+    // AREA
     // ============================================================
-    M2("M2", "MÃ¨tre carrÃ©", "Area"),
-    CM2("CM2", "CentimÃ¨tre carrÃ©", "Area"),
-    MM2("MM2", "MillimÃ¨tre carrÃ©", "Area"),
+    M2("M2", "Square Meter", "Area"),
+    CM2("CM2", "Square Centimeter", "Area"),
+    MM2("MM2", "Square Millimeter", "Area"),
     HA("HA", "Hectare", "Area"),
     ACRE("ACRE", "Acre", "Area"),
 
     // ============================================================
-    // COMPTAGE / UNITÃ‰S
+    // COUNT / UNITS
     // ============================================================
-    PCE("PCE", "PiÃ¨ce", "Count"),
-    BOX("BOX", "BoÃ®te", "Count"),
+    PCE("PCE", "Piece", "Count"),
+    BOX("BOX", "Box", "Count"),
     CART("CART", "Carton", "Count"),
-    PACK("PACK", "Paquet", "Count"),
+    PACK("PACK", "Pack", "Count"),
     SET("SET", "Set", "Count"),
-    PAL("PAL", "Palette", "Count"),
-    DRUM("DRUM", "FÃ»t", "Count"),
-    ROLL("ROLL", "Rouleau", "Count"),
-    SHEET("SHEET", "Feuille", "Count"),
-    REEL("REEL", "Bobine", "Count"),
+    PAL("PAL", "Pallet", "Count"),
+    DRUM("DRUM", "Drum", "Count"),
+    ROLL("ROLL", "Roll", "Count"),
+    SHEET("SHEET", "Sheet", "Count"),
+    REEL("REEL", "Reel", "Count"),
 
     // ============================================================
-    // TEMPS
+    // TIME
     // ============================================================
-    HOUR("HOUR", "Heure", "Time"),
-    DAY("DAY", "Jour", "Time"),
-    WEEK("WEEK", "Semaine", "Time"),
-    MONTH("MONTH", "Mois", "Time"),
+    HOUR("HOUR", "Hour", "Time"),
+    DAY("DAY", "Day", "Time"),
+    WEEK("WEEK", "Week", "Time"),
+    MONTH("MONTH", "Month", "Time"),
 
     // ============================================================
-    // Ã‰NERGIE / PUISSANCE
+    // ENERGY / POWER
     // ============================================================
-    KWH("KWH", "Kilowatt-heure", "Energy"),
+    KWH("KWH", "Kilowatt-hour", "Energy"),
     KW("KW", "Kilowatt", "Power"),
-    HP("HP", "Cheval-vapeur", "Power"),
+    HP("HP", "Horsepower", "Power"),
 
     // ============================================================
-    // TEMPÃ‰RATURE
+    // TEMPERATURE
     // ============================================================
     C("C", "Celsius", "Temperature"),
     F("F", "Fahrenheit", "Temperature"),
     K("K", "Kelvin", "Temperature"),
 
     // ============================================================
-    // PRESSION
+    // PRESSURE
     // ============================================================
     BAR("BAR", "Bar", "Pressure"),
     PSI("PSI", "Pound per square inch", "Pressure"),
     PA("PA", "Pascal", "Pressure"),
-    ATM("ATM", "AtmosphÃ¨re", "Pressure"),
+    ATM("ATM", "Atmosphere", "Pressure"),
 
     // ============================================================
-    // AUTRES
+    // OTHER
     // ============================================================
-    NONE("NONE", "Aucune unitÃ©", "None");
+    NONE("NONE", "No Unit", "None");
 
     // ============================================================
-    // ATTRIBUTS
+    // ATTRIBUTES
     // ============================================================
 
     private final String code;
@@ -111,7 +111,7 @@ public enum UnitOfMeasure {
     private final String category;
 
     // ============================================================
-    // CONSTRUCTEUR
+    // CONSTRUCTOR
     // ============================================================
 
     UnitOfMeasure(String code, String label, String category) {
@@ -124,62 +124,38 @@ public enum UnitOfMeasure {
     // GETTERS
     // ============================================================
 
-    public String getCode() {
-        return code;
-    }
-
-    public String getLabel() {
-        return label;
-    }
-
-    public String getCategory() {
-        return category;
-    }
+    public String getCode() { return code; }
+    public String getLabel() { return label; }
+    public String getCategory() { return category; }
 
     // ============================================================
-    // MÃ‰THODES UTILITAIRES
+    // UTILITY METHODS
     // ============================================================
 
     public static UnitOfMeasure fromCode(String code) {
         if (code == null) return null;
         for (UnitOfMeasure unit : values()) {
-            if (unit.getCode().equals(code)) {
-                return unit;
-            }
+            if (unit.getCode().equals(code)) { return unit; }
         }
-        throw new IllegalArgumentException("UnitÃ© inconnue: " + code);
+        throw new IllegalArgumentException("Unknown unit: " + code);
     }
 
     public static boolean isValid(String code) {
         if (code == null) return false;
         for (UnitOfMeasure unit : values()) {
-            if (unit.getCode().equals(code)) {
-                return true;
-            }
+            if (unit.getCode().equals(code)) { return true; }
         }
         return false;
     }
 
     public static List<UnitOfMeasure> getByCategory(String category) {
-        return Arrays.stream(values())
-                .filter(u -> u.getCategory().equals(category))
-                .collect(Collectors.toList());
+        return Arrays.stream(values()).filter(u -> u.getCategory().equals(category)).collect(Collectors.toList());
     }
 
-    public static List<UnitOfMeasure> getMassUnits() {
-        return getByCategory("Mass");
-    }
-
-    public static List<UnitOfMeasure> getVolumeUnits() {
-        return getByCategory("Volume");
-    }
-
-    public static List<UnitOfMeasure> getCountUnits() {
-        return getByCategory("Count");
-    }
+    public static List<UnitOfMeasure> getMassUnits() { return getByCategory("Mass"); }
+    public static List<UnitOfMeasure> getVolumeUnits() { return getByCategory("Volume"); }
+    public static List<UnitOfMeasure> getCountUnits() { return getByCategory("Count"); }
 
     @Override
-    public String toString() {
-        return code + " - " + label;
-    }
+    public String toString() { return code + " - " + label; }
 }
