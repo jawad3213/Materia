@@ -80,7 +80,7 @@ public class MaterialController {
         return ResponseEntity.ok(webMapper.toWebResponseList(responses));
     }
 
-    @GetMapping("/alerts/low-stock")
+    @GetMapping("/stock/low")
     public ResponseEntity<List<MaterialWebResponse>> getMaterialsBelowMinimumStock() {
         List<MaterialOutput> responses = materialUseCase.getMaterialsBelowMinimumStock();
         return ResponseEntity.ok(webMapper.toWebResponseList(responses));
@@ -112,5 +112,38 @@ public class MaterialController {
             @RequestParam int quantity) {
         MaterialOutput response = materialUseCase.decreaseStock(id, quantity);
         return ResponseEntity.ok(webMapper.toWebResponse(response));
+    }
+
+    @GetMapping("/status/{status}")
+    public ResponseEntity<List<MaterialWebResponse>> getMaterialsByStatus(@PathVariable String status) {
+        List<MaterialOutput> responses = materialUseCase.getMaterialsByStatus(status);
+        return ResponseEntity.ok(webMapper.toWebResponseList(responses));
+    }
+
+    @GetMapping("/search/keyword")
+    public ResponseEntity<List<MaterialWebResponse>> searchByKeyword(@RequestParam String keyword) {
+        List<MaterialOutput> responses = materialUseCase.searchByKeyword(keyword);
+        return ResponseEntity.ok(webMapper.toWebResponseList(responses));
+    }
+
+    @PostMapping("/search")
+    public ResponseEntity<com.materia.backend.common.application.PageResponse<MaterialWebResponse>> searchAdvanced(
+            @RequestBody com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.dtos.material.MaterialSearchWebRequest webRequest,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+            
+        com.materia.backend.contexts.masterdata.application.dtos.material.MaterialSearchCriteria criteria = webMapper.toAppSearchCriteria(webRequest);
+        com.materia.backend.common.application.PageResponse<MaterialOutput> appPage = materialUseCase.searchAdvanced(criteria, page, size);
+        
+        com.materia.backend.common.application.PageResponse<MaterialWebResponse> webPage = new com.materia.backend.common.application.PageResponse<>(
+                webMapper.toWebResponseList(appPage.getContent()),
+                appPage.getPageNumber(),
+                appPage.getPageSize(),
+                appPage.getTotalElements(),
+                appPage.getTotalPages(),
+                appPage.isLast()
+        );
+        
+        return ResponseEntity.ok(webPage);
     }
 }

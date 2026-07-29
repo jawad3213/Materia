@@ -1,4 +1,4 @@
-package com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.mappers;
+    package com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.mappers;
 
 import com.materia.backend.contexts.masterdata.application.dtos.supplier.CreateSupplierInput;
 import com.materia.backend.contexts.masterdata.application.dtos.supplier.UpdateSupplierInput;

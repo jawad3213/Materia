@@ -135,4 +135,34 @@ public class MaterialPersistenceAdapter implements MaterialRepository {
         return jpaRepository.findOutOfStock().stream()
                 .map(mapper::toDomainEntity).collect(Collectors.toList());
     }
+
+    @Override
+    public com.materia.backend.common.application.PageResponse<Material> searchAdvanced(
+            com.materia.backend.contexts.masterdata.domain.valueObjects.MaterialSearchFilter filter, 
+            int page, 
+            int size) {
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size);
+        org.springframework.data.domain.Page<MaterialJpaEntity> jpaPage = jpaRepository.searchAdvanced(
+                filter.getKeyword(),
+                filter.getCategoryId(),
+                filter.getSupplierId(),
+                filter.getStatus(),
+                filter.getMinPrice(),
+                filter.getMaxPrice(),
+                filter.getLowStockOnly(),
+                pageable
+        );
+        
+        List<Material> domainList = jpaPage.getContent().stream()
+                .map(mapper::toDomainEntity).collect(Collectors.toList());
+                
+        return new com.materia.backend.common.application.PageResponse<>(
+                domainList,
+                jpaPage.getNumber(),
+                jpaPage.getSize(),
+                jpaPage.getTotalElements(),
+                jpaPage.getTotalPages(),
+                jpaPage.isLast()
+        );
+    }
 }

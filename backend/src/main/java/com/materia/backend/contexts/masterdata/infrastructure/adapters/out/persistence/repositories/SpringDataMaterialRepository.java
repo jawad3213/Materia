@@ -44,4 +44,22 @@ public interface SpringDataMaterialRepository extends JpaRepository<MaterialJpaE
 
     @Query("SELECT m FROM MaterialJpaEntity m WHERE m.availableStock <= 0")
     List<MaterialJpaEntity> findOutOfStock();
+
+    @Query("SELECT m FROM MaterialJpaEntity m WHERE " +
+           "(:keyword IS NULL OR (LOWER(m.name) LIKE LOWER(CONCAT('%', :keyword, '%')) OR LOWER(m.description) LIKE LOWER(CONCAT('%', :keyword, '%')) OR LOWER(m.searchKeywords) LIKE LOWER(CONCAT('%', :keyword, '%')))) AND " +
+           "(:categoryId IS NULL OR m.categoryId = :categoryId) AND " +
+           "(:supplierId IS NULL OR m.supplierId = :supplierId) AND " +
+           "(:status IS NULL OR m.status = :status) AND " +
+           "(:minPrice IS NULL OR m.standardPrice >= :minPrice) AND " +
+           "(:maxPrice IS NULL OR m.standardPrice <= :maxPrice) AND " +
+           "(:lowStockOnly IS NULL OR :lowStockOnly = false OR m.currentStock < m.minimumStock)")
+    org.springframework.data.domain.Page<MaterialJpaEntity> searchAdvanced(
+            @Param("keyword") String keyword,
+            @Param("categoryId") String categoryId,
+            @Param("supplierId") String supplierId,
+            @Param("status") MaterialStatus status,
+            @Param("minPrice") java.math.BigDecimal minPrice,
+            @Param("maxPrice") java.math.BigDecimal maxPrice,
+            @Param("lowStockOnly") Boolean lowStockOnly,
+            org.springframework.data.domain.Pageable pageable);
 }

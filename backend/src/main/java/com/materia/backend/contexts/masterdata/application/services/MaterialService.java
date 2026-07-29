@@ -128,4 +128,51 @@ public class MaterialService implements MaterialUseCase {
     public List<MaterialOutput> getOutOfStockMaterials() {
         return mapper.toResponseList(materialRepository.findOutOfStock());
     }
+
+    @Override
+    public List<MaterialOutput> getMaterialsByStatus(String status) {
+        com.materia.backend.contexts.masterdata.domain.enums.MaterialStatus materialStatus = 
+            com.materia.backend.contexts.masterdata.domain.enums.MaterialStatus.valueOf(status.toUpperCase());
+        return mapper.toResponseList(materialRepository.findByStatus(materialStatus));
+    }
+
+    @Override
+    public List<MaterialOutput> searchByKeyword(String keyword) {
+        return mapper.toResponseList(materialRepository.search(keyword));
+    }
+
+    @Override
+    public com.materia.backend.common.application.PageResponse<MaterialOutput> searchAdvanced(
+            com.materia.backend.contexts.masterdata.application.dtos.material.MaterialSearchCriteria criteria, 
+            int page, 
+            int size) {
+        
+        com.materia.backend.contexts.masterdata.domain.enums.MaterialStatus statusEnum = null;
+        if (criteria.getStatus() != null && !criteria.getStatus().trim().isEmpty()) {
+            statusEnum = com.materia.backend.contexts.masterdata.domain.enums.MaterialStatus.valueOf(criteria.getStatus().toUpperCase());
+        }
+
+        com.materia.backend.contexts.masterdata.domain.valueObjects.MaterialSearchFilter filter = 
+            com.materia.backend.contexts.masterdata.domain.valueObjects.MaterialSearchFilter.builder()
+                .keyword(criteria.getKeyword())
+                .categoryId(criteria.getCategoryId())
+                .supplierId(criteria.getSupplierId())
+                .status(statusEnum)
+                .minPrice(criteria.getMinPrice())
+                .maxPrice(criteria.getMaxPrice())
+                .lowStockOnly(criteria.getLowStockOnly())
+                .build();
+                
+        com.materia.backend.common.application.PageResponse<com.materia.backend.contexts.masterdata.domain.entities.Material> domainPage = 
+            materialRepository.searchAdvanced(filter, page, size);
+            
+        return new com.materia.backend.common.application.PageResponse<>(
+                mapper.toResponseList(domainPage.getContent()),
+                domainPage.getPageNumber(),
+                domainPage.getPageSize(),
+                domainPage.getTotalElements(),
+                domainPage.getTotalPages(),
+                domainPage.isLast()
+        );
+    }
 }

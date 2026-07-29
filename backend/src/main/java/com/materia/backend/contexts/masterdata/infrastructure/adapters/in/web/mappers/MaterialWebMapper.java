@@ -40,5 +40,12 @@ public class MaterialWebMapper implements BaseWebMapper<CreateMaterialWebRequest
         return response;
     }
 
-    
+    public com.materia.backend.contexts.masterdata.application.dtos.material.MaterialSearchCriteria toAppSearchCriteria(
+            com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.dtos.material.MaterialSearchWebRequest webRequest) {
+        if (webRequest == null) return null;
+        com.materia.backend.contexts.masterdata.application.dtos.material.MaterialSearchCriteria criteria = 
+            new com.materia.backend.contexts.masterdata.application.dtos.material.MaterialSearchCriteria();
+        BeanUtils.copyProperties(webRequest, criteria);
+        return criteria;
+    }
 }

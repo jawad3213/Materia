@@ -64,4 +64,12 @@ public interface MaterialRepository extends BaseRepository<Material> {
      * Finds materials with available stock <= 0 (out of stock)
      */
     List<Material> findOutOfStock();
+
+    /**
+     * Advanced paginated search with multiple filters
+     */
+    com.materia.backend.common.application.PageResponse<Material> searchAdvanced(
+            com.materia.backend.contexts.masterdata.domain.valueObjects.MaterialSearchFilter filter, 
+            int page, 
+            int size);
 }

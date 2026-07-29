@@ -25,4 +25,13 @@ public interface MaterialUseCase extends BaseUseCase<CreateMaterialInput, Materi
     List<MaterialOutput> getAvailableStockMaterials();
 
     List<MaterialOutput> getOutOfStockMaterials();
+
+    List<MaterialOutput> getMaterialsByStatus(String status);
+
+    List<MaterialOutput> searchByKeyword(String keyword);
+
+    com.materia.backend.common.application.PageResponse<MaterialOutput> searchAdvanced(
+            com.materia.backend.contexts.masterdata.application.dtos.material.MaterialSearchCriteria criteria, 
+            int page, 
+            int size);
 }
