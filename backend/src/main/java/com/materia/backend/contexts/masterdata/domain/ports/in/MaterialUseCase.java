@@ -21,4 +21,8 @@ public interface MaterialUseCase extends BaseUseCase<CreateMaterialInput, Materi
     MaterialOutput decreaseStock(UUID id, int quantity);
 
     List<MaterialOutput> getMaterialsBelowMinimumStock();
+
+    List<MaterialOutput> getAvailableStockMaterials();
+
+    List<MaterialOutput> getOutOfStockMaterials();
 }

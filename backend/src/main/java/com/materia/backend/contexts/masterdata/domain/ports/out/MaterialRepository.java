@@ -54,4 +54,14 @@ public interface MaterialRepository extends BaseRepository<Material> {
      * Finds materials whose stock is below the reorder point
      */
     List<Material> findBelowReorderPoint();
+
+    /**
+     * Finds materials with available stock > 0
+     */
+    List<Material> findAvailableStock();
+
+    /**
+     * Finds materials with available stock <= 0 (out of stock)
+     */
+    List<Material> findOutOfStock();
 }

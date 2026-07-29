@@ -34,7 +34,7 @@ public class MaterialController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<MaterialWebResponse> getMaterial(@PathVariable UUID id) {
+    public ResponseEntity<MaterialWebResponse> getMaterialById(@PathVariable UUID id) {
         MaterialOutput response = materialUseCase.getById(id);
         return ResponseEntity.ok(webMapper.toWebResponse(response));
     }
@@ -52,7 +52,7 @@ public class MaterialController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<MaterialWebResponse> updateMaterial(
+    public ResponseEntity<MaterialWebResponse> updateMaterialById(
             @PathVariable UUID id,
             @Valid @RequestBody CreateMaterialWebRequest webRequest) { // Using CreateMaterialWebRequest as per interface
         CreateMaterialInput request = webMapper.toAppCreateRequest(webRequest);
@@ -83,6 +83,18 @@ public class MaterialController {
     @GetMapping("/alerts/low-stock")
     public ResponseEntity<List<MaterialWebResponse>> getMaterialsBelowMinimumStock() {
         List<MaterialOutput> responses = materialUseCase.getMaterialsBelowMinimumStock();
+        return ResponseEntity.ok(webMapper.toWebResponseList(responses));
+    }
+
+    @GetMapping("/stock/available")
+    public ResponseEntity<List<MaterialWebResponse>> getAvailableStockMaterials() {
+        List<MaterialOutput> responses = materialUseCase.getAvailableStockMaterials();
+        return ResponseEntity.ok(webMapper.toWebResponseList(responses));
+    }
+
+    @GetMapping("/stock/out")
+    public ResponseEntity<List<MaterialWebResponse>> getOutOfStockMaterials() {
+        List<MaterialOutput> responses = materialUseCase.getOutOfStockMaterials();
         return ResponseEntity.ok(webMapper.toWebResponseList(responses));
     }
 

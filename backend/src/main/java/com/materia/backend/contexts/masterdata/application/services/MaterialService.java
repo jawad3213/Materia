@@ -118,4 +118,14 @@ public class MaterialService implements MaterialUseCase {
     public List<MaterialOutput> getMaterialsBelowMinimumStock() {
         return mapper.toResponseList(materialRepository.findBelowMinimumStock());
     }
+
+    @Override
+    public List<MaterialOutput> getAvailableStockMaterials() {
+        return mapper.toResponseList(materialRepository.findAvailableStock());
+    }
+
+    @Override
+    public List<MaterialOutput> getOutOfStockMaterials() {
+        return mapper.toResponseList(materialRepository.findOutOfStock());
+    }
 }

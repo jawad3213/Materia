@@ -1,8 +1,5 @@
 package com.materia.backend.common.infrastructure.messaging;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.materia.backend.common.domain.DomainEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,13 +17,10 @@ import java.util.concurrent.CompletableFuture;
 public class BaseEventPublisher {
 
     private static final Logger log = LoggerFactory.getLogger(BaseEventPublisher.class);
-    private final KafkaTemplate<String, String> kafkaTemplate;
-    private final ObjectMapper objectMapper;
+    private final KafkaTemplate<String, Object> kafkaTemplate;
 
-    public BaseEventPublisher(KafkaTemplate<String, String> kafkaTemplate) {
+    public BaseEventPublisher(KafkaTemplate<String, Object> kafkaTemplate) {
         this.kafkaTemplate = kafkaTemplate;
-        this.objectMapper = new ObjectMapper();
-        this.objectMapper.registerModule(new JavaTimeModule());
     }
 
     /**
@@ -36,13 +30,12 @@ public class BaseEventPublisher {
         try {
             String topic = determineTopic(event);
             String key = getEventKey(event);
-            String message = objectMapper.writeValueAsString(event);
 
             log.info("Publishing event: {} (ID: {}) to topic: {} with key: {}",
                     event.getEventType(), event.getEventId(), topic, key);
 
-            CompletableFuture<SendResult<String, String>> future =
-                    kafkaTemplate.send(topic, key, message);
+            CompletableFuture<SendResult<String, Object>> future =
+                    kafkaTemplate.send(topic, key, event);
 
             future.whenComplete((result, ex) -> {
                 if (ex == null) {
@@ -57,8 +50,6 @@ public class BaseEventPublisher {
                 }
             });
 
-        } catch (JsonProcessingException e) {
-            log.error("Error serializing event: {}", event.getEventType(), e);
         } catch (Exception e) {
             log.error("Error publishing event: {}", event.getEventType(), e);
             sendToDeadLetter(event, e);
@@ -101,12 +92,9 @@ public class BaseEventPublisher {
     public void publishToTopic(String topic, DomainEvent event) {
         try {
             String key = getEventKey(event);
-            String message = objectMapper.writeValueAsString(event);
 
-            kafkaTemplate.send(topic, key, message);
+            kafkaTemplate.send(topic, key, event);
             log.info("Published event {} (ID: {}) to custom topic: {}", event.getEventType(), event.getEventId(), topic);
-        } catch (JsonProcessingException e) {
-            log.error("Error serializing event {} for custom topic: {}", event.getEventType(), topic, e);
         } catch (Exception e) {
             log.error("Error publishing {} to custom topic: {}", event.getEventType(), topic, e);
         }
@@ -118,10 +106,9 @@ public class BaseEventPublisher {
     private void sendToDeadLetter(DomainEvent event, Throwable error) {
         try {
             String key = getEventKey(event);
-            String message = objectMapper.writeValueAsString(event);
-            kafkaTemplate.send("dead-letter-events", key, message);
+            kafkaTemplate.send("dead-letter-events", key, event);
             log.warn("Event sent to dead letter queue: {}", event.getEventType());
-        } catch (JsonProcessingException e) {
+        } catch (Exception e) {
             log.error("Error sending event {} to dead letter queue", event.getEventType(), e);
         }
     }
