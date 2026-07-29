@@ -1,7 +1,7 @@
 package com.materia.backend.common.domain;
 
-import com.materia.backend.common.application.BaseRequest;
-import com.materia.backend.common.application.BaseResponse;
+import com.materia.backend.common.application.BaseInput;
+import com.materia.backend.common.application.BaseOutput;
 import java.util.List;
 
 /**
@@ -11,7 +11,7 @@ import java.util.List;
  * @param <RES> The type of the Response DTO
  * @param <ID> The type of the entity's identifier
  */
-public interface BaseUseCase<REQ extends BaseRequest, RES extends BaseResponse, ID> {
+public interface BaseUseCase<REQ extends BaseInput, RES extends BaseOutput, ID> {
 
     RES create(REQ request);
 

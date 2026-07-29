@@ -1,35 +1,32 @@
-package com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.dtos.supplier.responses;
+package com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.dtos.supplier;
 
-import com.materia.backend.common.infrastructure.web.BaseWebResponse;
-import java.time.LocalDateTime;
-import java.util.UUID;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
 
-public class SupplierWebResponse extends BaseWebResponse {
+public class CreateSupplierWebRequest {
     
-    private UUID id;
+    @NotBlank(message = "Code is mandatory")
     private String code;
+    
+    @NotBlank(message = "Name is mandatory")
     private String name;
+    
     private String description;
     private String contactPerson;
+    
+    @Email(message = "Invalid email format")
     private String contactEmail;
     private String contactPhone;
     private String address;
     private String city;
     private String country;
     private String postalCode;
-    private String fullAddress;
     private String paymentTerms;
     private Integer paymentDelay;
     private String currencyCode;
-    private String status;
     private String createdBy;
-    private LocalDateTime createdAt;
-    private String updatedBy;
-    private LocalDateTime updatedAt;
 
     // Getters and Setters
-    public UUID getId() { return id; }
-    public void setId(UUID id) { this.id = id; }
     public String getCode() { return code; }
     public void setCode(String code) { this.code = code; }
     public String getName() { return name; }
@@ -50,22 +47,12 @@ public class SupplierWebResponse extends BaseWebResponse {
     public void setCountry(String country) { this.country = country; }
     public String getPostalCode() { return postalCode; }
     public void setPostalCode(String postalCode) { this.postalCode = postalCode; }
-    public String getFullAddress() { return fullAddress; }
-    public void setFullAddress(String fullAddress) { this.fullAddress = fullAddress; }
     public String getPaymentTerms() { return paymentTerms; }
     public void setPaymentTerms(String paymentTerms) { this.paymentTerms = paymentTerms; }
     public Integer getPaymentDelay() { return paymentDelay; }
     public void setPaymentDelay(Integer paymentDelay) { this.paymentDelay = paymentDelay; }
     public String getCurrencyCode() { return currencyCode; }
     public void setCurrencyCode(String currencyCode) { this.currencyCode = currencyCode; }
-    public String getStatus() { return status; }
-    public void setStatus(String status) { this.status = status; }
     public String getCreatedBy() { return createdBy; }
     public void setCreatedBy(String createdBy) { this.createdBy = createdBy; }
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
-    public String getUpdatedBy() { return updatedBy; }
-    public void setUpdatedBy(String updatedBy) { this.updatedBy = updatedBy; }
-    public LocalDateTime getUpdatedAt() { return updatedAt; }
-    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 }

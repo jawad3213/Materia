@@ -1,25 +1,26 @@
-package com.materia.backend.contexts.masterdata.application.dtos.category.requests;
+package com.materia.backend.contexts.masterdata.application.dtos.category;
 
-import com.materia.backend.common.application.BaseRequest;
+import com.materia.backend.common.application.BaseInput;
+import java.util.UUID;
 
 /**
- * Request DTO for creating a new Category
+ * Request DTO for updating an existing Category
  */
-public class CreateCategoryRequest extends BaseRequest {
+public class UpdateCategoryInput extends BaseInput {
 
-    private String code;
+    private UUID id;
     private String name;
     private String description;
     private String shortDescription;
     private String parentId;
     private String categoryType;
+    private String status;
     private String color;
     private String icon;
-    private String createdBy;
 
     // Getters and Setters
-    public String getCode() { return code; }
-    public void setCode(String code) { this.code = code; }
+    public UUID getId() { return id; }
+    public void setId(UUID id) { this.id = id; }
 
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
@@ -36,12 +37,12 @@ public class CreateCategoryRequest extends BaseRequest {
     public String getCategoryType() { return categoryType; }
     public void setCategoryType(String categoryType) { this.categoryType = categoryType; }
 
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
+
     public String getColor() { return color; }
     public void setColor(String color) { this.color = color; }
 
     public String getIcon() { return icon; }
     public void setIcon(String icon) { this.icon = icon; }
-
-    public String getCreatedBy() { return createdBy; }
-    public void setCreatedBy(String createdBy) { this.createdBy = createdBy; }
 }

@@ -1,27 +1,20 @@
-package com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.dtos.category.requests;
+package com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.dtos.category;
 
-import com.materia.backend.common.infrastructure.web.BaseWebRequest;
-import jakarta.validation.constraints.NotBlank;
+import java.util.UUID;
 
-public class CreateCategoryWebRequest extends BaseWebRequest {
-    
-    @NotBlank(message = "Code is mandatory")
-    private String code;
-    
-    @NotBlank(message = "Name is mandatory")
+public class UpdateCategoryWebRequest {
+    private UUID id;
     private String name;
-    
     private String description;
     private String shortDescription;
     private String parentId;
     private String categoryType;
+    private String status;
     private String color;
     private String icon;
-    private String createdBy;
 
-    // Getters and Setters
-    public String getCode() { return code; }
-    public void setCode(String code) { this.code = code; }
+    public UUID getId() { return id; }
+    public void setId(UUID id) { this.id = id; }
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
     public String getDescription() { return description; }
@@ -32,10 +25,10 @@ public class CreateCategoryWebRequest extends BaseWebRequest {
     public void setParentId(String parentId) { this.parentId = parentId; }
     public String getCategoryType() { return categoryType; }
     public void setCategoryType(String categoryType) { this.categoryType = categoryType; }
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
     public String getColor() { return color; }
     public void setColor(String color) { this.color = color; }
     public String getIcon() { return icon; }
     public void setIcon(String icon) { this.icon = icon; }
-    public String getCreatedBy() { return createdBy; }
-    public void setCreatedBy(String createdBy) { this.createdBy = createdBy; }
 }

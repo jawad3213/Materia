@@ -1,10 +1,9 @@
-package com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.dtos.material.requests;
+package com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.dtos.material;
 
-import com.materia.backend.common.infrastructure.web.BaseWebRequest;
 import jakarta.validation.constraints.PositiveOrZero;
 import java.util.UUID;
 
-public class UpdateMaterialWebRequest extends BaseWebRequest {
+public class UpdateMaterialWebRequest {
     
     private UUID id;
     private String name;

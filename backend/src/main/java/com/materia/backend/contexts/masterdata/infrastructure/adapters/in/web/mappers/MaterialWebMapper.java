@@ -1,43 +1,44 @@
 package com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.mappers;
 
-import com.materia.backend.contexts.masterdata.application.dtos.material.requests.CreateMaterialRequest;
-import com.materia.backend.contexts.masterdata.application.dtos.material.requests.UpdateMaterialRequest;
-import com.materia.backend.contexts.masterdata.application.dtos.material.responses.MaterialResponseDto;
-import com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.dtos.material.requests.CreateMaterialWebRequest;
-import com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.dtos.material.requests.UpdateMaterialWebRequest;
-import com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.dtos.material.responses.MaterialWebResponse;
+import com.materia.backend.contexts.masterdata.application.dtos.material.CreateMaterialInput;
+import com.materia.backend.contexts.masterdata.application.dtos.material.UpdateMaterialInput;
+import com.materia.backend.contexts.masterdata.application.dtos.material.MaterialOutput;
+import com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.dtos.material.CreateMaterialWebRequest;
+import com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.dtos.material.UpdateMaterialWebRequest;
+import com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.dtos.material.MaterialWebResponse;
 import org.springframework.beans.BeanUtils;
+import com.materia.backend.common.infrastructure.web.BaseWebMapper;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.stream.Collectors;
 
 @Component
-public class MaterialWebMapper {
+public class MaterialWebMapper implements BaseWebMapper<CreateMaterialWebRequest, UpdateMaterialWebRequest, CreateMaterialInput, UpdateMaterialInput, MaterialWebResponse, MaterialOutput> {
 
-    public CreateMaterialRequest toAppRequest(CreateMaterialWebRequest webRequest) {
+    @Override
+    public CreateMaterialInput toAppCreateRequest(CreateMaterialWebRequest webRequest) {
         if (webRequest == null) return null;
-        CreateMaterialRequest request = new CreateMaterialRequest();
+        CreateMaterialInput request = new CreateMaterialInput();
         BeanUtils.copyProperties(webRequest, request);
         return request;
     }
 
-    public UpdateMaterialRequest toAppRequest(UpdateMaterialWebRequest webRequest) {
+    @Override
+    public UpdateMaterialInput toAppUpdateRequest(UpdateMaterialWebRequest webRequest) {
         if (webRequest == null) return null;
-        UpdateMaterialRequest request = new UpdateMaterialRequest();
+        UpdateMaterialInput request = new UpdateMaterialInput();
         BeanUtils.copyProperties(webRequest, request);
         return request;
     }
 
-    public MaterialWebResponse toWebResponse(MaterialResponseDto appResponse) {
+    @Override
+    public MaterialWebResponse toWebResponse(MaterialOutput appResponse) {
         if (appResponse == null) return null;
         MaterialWebResponse response = new MaterialWebResponse();
         BeanUtils.copyProperties(appResponse, response);
         return response;
     }
 
-    public List<MaterialWebResponse> toWebResponseList(List<MaterialResponseDto> appResponses) {
-        if (appResponses == null) return List.of();
-        return appResponses.stream().map(this::toWebResponse).collect(Collectors.toList());
-    }
+    
 }

@@ -1,43 +1,44 @@
 package com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.mappers;
 
-import com.materia.backend.contexts.masterdata.application.dtos.category.requests.CreateCategoryRequest;
-import com.materia.backend.contexts.masterdata.application.dtos.category.requests.UpdateCategoryRequest;
-import com.materia.backend.contexts.masterdata.application.dtos.category.responses.CategoryResponseDto;
-import com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.dtos.category.requests.CreateCategoryWebRequest;
-import com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.dtos.category.requests.UpdateCategoryWebRequest;
-import com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.dtos.category.responses.CategoryWebResponse;
+import com.materia.backend.contexts.masterdata.application.dtos.category.CreateCategoryInput;
+import com.materia.backend.contexts.masterdata.application.dtos.category.UpdateCategoryInput;
+import com.materia.backend.contexts.masterdata.application.dtos.category.CategoryOutput;
+import com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.dtos.category.CreateCategoryWebRequest;
+import com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.dtos.category.UpdateCategoryWebRequest;
+import com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.dtos.category.CategoryWebResponse;
 import org.springframework.beans.BeanUtils;
+import com.materia.backend.common.infrastructure.web.BaseWebMapper;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.stream.Collectors;
 
 @Component
-public class CategoryWebMapper {
+public class CategoryWebMapper implements BaseWebMapper<CreateCategoryWebRequest, UpdateCategoryWebRequest, CreateCategoryInput, UpdateCategoryInput, CategoryWebResponse, CategoryOutput> {
 
-    public CreateCategoryRequest toAppRequest(CreateCategoryWebRequest webRequest) {
+    @Override
+    public CreateCategoryInput toAppCreateRequest(CreateCategoryWebRequest webRequest) {
         if (webRequest == null) return null;
-        CreateCategoryRequest request = new CreateCategoryRequest();
+        CreateCategoryInput request = new CreateCategoryInput();
         BeanUtils.copyProperties(webRequest, request);
         return request;
     }
 
-    public UpdateCategoryRequest toAppRequest(UpdateCategoryWebRequest webRequest) {
+    @Override
+    public UpdateCategoryInput toAppUpdateRequest(UpdateCategoryWebRequest webRequest) {
         if (webRequest == null) return null;
-        UpdateCategoryRequest request = new UpdateCategoryRequest();
+        UpdateCategoryInput request = new UpdateCategoryInput();
         BeanUtils.copyProperties(webRequest, request);
         return request;
     }
 
-    public CategoryWebResponse toWebResponse(CategoryResponseDto appResponse) {
+    @Override
+    public CategoryWebResponse toWebResponse(CategoryOutput appResponse) {
         if (appResponse == null) return null;
         CategoryWebResponse response = new CategoryWebResponse();
         BeanUtils.copyProperties(appResponse, response);
         return response;
     }
 
-    public List<CategoryWebResponse> toWebResponseList(List<CategoryResponseDto> appResponses) {
-        if (appResponses == null) return List.of();
-        return appResponses.stream().map(this::toWebResponse).collect(Collectors.toList());
-    }
+    
 }

@@ -1,10 +1,9 @@
-package com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.dtos.material.responses;
+package com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.dtos.material;
 
-import com.materia.backend.common.infrastructure.web.BaseWebResponse;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-public class MaterialWebResponse extends BaseWebResponse {
+public class MaterialWebResponse {
     
     private UUID id;
     private String code;

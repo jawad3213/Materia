@@ -1,7 +1,7 @@
 package com.materia.backend.contexts.masterdata.application.services;
 
-import com.materia.backend.contexts.masterdata.application.dtos.supplier.requests.CreateSupplierRequest;
-import com.materia.backend.contexts.masterdata.application.dtos.supplier.responses.SupplierResponseDto;
+import com.materia.backend.contexts.masterdata.application.dtos.supplier.CreateSupplierInput;
+import com.materia.backend.contexts.masterdata.application.dtos.supplier.SupplierOutput;
 import com.materia.backend.contexts.masterdata.application.mappers.SupplierMapper;
 import com.materia.backend.contexts.masterdata.domain.entities.Supplier;
 import com.materia.backend.contexts.masterdata.domain.exceptions.SupplierNotFoundException;
@@ -28,14 +28,14 @@ public class SupplierService implements SupplierUseCase {
     // ============================================================
 
     @Override
-    public SupplierResponseDto create(CreateSupplierRequest request) {
+    public SupplierOutput create(CreateSupplierInput request) {
         Supplier supplier = mapper.toEntity(request);
         Supplier saved = supplierRepository.save(supplier);
         return mapper.toResponse(saved);
     }
 
     @Override
-    public SupplierResponseDto update(UUID id, CreateSupplierRequest request) {
+    public SupplierOutput update(UUID id, CreateSupplierInput request) {
         Supplier existing = supplierRepository.findById(id)
                 .orElseThrow(() -> new SupplierNotFoundException(id.toString()));
 
@@ -54,21 +54,21 @@ public class SupplierService implements SupplierUseCase {
     }
 
     @Override
-    public SupplierResponseDto getById(UUID id) {
+    public SupplierOutput getById(UUID id) {
         Supplier supplier = supplierRepository.findById(id)
                 .orElseThrow(() -> new SupplierNotFoundException(id.toString()));
         return mapper.toResponse(supplier);
     }
 
     @Override
-    public SupplierResponseDto getByCode(String code) {
+    public SupplierOutput getByCode(String code) {
         Supplier supplier = supplierRepository.findByCode(code)
                 .orElseThrow(() -> new SupplierNotFoundException(code));
         return mapper.toResponse(supplier);
     }
 
     @Override
-    public List<SupplierResponseDto> getAll() {
+    public List<SupplierOutput> getAll() {
         return mapper.toResponseList(supplierRepository.findAll());
     }
 
@@ -77,7 +77,7 @@ public class SupplierService implements SupplierUseCase {
     // ============================================================
 
     @Override
-    public List<SupplierResponseDto> searchSuppliers(String keyword) {
+    public List<SupplierOutput> searchSuppliers(String keyword) {
         return mapper.toResponseList(supplierRepository.search(keyword));
     }
 }

@@ -1,8 +1,8 @@
 package com.materia.backend.contexts.masterdata.application.mappers;
 
-import com.materia.backend.contexts.masterdata.application.dtos.supplier.requests.CreateSupplierRequest;
-import com.materia.backend.contexts.masterdata.application.dtos.supplier.requests.UpdateSupplierRequest;
-import com.materia.backend.contexts.masterdata.application.dtos.supplier.responses.SupplierResponseDto;
+import com.materia.backend.contexts.masterdata.application.dtos.supplier.CreateSupplierInput;
+import com.materia.backend.contexts.masterdata.application.dtos.supplier.UpdateSupplierInput;
+import com.materia.backend.contexts.masterdata.application.dtos.supplier.SupplierOutput;
 import com.materia.backend.contexts.masterdata.domain.entities.Supplier;
 import com.materia.backend.contexts.masterdata.domain.enums.CurrencyCode;
 import org.springframework.stereotype.Component;
@@ -15,13 +15,13 @@ import com.materia.backend.common.application.BaseMapper;
  * Mapper for Supplier: Request DTO -> Entity and Entity -> Response DTO
  */
 @Component
-public class SupplierMapper implements BaseMapper<Supplier, CreateSupplierRequest, UpdateSupplierRequest, SupplierResponseDto> {
+public class SupplierMapper implements BaseMapper<Supplier, CreateSupplierInput, UpdateSupplierInput, SupplierOutput> {
 
     // ============================================================
     // REQUEST DTO -> ENTITY
     // ============================================================
 
-    public Supplier toEntity(CreateSupplierRequest request) {
+    public Supplier toEntity(CreateSupplierInput request) {
         if (request == null) return null;
 
         return Supplier.builder()
@@ -44,7 +44,7 @@ public class SupplierMapper implements BaseMapper<Supplier, CreateSupplierReques
                 .build();
     }
 
-    public void updateEntity(Supplier entity, UpdateSupplierRequest request) {
+    public void updateEntity(Supplier entity, UpdateSupplierInput request) {
         if (entity == null || request == null) return;
 
         if (request.getName() != null) entity.setName(request.getName());
@@ -66,10 +66,10 @@ public class SupplierMapper implements BaseMapper<Supplier, CreateSupplierReques
     // ENTITY -> RESPONSE DTO
     // ============================================================
 
-    public SupplierResponseDto toResponse(Supplier entity) {
+    public SupplierOutput toResponse(Supplier entity) {
         if (entity == null) return null;
 
-        SupplierResponseDto response = new SupplierResponseDto();
+        SupplierOutput response = new SupplierOutput();
         response.setId(entity.getId());
         response.setCode(entity.getCode());
         response.setName(entity.getName());
@@ -93,7 +93,7 @@ public class SupplierMapper implements BaseMapper<Supplier, CreateSupplierReques
         return response;
     }
 
-    public List<SupplierResponseDto> toResponseList(List<Supplier> entities) {
+    public List<SupplierOutput> toResponseList(List<Supplier> entities) {
         if (entities == null) return List.of();
         return entities.stream().map(this::toResponse).collect(Collectors.toList());
     }

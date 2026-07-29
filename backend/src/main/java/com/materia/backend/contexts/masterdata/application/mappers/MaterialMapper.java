@@ -1,8 +1,8 @@
 package com.materia.backend.contexts.masterdata.application.mappers;
 
-import com.materia.backend.contexts.masterdata.application.dtos.material.requests.CreateMaterialRequest;
-import com.materia.backend.contexts.masterdata.application.dtos.material.requests.UpdateMaterialRequest;
-import com.materia.backend.contexts.masterdata.application.dtos.material.responses.MaterialResponseDto;
+import com.materia.backend.contexts.masterdata.application.dtos.material.CreateMaterialInput;
+import com.materia.backend.contexts.masterdata.application.dtos.material.UpdateMaterialInput;
+import com.materia.backend.contexts.masterdata.application.dtos.material.MaterialOutput;
 import com.materia.backend.contexts.masterdata.domain.entities.Material;
 import com.materia.backend.contexts.masterdata.domain.enums.CurrencyCode;
 import com.materia.backend.contexts.masterdata.domain.enums.MaterialStatus;
@@ -19,16 +19,16 @@ import com.materia.backend.common.application.BaseMapper;
  * Mapper for Material: Request DTO -> Entity and Entity -> Response DTO
  */
 @Component
-public class MaterialMapper implements BaseMapper<Material, CreateMaterialRequest, UpdateMaterialRequest, MaterialResponseDto> {
+public class MaterialMapper implements BaseMapper<Material, CreateMaterialInput, UpdateMaterialInput, MaterialOutput> {
 
     // ============================================================
     // REQUEST DTO -> ENTITY
     // ============================================================
 
     /**
-     * Convert CreateMaterialRequest to Material entity
+     * Convert CreateMaterialInput to Material entity
      */
-    public Material toEntity(CreateMaterialRequest request) {
+    public Material toEntity(CreateMaterialInput request) {
         if (request == null) return null;
 
         CurrencyCode currency = request.getCurrencyCode() != null
@@ -67,9 +67,9 @@ public class MaterialMapper implements BaseMapper<Material, CreateMaterialReques
     }
 
     /**
-     * Update existing entity from UpdateMaterialRequest
+     * Update existing entity from UpdateMaterialInput
      */
-    public void updateEntity(Material entity, UpdateMaterialRequest request) {
+    public void updateEntity(Material entity, UpdateMaterialInput request) {
         if (entity == null || request == null) return;
 
         if (request.getName() != null) entity.setName(request.getName());
@@ -105,12 +105,12 @@ public class MaterialMapper implements BaseMapper<Material, CreateMaterialReques
     // ============================================================
 
     /**
-     * Convert Material entity to MaterialResponseDto
+     * Convert Material entity to MaterialOutput
      */
-    public MaterialResponseDto toResponse(Material entity) {
+    public MaterialOutput toResponse(Material entity) {
         if (entity == null) return null;
 
-        MaterialResponseDto response = new MaterialResponseDto();
+        MaterialOutput response = new MaterialOutput();
         response.setId(entity.getId());
         response.setCode(entity.getCode() != null ? entity.getCode().getValue() : null);
         response.setName(entity.getName());
@@ -150,9 +150,9 @@ public class MaterialMapper implements BaseMapper<Material, CreateMaterialReques
     }
 
     /**
-     * Convert list of Material entities to list of MaterialResponseDto
+     * Convert list of Material entities to list of MaterialOutput
      */
-    public List<MaterialResponseDto> toResponseList(List<Material> entities) {
+    public List<MaterialOutput> toResponseList(List<Material> entities) {
         if (entities == null) return List.of();
         return entities.stream().map(this::toResponse).collect(Collectors.toList());
     }

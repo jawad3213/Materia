@@ -1,43 +1,44 @@
 package com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.mappers;
 
-import com.materia.backend.contexts.masterdata.application.dtos.supplier.requests.CreateSupplierRequest;
-import com.materia.backend.contexts.masterdata.application.dtos.supplier.requests.UpdateSupplierRequest;
-import com.materia.backend.contexts.masterdata.application.dtos.supplier.responses.SupplierResponseDto;
-import com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.dtos.supplier.requests.CreateSupplierWebRequest;
-import com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.dtos.supplier.requests.UpdateSupplierWebRequest;
-import com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.dtos.supplier.responses.SupplierWebResponse;
+import com.materia.backend.contexts.masterdata.application.dtos.supplier.CreateSupplierInput;
+import com.materia.backend.contexts.masterdata.application.dtos.supplier.UpdateSupplierInput;
+import com.materia.backend.contexts.masterdata.application.dtos.supplier.SupplierOutput;
+import com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.dtos.supplier.CreateSupplierWebRequest;
+import com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.dtos.supplier.UpdateSupplierWebRequest;
+import com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.dtos.supplier.SupplierWebResponse;
 import org.springframework.beans.BeanUtils;
+import com.materia.backend.common.infrastructure.web.BaseWebMapper;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.stream.Collectors;
 
 @Component
-public class SupplierWebMapper {
+public class SupplierWebMapper implements BaseWebMapper<CreateSupplierWebRequest, UpdateSupplierWebRequest, CreateSupplierInput, UpdateSupplierInput, SupplierWebResponse, SupplierOutput> {
 
-    public CreateSupplierRequest toAppRequest(CreateSupplierWebRequest webRequest) {
+    @Override
+    public CreateSupplierInput toAppCreateRequest(CreateSupplierWebRequest webRequest) {
         if (webRequest == null) return null;
-        CreateSupplierRequest request = new CreateSupplierRequest();
+        CreateSupplierInput request = new CreateSupplierInput();
         BeanUtils.copyProperties(webRequest, request);
         return request;
     }
 
-    public UpdateSupplierRequest toAppRequest(UpdateSupplierWebRequest webRequest) {
+    @Override
+    public UpdateSupplierInput toAppUpdateRequest(UpdateSupplierWebRequest webRequest) {
         if (webRequest == null) return null;
-        UpdateSupplierRequest request = new UpdateSupplierRequest();
+        UpdateSupplierInput request = new UpdateSupplierInput();
         BeanUtils.copyProperties(webRequest, request);
         return request;
     }
 
-    public SupplierWebResponse toWebResponse(SupplierResponseDto appResponse) {
+    @Override
+    public SupplierWebResponse toWebResponse(SupplierOutput appResponse) {
         if (appResponse == null) return null;
         SupplierWebResponse response = new SupplierWebResponse();
         BeanUtils.copyProperties(appResponse, response);
         return response;
     }
 
-    public List<SupplierWebResponse> toWebResponseList(List<SupplierResponseDto> appResponses) {
-        if (appResponses == null) return List.of();
-        return appResponses.stream().map(this::toWebResponse).collect(Collectors.toList());
-    }
+    
 }

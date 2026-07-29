@@ -1,0 +1,109 @@
+### Master Data API Tests
+# Make sure your Spring Boot application is running on port 8080 (or adjust the port below)
+@host = http://localhost:8080/api/v1/masterdata
+
+### ==========================
+### CATEGORIES
+### ==========================
+
+### 1. Create a Root Category (e.g. Raw Materials)
+POST {{host}}/categories
+Content-Type: application/json
+
+{
+    "code": "CAT-RAW",
+    "name": "Raw Materials",
+    "description": "Basic materials from which a product is made",
+    "categoryType": "ROOT",
+    "color": "#FF5733",
+    "createdBy": "admin"
+}
+
+> {% client.global.set("root_category_id", response.body.id); %}
+
+### 2. Create a Sub-Category (e.g. Metals)
+POST {{host}}/categories
+Content-Type: application/json
+
+{
+    "code": "CAT-MTL",
+    "name": "Metals",
+    "description": "All kinds of metal raw materials",
+    "parentId": "{{root_category_id}}",
+    "categoryType": "SUB",
+    "createdBy": "admin"
+}
+
+> {% client.global.set("metal_category_id", response.body.id); %}
+
+### 3. Get All Categories
+GET {{host}}/categories
+
+### 4. Get Root Categories
+GET {{host}}/categories/roots
+
+### ==========================
+### SUPPLIERS
+### ==========================
+
+### 5. Create a Supplier
+POST {{host}}/suppliers
+Content-Type: application/json
+
+{
+    "code": "SUP-001",
+    "name": "Global Metals Inc.",
+    "contactPerson": "John Doe",
+    "contactEmail": "john.doe@globalmetals.com",
+    "contactPhone": "+1234567890",
+    "address": "123 Industrial Park",
+    "city": "New York",
+    "country": "USA",
+    "paymentTerms": "NET30",
+    "currencyCode": "USD",
+    "createdBy": "admin"
+}
+
+> {% client.global.set("supplier_id", response.body.id); %}
+
+### 6. Get All Suppliers
+GET {{host}}/suppliers
+
+### ==========================
+### MATERIALS
+### ==========================
+
+### 7. Create a Material
+POST {{host}}/materials
+Content-Type: application/json
+
+{
+    "code": "MAT-STL-001",
+    "name": "Stainless Steel Sheet 2mm",
+    "description": "High quality 304 stainless steel",
+    "categoryId": "{{metal_category_id}}",
+    "supplierId": "{{supplier_id}}",
+    "materialType": "RAW",
+    "unitOfMeasure": "KG",
+    "currentStock": 500,
+    "minimumStock": 100,
+    "maximumStock": 2000,
+    "safetyStock": 50,
+    "standardPrice": 4.50,
+    "currencyCode": "USD",
+    "createdBy": "admin"
+}
+
+> {% client.global.set("material_id", response.body.id); %}
+
+### 8. Get All Materials
+GET {{host}}/materials
+
+### 9. Get Materials by Category
+GET {{host}}/materials/category/{{metal_category_id}}
+
+### 10. Decrease Stock (Simulate Usage)
+PATCH {{host}}/materials/{{material_id}}/stock/decrease?quantity=50
+
+### 11. Get Low Stock Alerts
+GET {{host}}/materials/alerts/low-stock

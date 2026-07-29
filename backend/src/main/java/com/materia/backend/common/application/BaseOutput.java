@@ -8,7 +8,7 @@ import java.util.UUID;
  * All response DTOs should extend this class
  * Used for returning data to clients
  */
-public abstract class BaseResponse {
+public abstract class BaseOutput {
 
     private final String responseId;
     private final LocalDateTime timestamp;
@@ -16,18 +16,18 @@ public abstract class BaseResponse {
     private String message;
     private String errorCode;
 
-    protected BaseResponse() {
+    protected BaseOutput() {
         this(true, "Success");
     }
 
-    protected BaseResponse(boolean success, String message) {
+    protected BaseOutput(boolean success, String message) {
         this.responseId = UUID.randomUUID().toString();
         this.timestamp = LocalDateTime.now();
         this.success = success;
         this.message = message;
     }
 
-    protected BaseResponse(boolean success, String message, String errorCode) {
+    protected BaseOutput(boolean success, String message, String errorCode) {
         this(success, message);
         this.errorCode = errorCode;
     }
@@ -69,7 +69,7 @@ public abstract class BaseResponse {
     /**
      * Create a success response
      */
-    public static <T extends BaseResponse> T success(T response) {
+    public static <T extends BaseOutput> T success(T response) {
         response.setSuccess(true);
         response.setMessage("Success");
         return response;
@@ -78,7 +78,7 @@ public abstract class BaseResponse {
     /**
      * Create a failure response
      */
-    public static <T extends BaseResponse> T failure(T response, String message) {
+    public static <T extends BaseOutput> T failure(T response, String message) {
         response.setSuccess(false);
         response.setMessage(message);
         return response;
@@ -87,7 +87,7 @@ public abstract class BaseResponse {
     /**
      * Create a failure response with error code
      */
-    public static <T extends BaseResponse> T failure(T response, String message, String errorCode) {
+    public static <T extends BaseOutput> T failure(T response, String message, String errorCode) {
         response.setSuccess(false);
         response.setMessage(message);
         response.setErrorCode(errorCode);

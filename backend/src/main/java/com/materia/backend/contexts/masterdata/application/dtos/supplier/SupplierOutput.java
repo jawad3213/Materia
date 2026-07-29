@@ -1,14 +1,16 @@
-package com.materia.backend.contexts.masterdata.application.dtos.supplier.requests;
+package com.materia.backend.contexts.masterdata.application.dtos.supplier;
 
-import com.materia.backend.common.application.BaseRequest;
+import com.materia.backend.common.application.BaseOutput;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 /**
- * Request DTO for updating an existing Supplier
+ * Response DTO for Supplier data
  */
-public class UpdateSupplierRequest extends BaseRequest {
+public class SupplierOutput extends BaseOutput {
 
     private UUID id;
+    private String code;
     private String name;
     private String description;
     private String contactPerson;
@@ -18,14 +20,24 @@ public class UpdateSupplierRequest extends BaseRequest {
     private String city;
     private String country;
     private String postalCode;
+    private String fullAddress;
     private String paymentTerms;
     private Integer paymentDelay;
     private String currencyCode;
     private String status;
+    private String createdBy;
+    private LocalDateTime createdAt;
+    private String updatedBy;
+    private LocalDateTime updatedAt;
+
+    public SupplierOutput() { super(); }
 
     // Getters and Setters
     public UUID getId() { return id; }
     public void setId(UUID id) { this.id = id; }
+
+    public String getCode() { return code; }
+    public void setCode(String code) { this.code = code; }
 
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
@@ -54,6 +66,9 @@ public class UpdateSupplierRequest extends BaseRequest {
     public String getPostalCode() { return postalCode; }
     public void setPostalCode(String postalCode) { this.postalCode = postalCode; }
 
+    public String getFullAddress() { return fullAddress; }
+    public void setFullAddress(String fullAddress) { this.fullAddress = fullAddress; }
+
     public String getPaymentTerms() { return paymentTerms; }
     public void setPaymentTerms(String paymentTerms) { this.paymentTerms = paymentTerms; }
 
@@ -65,4 +80,16 @@ public class UpdateSupplierRequest extends BaseRequest {
 
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+
+    public String getCreatedBy() { return createdBy; }
+    public void setCreatedBy(String createdBy) { this.createdBy = createdBy; }
+
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+
+    public String getUpdatedBy() { return updatedBy; }
+    public void setUpdatedBy(String updatedBy) { this.updatedBy = updatedBy; }
+
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 }

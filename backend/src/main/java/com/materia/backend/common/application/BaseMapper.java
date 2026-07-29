@@ -12,7 +12,7 @@ import java.util.stream.Collectors;
  * @param <UR> Update Request DTO type
  * @param <D> Response DTO type
  */
-public interface BaseMapper<E, CR extends BaseRequest, UR extends BaseRequest, D extends BaseResponse> {
+public interface BaseMapper<E, CR extends BaseInput, UR extends BaseInput, D extends BaseOutput> {
 
     /**
      * Convert Entity to Response DTO

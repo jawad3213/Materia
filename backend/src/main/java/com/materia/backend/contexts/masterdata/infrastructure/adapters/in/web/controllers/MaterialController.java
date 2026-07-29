@@ -1,9 +1,12 @@
 package com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.controllers;
 
-import com.materia.backend.contexts.masterdata.application.dtos.material.requests.CreateMaterialRequest;
-import com.materia.backend.contexts.masterdata.application.dtos.material.requests.UpdateMaterialRequest;
-import com.materia.backend.contexts.masterdata.application.dtos.material.responses.MaterialResponseDto;
+import com.materia.backend.contexts.masterdata.application.dtos.material.CreateMaterialInput;
+import com.materia.backend.contexts.masterdata.application.dtos.material.MaterialOutput;
 import com.materia.backend.contexts.masterdata.domain.ports.in.MaterialUseCase;
+import com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.dtos.material.CreateMaterialWebRequest;
+import com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.dtos.material.MaterialWebResponse;
+import com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.mappers.MaterialWebMapper;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -16,41 +19,45 @@ import java.util.UUID;
 public class MaterialController {
 
     private final MaterialUseCase materialUseCase;
+    private final MaterialWebMapper webMapper;
 
-    public MaterialController(MaterialUseCase materialUseCase) {
+    public MaterialController(MaterialUseCase materialUseCase, MaterialWebMapper webMapper) {
         this.materialUseCase = materialUseCase;
+        this.webMapper = webMapper;
     }
 
     @PostMapping
-    public ResponseEntity<MaterialResponseDto> createMaterial(@RequestBody CreateMaterialRequest request) {
-        MaterialResponseDto response = materialUseCase.create(request);
-        return new ResponseEntity<>(response, HttpStatus.CREATED);
+    public ResponseEntity<MaterialWebResponse> createMaterial(@Valid @RequestBody CreateMaterialWebRequest webRequest) {
+        CreateMaterialInput request = webMapper.toAppCreateRequest(webRequest);
+        MaterialOutput response = materialUseCase.create(request);
+        return new ResponseEntity<>(webMapper.toWebResponse(response), HttpStatus.CREATED);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<MaterialResponseDto> getMaterial(@PathVariable UUID id) {
-        MaterialResponseDto response = materialUseCase.getById(id);
-        return ResponseEntity.ok(response);
+    public ResponseEntity<MaterialWebResponse> getMaterial(@PathVariable UUID id) {
+        MaterialOutput response = materialUseCase.getById(id);
+        return ResponseEntity.ok(webMapper.toWebResponse(response));
     }
 
     @GetMapping("/code/{code}")
-    public ResponseEntity<MaterialResponseDto> getMaterialByCode(@PathVariable String code) {
-        MaterialResponseDto response = materialUseCase.getByCode(code);
-        return ResponseEntity.ok(response);
+    public ResponseEntity<MaterialWebResponse> getMaterialByCode(@PathVariable String code) {
+        MaterialOutput response = materialUseCase.getByCode(code);
+        return ResponseEntity.ok(webMapper.toWebResponse(response));
     }
 
     @GetMapping
-    public ResponseEntity<List<MaterialResponseDto>> getAllMaterials() {
-        List<MaterialResponseDto> responses = materialUseCase.getAll();
-        return ResponseEntity.ok(responses);
+    public ResponseEntity<List<MaterialWebResponse>> getAllMaterials() {
+        List<MaterialOutput> responses = materialUseCase.getAll();
+        return ResponseEntity.ok(webMapper.toWebResponseList(responses));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<MaterialResponseDto> updateMaterial(
+    public ResponseEntity<MaterialWebResponse> updateMaterial(
             @PathVariable UUID id,
-            @RequestBody CreateMaterialRequest request) { // Using CreateMaterialRequest as per the interface signature
-        MaterialResponseDto response = materialUseCase.update(id, request);
-        return ResponseEntity.ok(response);
+            @Valid @RequestBody CreateMaterialWebRequest webRequest) { // Using CreateMaterialWebRequest as per interface
+        CreateMaterialInput request = webMapper.toAppCreateRequest(webRequest);
+        MaterialOutput response = materialUseCase.update(id, request);
+        return ResponseEntity.ok(webMapper.toWebResponse(response));
     }
 
     @DeleteMapping("/{id}")
@@ -62,36 +69,36 @@ public class MaterialController {
     // ---- Custom Endpoints ----
 
     @GetMapping("/category/{categoryId}")
-    public ResponseEntity<List<MaterialResponseDto>> getMaterialsByCategory(@PathVariable UUID categoryId) {
-        List<MaterialResponseDto> responses = materialUseCase.getMaterialsByCategory(categoryId);
-        return ResponseEntity.ok(responses);
+    public ResponseEntity<List<MaterialWebResponse>> getMaterialsByCategory(@PathVariable UUID categoryId) {
+        List<MaterialOutput> responses = materialUseCase.getMaterialsByCategory(categoryId);
+        return ResponseEntity.ok(webMapper.toWebResponseList(responses));
     }
 
     @GetMapping("/supplier/{supplierId}")
-    public ResponseEntity<List<MaterialResponseDto>> getMaterialsBySupplier(@PathVariable UUID supplierId) {
-        List<MaterialResponseDto> responses = materialUseCase.getMaterialsBySupplier(supplierId);
-        return ResponseEntity.ok(responses);
+    public ResponseEntity<List<MaterialWebResponse>> getMaterialsBySupplier(@PathVariable UUID supplierId) {
+        List<MaterialOutput> responses = materialUseCase.getMaterialsBySupplier(supplierId);
+        return ResponseEntity.ok(webMapper.toWebResponseList(responses));
     }
 
     @GetMapping("/alerts/low-stock")
-    public ResponseEntity<List<MaterialResponseDto>> getMaterialsBelowMinimumStock() {
-        List<MaterialResponseDto> responses = materialUseCase.getMaterialsBelowMinimumStock();
-        return ResponseEntity.ok(responses);
+    public ResponseEntity<List<MaterialWebResponse>> getMaterialsBelowMinimumStock() {
+        List<MaterialOutput> responses = materialUseCase.getMaterialsBelowMinimumStock();
+        return ResponseEntity.ok(webMapper.toWebResponseList(responses));
     }
 
     @PatchMapping("/{id}/stock/increase")
-    public ResponseEntity<MaterialResponseDto> increaseStock(
+    public ResponseEntity<MaterialWebResponse> increaseStock(
             @PathVariable UUID id,
             @RequestParam int quantity) {
-        MaterialResponseDto response = materialUseCase.increaseStock(id, quantity);
-        return ResponseEntity.ok(response);
+        MaterialOutput response = materialUseCase.increaseStock(id, quantity);
+        return ResponseEntity.ok(webMapper.toWebResponse(response));
     }
 
     @PatchMapping("/{id}/stock/decrease")
-    public ResponseEntity<MaterialResponseDto> decreaseStock(
+    public ResponseEntity<MaterialWebResponse> decreaseStock(
             @PathVariable UUID id,
             @RequestParam int quantity) {
-        MaterialResponseDto response = materialUseCase.decreaseStock(id, quantity);
-        return ResponseEntity.ok(response);
+        MaterialOutput response = materialUseCase.decreaseStock(id, quantity);
+        return ResponseEntity.ok(webMapper.toWebResponse(response));
     }
 }

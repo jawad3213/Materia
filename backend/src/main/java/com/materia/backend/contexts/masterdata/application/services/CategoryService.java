@@ -1,7 +1,7 @@
 package com.materia.backend.contexts.masterdata.application.services;
 
-import com.materia.backend.contexts.masterdata.application.dtos.category.requests.CreateCategoryRequest;
-import com.materia.backend.contexts.masterdata.application.dtos.category.responses.CategoryResponseDto;
+import com.materia.backend.contexts.masterdata.application.dtos.category.CreateCategoryInput;
+import com.materia.backend.contexts.masterdata.application.dtos.category.CategoryOutput;
 import com.materia.backend.contexts.masterdata.application.mappers.CategoryMapper;
 import com.materia.backend.contexts.masterdata.domain.entities.Category;
 import com.materia.backend.contexts.masterdata.domain.exceptions.CategoryNotFoundException;
@@ -28,14 +28,14 @@ public class CategoryService implements CategoryUseCase {
     // ============================================================
 
     @Override
-    public CategoryResponseDto create(CreateCategoryRequest request) {
+    public CategoryOutput create(CreateCategoryInput request) {
         Category category = mapper.toEntity(request);
         Category saved = categoryRepository.save(category);
         return mapper.toResponse(saved);
     }
 
     @Override
-    public CategoryResponseDto update(UUID id, CreateCategoryRequest request) {
+    public CategoryOutput update(UUID id, CreateCategoryInput request) {
         Category existing = categoryRepository.findById(id)
                 .orElseThrow(() -> new CategoryNotFoundException(id.toString()));
 
@@ -55,21 +55,21 @@ public class CategoryService implements CategoryUseCase {
     }
 
     @Override
-    public CategoryResponseDto getById(UUID id) {
+    public CategoryOutput getById(UUID id) {
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() -> new CategoryNotFoundException(id.toString()));
         return mapper.toResponse(category);
     }
 
     @Override
-    public CategoryResponseDto getByCode(String code) {
+    public CategoryOutput getByCode(String code) {
         Category category = categoryRepository.findByCode(code)
                 .orElseThrow(() -> new CategoryNotFoundException(code));
         return mapper.toResponse(category);
     }
 
     @Override
-    public List<CategoryResponseDto> getAll() {
+    public List<CategoryOutput> getAll() {
         return mapper.toResponseList(categoryRepository.findAll());
     }
 
@@ -78,12 +78,12 @@ public class CategoryService implements CategoryUseCase {
     // ============================================================
 
     @Override
-    public List<CategoryResponseDto> getRootCategories() {
+    public List<CategoryOutput> getRootCategories() {
         return mapper.toResponseList(categoryRepository.findRootCategories());
     }
 
     @Override
-    public List<CategoryResponseDto> getSubCategories(UUID parentId) {
+    public List<CategoryOutput> getSubCategories(UUID parentId) {
         return mapper.toResponseList(categoryRepository.findByParentId(parentId.toString()));
     }
 }

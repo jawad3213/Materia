@@ -8,7 +8,7 @@ package com.materia.backend.common.application;
  * @param <I> Input request type
  * @param <O> Output response type
  */
-public interface BaseUseCaseImp<I extends BaseRequest, O extends BaseResponse> {
+public interface BaseUseCaseImp<I extends BaseInput, O extends BaseOutput> {
 
     /**
      * Execute the use case

@@ -1,8 +1,8 @@
 package com.materia.backend.contexts.masterdata.application.services;
 
-import com.materia.backend.contexts.masterdata.application.dtos.material.requests.CreateMaterialRequest;
-import com.materia.backend.contexts.masterdata.application.dtos.material.requests.UpdateMaterialRequest;
-import com.materia.backend.contexts.masterdata.application.dtos.material.responses.MaterialResponseDto;
+import com.materia.backend.contexts.masterdata.application.dtos.material.CreateMaterialInput;
+import com.materia.backend.contexts.masterdata.application.dtos.material.UpdateMaterialInput;
+import com.materia.backend.contexts.masterdata.application.dtos.material.MaterialOutput;
 import com.materia.backend.contexts.masterdata.application.mappers.MaterialMapper;
 import com.materia.backend.contexts.masterdata.domain.entities.Material;
 import com.materia.backend.contexts.masterdata.domain.exceptions.MaterialNotFoundException;
@@ -30,18 +30,18 @@ public class MaterialService implements MaterialUseCase {
     // ============================================================
 
     @Override
-    public MaterialResponseDto create(CreateMaterialRequest request) {
+    public MaterialOutput create(CreateMaterialInput request) {
         Material material = mapper.toEntity(request);
         Material saved = materialRepository.save(material);
         return mapper.toResponse(saved);
     }
 
     @Override
-    public MaterialResponseDto update(UUID id, CreateMaterialRequest request) {
+    public MaterialOutput update(UUID id, CreateMaterialInput request) {
         Material existing = materialRepository.findById(id)
                 .orElseThrow(() -> new MaterialNotFoundException(id.toString()));
 
-        // Use UpdateMaterialRequest-style partial update
+        // Use UpdateMaterialInput-style partial update
         if (request.getName() != null) existing.setName(request.getName());
         if (request.getDescription() != null) existing.setDescription(request.getDescription());
         if (request.getShortDescription() != null) existing.setShortDescription(request.getShortDescription());
@@ -58,21 +58,21 @@ public class MaterialService implements MaterialUseCase {
     }
 
     @Override
-    public MaterialResponseDto getById(UUID id) {
+    public MaterialOutput getById(UUID id) {
         Material material = materialRepository.findById(id)
                 .orElseThrow(() -> new MaterialNotFoundException(id.toString()));
         return mapper.toResponse(material);
     }
 
     @Override
-    public MaterialResponseDto getByCode(String code) {
+    public MaterialOutput getByCode(String code) {
         Material material = materialRepository.findByCode(code)
                 .orElseThrow(() -> new MaterialNotFoundException(code));
         return mapper.toResponse(material);
     }
 
     @Override
-    public List<MaterialResponseDto> getAll() {
+    public List<MaterialOutput> getAll() {
         return mapper.toResponseList(materialRepository.findAll());
     }
 
@@ -81,17 +81,17 @@ public class MaterialService implements MaterialUseCase {
     // ============================================================
 
     @Override
-    public List<MaterialResponseDto> getMaterialsByCategory(UUID categoryId) {
+    public List<MaterialOutput> getMaterialsByCategory(UUID categoryId) {
         return mapper.toResponseList(materialRepository.findByCategoryId(categoryId.toString()));
     }
 
     @Override
-    public List<MaterialResponseDto> getMaterialsBySupplier(UUID supplierId) {
+    public List<MaterialOutput> getMaterialsBySupplier(UUID supplierId) {
         return mapper.toResponseList(materialRepository.findBySupplierId(supplierId.toString()));
     }
 
     @Override
-    public MaterialResponseDto increaseStock(UUID id, int quantity) {
+    public MaterialOutput increaseStock(UUID id, int quantity) {
         Material material = materialRepository.findById(id)
                 .orElseThrow(() -> new MaterialNotFoundException(id.toString()));
         material.increaseStock(quantity);
@@ -99,7 +99,7 @@ public class MaterialService implements MaterialUseCase {
     }
 
     @Override
-    public MaterialResponseDto decreaseStock(UUID id, int quantity) {
+    public MaterialOutput decreaseStock(UUID id, int quantity) {
         Material material = materialRepository.findById(id)
                 .orElseThrow(() -> new MaterialNotFoundException(id.toString()));
         try {
@@ -115,7 +115,7 @@ public class MaterialService implements MaterialUseCase {
     }
 
     @Override
-    public List<MaterialResponseDto> getMaterialsBelowMinimumStock() {
+    public List<MaterialOutput> getMaterialsBelowMinimumStock() {
         return mapper.toResponseList(materialRepository.findBelowMinimumStock());
     }
 }

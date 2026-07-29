@@ -1,8 +1,8 @@
 package com.materia.backend.contexts.masterdata.application.mappers;
 
-import com.materia.backend.contexts.masterdata.application.dtos.category.requests.CreateCategoryRequest;
-import com.materia.backend.contexts.masterdata.application.dtos.category.requests.UpdateCategoryRequest;
-import com.materia.backend.contexts.masterdata.application.dtos.category.responses.CategoryResponseDto;
+import com.materia.backend.contexts.masterdata.application.dtos.category.CreateCategoryInput;
+import com.materia.backend.contexts.masterdata.application.dtos.category.UpdateCategoryInput;
+import com.materia.backend.contexts.masterdata.application.dtos.category.CategoryOutput;
 import com.materia.backend.contexts.masterdata.domain.entities.Category;
 import com.materia.backend.contexts.masterdata.domain.enums.CategoryType;
 import org.springframework.stereotype.Component;
@@ -15,13 +15,13 @@ import com.materia.backend.common.application.BaseMapper;
  * Mapper for Category: Request DTO -> Entity and Entity -> Response DTO
  */
 @Component
-public class CategoryMapper implements BaseMapper<Category, CreateCategoryRequest, UpdateCategoryRequest, CategoryResponseDto> {
+public class CategoryMapper implements BaseMapper<Category, CreateCategoryInput, UpdateCategoryInput, CategoryOutput> {
 
     // ============================================================
     // REQUEST DTO -> ENTITY
     // ============================================================
 
-    public Category toEntity(CreateCategoryRequest request) {
+    public Category toEntity(CreateCategoryInput request) {
         if (request == null) return null;
 
         Category.Builder builder = Category.builder()
@@ -39,7 +39,7 @@ public class CategoryMapper implements BaseMapper<Category, CreateCategoryReques
         return builder.build();
     }
 
-    public void updateEntity(Category entity, UpdateCategoryRequest request) {
+    public void updateEntity(Category entity, UpdateCategoryInput request) {
         if (entity == null || request == null) return;
 
         if (request.getName() != null) entity.setName(request.getName());
@@ -56,10 +56,10 @@ public class CategoryMapper implements BaseMapper<Category, CreateCategoryReques
     // ENTITY -> RESPONSE DTO
     // ============================================================
 
-    public CategoryResponseDto toResponse(Category entity) {
+    public CategoryOutput toResponse(Category entity) {
         if (entity == null) return null;
 
-        CategoryResponseDto response = new CategoryResponseDto();
+        CategoryOutput response = new CategoryOutput();
         response.setId(entity.getId());
         response.setCode(entity.getCode());
         response.setName(entity.getName());
@@ -84,7 +84,7 @@ public class CategoryMapper implements BaseMapper<Category, CreateCategoryReques
         return response;
     }
 
-    public List<CategoryResponseDto> toResponseList(List<Category> entities) {
+    public List<CategoryOutput> toResponseList(List<Category> entities) {
         if (entities == null) return List.of();
         return entities.stream().map(this::toResponse).collect(Collectors.toList());
     }
