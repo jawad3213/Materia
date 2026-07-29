@@ -1,6 +1,7 @@
 package com.materia.backend.contexts.masterdata.domain.ports.in;
 
-import com.materia.backend.contexts.masterdata.domain.entities.Supplier;
+import com.materia.backend.contexts.masterdata.application.dtos.supplier.requests.CreateSupplierRequest;
+import com.materia.backend.contexts.masterdata.application.dtos.supplier.responses.SupplierResponseDto;
 import com.materia.backend.common.domain.BaseUseCase;
 
 import java.util.List;
@@ -8,9 +9,8 @@ import java.util.UUID;
 
 /**
  * Input Port (Use Case) for Supplier management
- * Hexagonal Architecture - Defines the use cases available to the outside
  */
-public interface SupplierUseCase extends BaseUseCase<Supplier, UUID> {
+public interface SupplierUseCase extends BaseUseCase<CreateSupplierRequest, SupplierResponseDto, UUID> {
 
-    List<Supplier> searchSuppliers(String keyword);
+    List<SupplierResponseDto> searchSuppliers(String keyword);
 }

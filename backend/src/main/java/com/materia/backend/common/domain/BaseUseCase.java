@@ -1,26 +1,27 @@
 package com.materia.backend.common.domain;
 
+import com.materia.backend.common.application.BaseRequest;
+import com.materia.backend.common.application.BaseResponse;
 import java.util.List;
-import java.util.Optional;
 
 /**
  * Base Use Case interface for common domain operations.
- * Hexagonal Architecture - Defines common use cases available to the outside.
  *
- * @param <T> The entity type
+ * @param <REQ> The type of the Request DTO
+ * @param <RES> The type of the Response DTO
  * @param <ID> The type of the entity's identifier
  */
-public interface BaseUseCase<T, ID> {
+public interface BaseUseCase<REQ extends BaseRequest, RES extends BaseResponse, ID> {
 
-    T create(T entity);
+    RES create(REQ request);
 
-    T update(ID id, T entityDetails);
+    RES update(ID id, REQ request);
 
     void delete(ID id);
 
-    Optional<T> getById(ID id);
+    RES getById(ID id);
 
-    Optional<T> getByCode(String code);
+    RES getByCode(String code);
 
-    List<T> getAll();
+    List<RES> getAll();
 }
