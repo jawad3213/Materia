@@ -1,6 +1,6 @@
 package com.materia.backend.contexts.masterdata.domain.entities;
 
-import com.materia.backend.contexts.masterdata.domain.enums.CategoryType;
+import com.materia.backend.contexts.masterdata.domain.enums.MaterialCategoryType;
 
 import com.materia.backend.common.domain.BaseEntity;
 import java.time.LocalDateTime;
@@ -45,10 +45,8 @@ public class Category extends BaseEntity {
     private List<String> childrenIds;   // Sub-category IDs
 
     // ---- CLASSIFICATION ----
-    private CategoryType categoryType;  // TYPE: RAW_MATERIAL, FINISHED_GOOD, etc.
+    private MaterialCategoryType categoryType;
     private String status;              // ACTIVE / INACTIVE
-    private String color;               // Display color
-    private String icon;                // UI icon
 
     // ---- STATISTICS ----
     private Integer materialCount;      // Number of materials in this category
@@ -88,8 +86,6 @@ public class Category extends BaseEntity {
         this.childrenIds = builder.childrenIds;
         this.categoryType = builder.categoryType;
         this.status = builder.status;
-        this.color = builder.color;
-        this.icon = builder.icon;
         this.materialCount = builder.materialCount;
         this.subCategoryCount = builder.subCategoryCount;
         this.totalItems = builder.totalItems;
@@ -121,10 +117,8 @@ public class Category extends BaseEntity {
         private Integer level = 0;
         private String path;
         private List<String> childrenIds = new ArrayList<>();
-        private CategoryType categoryType;
+        private MaterialCategoryType categoryType;
         private String status = STATUS_ACTIVE;
-        private String color;
-        private String icon;
         private Integer materialCount = 0;
         private Integer subCategoryCount = 0;
         private Integer totalItems = 0;
@@ -150,10 +144,8 @@ public class Category extends BaseEntity {
         }
 
         // ---- CLASSIFICATION ----
-        public Builder categoryType(CategoryType categoryType) { this.categoryType = categoryType; return this; }
+        public Builder categoryType(MaterialCategoryType categoryType) { this.categoryType = categoryType; return this; }
         public Builder status(String status) { this.status = status; return this; }
-        public Builder color(String color) { this.color = color; return this; }
-        public Builder icon(String icon) { this.icon = icon; return this; }
 
         // ---- STATISTICS ----
         public Builder materialCount(Integer materialCount) { this.materialCount = materialCount; return this; }
@@ -390,8 +382,8 @@ public class Category extends BaseEntity {
     }
 
     // ---- CLASSIFICATION ----
-    public CategoryType getCategoryType() { return categoryType; }
-    public void setCategoryType(CategoryType categoryType) {
+    public MaterialCategoryType getCategoryType() { return categoryType; }
+    public void setCategoryType(MaterialCategoryType categoryType) {
         this.categoryType = categoryType;
         this.setUpdatedAt(LocalDateTime.now());
     }
@@ -399,18 +391,6 @@ public class Category extends BaseEntity {
     public String getStatus() { return status; }
     public void setStatus(String status) {
         this.status = status;
-        this.setUpdatedAt(LocalDateTime.now());
-    }
-
-    public String getColor() { return color; }
-    public void setColor(String color) {
-        this.color = color;
-        this.setUpdatedAt(LocalDateTime.now());
-    }
-
-    public String getIcon() { return icon; }
-    public void setIcon(String icon) {
-        this.icon = icon;
         this.setUpdatedAt(LocalDateTime.now());
     }
 
@@ -486,8 +466,6 @@ public class Category extends BaseEntity {
                 .childrenIds(this.childrenIds != null ? new ArrayList<>(this.childrenIds) : new ArrayList<>())
                 .categoryType(this.categoryType)
                 .status(this.status)
-                .color(this.color)
-                .icon(this.icon)
                 .materialCount(this.materialCount)
                 .subCategoryCount(this.subCategoryCount)
                 .totalItems(this.totalItems)

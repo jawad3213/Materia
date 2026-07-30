@@ -2,14 +2,13 @@ package com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.d
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
 
 public class CreateSupplierWebRequest {
-    
-    @NotBlank(message = "Code is mandatory")
-    @Size(max = 50, message = "Code must not exceed 50 characters")
-    private String code;
-    
+    @Size(max = 500, message = "Description must not exceed 500 characters")
+    private String description;
+
     @NotBlank(message = "Name is mandatory")
     @Size(max = 255, message = "Name must not exceed 255 characters")
     private String name;
@@ -34,23 +33,26 @@ public class CreateSupplierWebRequest {
     
     @NotBlank(message = "Country is mandatory")
     private String country;
+
+    @Size(max = 20, message = "Postal code must not exceed 20 characters")
+    private String postalCode;
     
     @NotBlank(message = "Payment terms are mandatory")
     private String paymentTerms;
+
+    @PositiveOrZero(message = "Payment delay cannot be negative")
+    private Integer paymentDelay;
     
     @NotBlank(message = "Currency code is mandatory")
     @Size(min = 3, max = 3, message = "Currency code must be exactly 3 characters")
     private String currencyCode;
-    
-    private String taxId;
-    private String website;
-    
+
     @NotBlank(message = "Created by is mandatory")
     private String createdBy;
 
     // Getters and Setters
-    public String getCode() { return code; }
-    public void setCode(String code) { this.code = code; }
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
     public String getContactPerson() { return contactPerson; }
@@ -65,14 +67,14 @@ public class CreateSupplierWebRequest {
     public void setCity(String city) { this.city = city; }
     public String getCountry() { return country; }
     public void setCountry(String country) { this.country = country; }
+    public String getPostalCode() { return postalCode; }
+    public void setPostalCode(String postalCode) { this.postalCode = postalCode; }
     public String getPaymentTerms() { return paymentTerms; }
     public void setPaymentTerms(String paymentTerms) { this.paymentTerms = paymentTerms; }
+    public Integer getPaymentDelay() { return paymentDelay; }
+    public void setPaymentDelay(Integer paymentDelay) { this.paymentDelay = paymentDelay; }
     public String getCurrencyCode() { return currencyCode; }
     public void setCurrencyCode(String currencyCode) { this.currencyCode = currencyCode; }
-    public String getTaxId() { return taxId; }
-    public void setTaxId(String taxId) { this.taxId = taxId; }
-    public String getWebsite() { return website; }
-    public void setWebsite(String website) { this.website = website; }
     public String getCreatedBy() { return createdBy; }
     public void setCreatedBy(String createdBy) { this.createdBy = createdBy; }
 }

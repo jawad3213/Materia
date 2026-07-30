@@ -1,7 +1,7 @@
 package com.materia.backend.contexts.masterdata.infrastructure.adapters.out.persistence.entities;
 
 import com.materia.backend.common.infrastructure.persistence.BaseJpaEntity;
-import com.materia.backend.contexts.masterdata.domain.enums.CategoryType;
+import com.materia.backend.contexts.masterdata.domain.enums.MaterialCategoryType;
 
 import jakarta.persistence.*;
 import java.util.ArrayList;
@@ -46,33 +46,26 @@ public class CategoryJpaEntity extends BaseJpaEntity {
     @Column(name = "path", length = 500)
     private String path;
 
-    @ElementCollection(fetch = FetchType.LAZY)
-    @CollectionTable(name = "category_children", joinColumns = @JoinColumn(name = "category_id"))
-    @Column(name = "child_id")
+    @Transient
     private List<String> childrenIds = new ArrayList<>();
 
     // ---- CLASSIFICATION ----
     @Enumerated(EnumType.STRING)
     @Column(name = "category_type", length = 30)
-    private CategoryType categoryType;
+    private MaterialCategoryType categoryType;
 
     @Column(name = "status", nullable = false, length = 20)
     private String status;
 
-    @Column(name = "color", length = 7)
-    private String color;
-
-    @Column(name = "icon", length = 50)
-    private String icon;
 
     // ---- STATISTICS ----
-    @Column(name = "material_count")
+    @Transient
     private Integer materialCount;
 
-    @Column(name = "sub_category_count")
+    @Transient
     private Integer subCategoryCount;
 
-    @Column(name = "total_items")
+    @Transient
     private Integer totalItems;
 
     // ============================================================
@@ -114,17 +107,12 @@ public class CategoryJpaEntity extends BaseJpaEntity {
     public List<String> getChildrenIds() { return childrenIds; }
     public void setChildrenIds(List<String> childrenIds) { this.childrenIds = childrenIds; }
 
-    public CategoryType getCategoryType() { return categoryType; }
-    public void setCategoryType(CategoryType categoryType) { this.categoryType = categoryType; }
+    public MaterialCategoryType getCategoryType() { return categoryType; }
+    public void setCategoryType(MaterialCategoryType categoryType) { this.categoryType = categoryType; }
 
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
 
-    public String getColor() { return color; }
-    public void setColor(String color) { this.color = color; }
-
-    public String getIcon() { return icon; }
-    public void setIcon(String icon) { this.icon = icon; }
 
     public Integer getMaterialCount() { return materialCount; }
     public void setMaterialCount(Integer materialCount) { this.materialCount = materialCount; }

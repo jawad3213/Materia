@@ -7,7 +7,6 @@ import com.materia.backend.common.application.BaseInput;
  */
 public class CreateSupplierInput extends BaseInput {
 
-    private String code;
     private String name;
     private String description;
     private String contactPerson;
@@ -23,9 +22,6 @@ public class CreateSupplierInput extends BaseInput {
     private String createdBy;
 
     // Getters and Setters
-    public String getCode() { return code; }
-    public void setCode(String code) { this.code = code; }
-
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
 

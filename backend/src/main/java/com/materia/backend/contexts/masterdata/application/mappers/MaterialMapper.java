@@ -1,13 +1,13 @@
 package com.materia.backend.contexts.masterdata.application.mappers;
 
 import com.materia.backend.contexts.masterdata.application.dtos.material.CreateMaterialInput;
-import com.materia.backend.contexts.masterdata.application.dtos.material.UpdateMaterialInput;
 import com.materia.backend.contexts.masterdata.application.dtos.material.MaterialOutput;
+import com.materia.backend.contexts.masterdata.application.dtos.material.UpdateMaterialInput;
 import com.materia.backend.contexts.masterdata.domain.entities.Material;
 import com.materia.backend.contexts.masterdata.domain.enums.CurrencyCode;
+import com.materia.backend.contexts.masterdata.domain.enums.MaterialType;
 import com.materia.backend.contexts.masterdata.domain.enums.MaterialStatus;
 import com.materia.backend.contexts.masterdata.domain.enums.UnitOfMeasure;
-import com.materia.backend.contexts.masterdata.domain.valueObjects.MaterialCode;
 import com.materia.backend.contexts.masterdata.domain.valueObjects.Money;
 import org.springframework.stereotype.Component;
 
@@ -31,12 +31,15 @@ public class MaterialMapper implements BaseMapper<Material, CreateMaterialInput,
     public Material toEntity(CreateMaterialInput request) {
         if (request == null) return null;
 
-        CurrencyCode currency = request.getCurrencyCode() != null
-                ? CurrencyCode.fromCode(request.getCurrencyCode())
+        CurrencyCode stdCurrency = request.getStandardPriceCurrency() != null
+                ? CurrencyCode.fromCode(request.getStandardPriceCurrency())
+                : CurrencyCode.MAD;
+
+        CurrencyCode costCurrency = request.getCostPriceCurrency() != null
+                ? CurrencyCode.fromCode(request.getCostPriceCurrency())
                 : CurrencyCode.MAD;
 
         return Material.builder()
-                .code(MaterialCode.of(request.getCode()))
                 .name(request.getName())
                 .description(request.getDescription())
                 .shortDescription(request.getShortDescription())
@@ -44,23 +47,27 @@ public class MaterialMapper implements BaseMapper<Material, CreateMaterialInput,
                 .alternativeName(request.getAlternativeName())
                 .categoryId(request.getCategoryId())
                 .supplierId(request.getSupplierId())
+                .materialType(request.getMaterialType() != null
+                        ? MaterialType.fromValue(request.getMaterialType())
+                        : null)
                 .status(request.getStatus() != null
-                        ? MaterialStatus.valueOf(request.getStatus())
+                        ? MaterialStatus.fromValue(request.getStatus())
                         : MaterialStatus.ACTIVE)
                 .unitOfMeasure(request.getUnitOfMeasure() != null
-                        ? UnitOfMeasure.valueOf(request.getUnitOfMeasure())
+                        ? UnitOfMeasure.fromValue(request.getUnitOfMeasure())
                         : null)
                 .currentStock(request.getCurrentStock())
+                .availableStock(request.getCurrentStock())
                 .minimumStock(request.getMinimumStock())
                 .maximumStock(request.getMaximumStock())
                 .reorderPoint(request.getReorderPoint())
                 .safetyStock(request.getSafetyStock())
                 .economicOrderQuantity(request.getEconomicOrderQuantity())
                 .standardPrice(request.getStandardPrice() != null
-                        ? Money.of(request.getStandardPrice(), currency)
+                        ? Money.of(request.getStandardPrice(), stdCurrency)
                         : null)
                 .costPrice(request.getCostPrice() != null
-                        ? Money.of(request.getCostPrice(), currency)
+                        ? Money.of(request.getCostPrice(), costCurrency)
                         : null)
                 .createdBy(request.getCreatedBy())
                 .build();
@@ -79,8 +86,9 @@ public class MaterialMapper implements BaseMapper<Material, CreateMaterialInput,
         if (request.getAlternativeName() != null) entity.setAlternativeName(request.getAlternativeName());
         if (request.getCategoryId() != null) entity.setCategoryId(request.getCategoryId());
         if (request.getSupplierId() != null) entity.setSupplierId(request.getSupplierId());
-        if (request.getStatus() != null) entity.setStatus(MaterialStatus.valueOf(request.getStatus()));
-        if (request.getUnitOfMeasure() != null) entity.setUnitOfMeasure(UnitOfMeasure.valueOf(request.getUnitOfMeasure()));
+        if (request.getMaterialType() != null) entity.setMaterialType(MaterialType.fromValue(request.getMaterialType()));
+        if (request.getStatus() != null) entity.setStatus(MaterialStatus.fromValue(request.getStatus()));
+        if (request.getUnitOfMeasure() != null) entity.setUnitOfMeasure(UnitOfMeasure.fromValue(request.getUnitOfMeasure()));
         if (request.getCurrentStock() != null) entity.setCurrentStock(request.getCurrentStock());
         if (request.getMinimumStock() != null) entity.setMinimumStock(request.getMinimumStock());
         if (request.getMaximumStock() != null) entity.setMaximumStock(request.getMaximumStock());
@@ -88,15 +96,24 @@ public class MaterialMapper implements BaseMapper<Material, CreateMaterialInput,
         if (request.getSafetyStock() != null) entity.setSafetyStock(request.getSafetyStock());
         if (request.getEconomicOrderQuantity() != null) entity.setEconomicOrderQuantity(request.getEconomicOrderQuantity());
 
-        CurrencyCode currency = request.getCurrencyCode() != null
-                ? CurrencyCode.fromCode(request.getCurrencyCode())
+        CurrencyCode stdCurrency = request.getStandardPriceCurrency() != null
+                ? CurrencyCode.fromCode(request.getStandardPriceCurrency())
                 : CurrencyCode.MAD;
 
         if (request.getStandardPrice() != null) {
-            entity.setStandardPrice(Money.of(request.getStandardPrice(), currency));
+            entity.setStandardPrice(Money.of(request.getStandardPrice(), stdCurrency));
         }
+
+        CurrencyCode costCurrency = request.getCostPriceCurrency() != null
+                ? CurrencyCode.fromCode(request.getCostPriceCurrency())
+                : CurrencyCode.MAD;
+
         if (request.getCostPrice() != null) {
-            entity.setCostPrice(Money.of(request.getCostPrice(), currency));
+            entity.setCostPrice(Money.of(request.getCostPrice(), costCurrency));
+        }
+
+        if (request.getUpdatedBy() != null) {
+            entity.setUpdatedBy(request.getUpdatedBy());
         }
     }
 
@@ -122,7 +139,7 @@ public class MaterialMapper implements BaseMapper<Material, CreateMaterialInput,
         response.setCategoryName(entity.getCategoryName());
         response.setSupplierId(entity.getSupplierId());
         response.setSupplierName(entity.getSupplierName());
-        response.setMaterialType(entity.getStatus() != null ? entity.getStatus().name() : null);
+        response.setMaterialType(entity.getMaterialType() != null ? entity.getMaterialType().name() : null);
         response.setStatus(entity.getStatus() != null ? entity.getStatus().name() : null);
         response.setUnitOfMeasure(entity.getUnitOfMeasure() != null ? entity.getUnitOfMeasure().name() : null);
         response.setCurrentStock(entity.getCurrentStock());
@@ -136,6 +153,7 @@ public class MaterialMapper implements BaseMapper<Material, CreateMaterialInput,
         response.setCostPrice(entity.getCostPrice() != null ? entity.getCostPrice().format() : null);
         response.setLastPurchasePrice(entity.getLastPurchasePrice() != null ? entity.getLastPurchasePrice().format() : null);
         response.setAveragePurchasePrice(entity.getAveragePurchasePrice() != null ? entity.getAveragePurchasePrice().format() : null);
+        response.setCurrencyCode(entity.getStandardPrice() != null ? entity.getStandardPrice().getCurrency().getCode() : null);
         response.setIsBelowMinimumStock(entity.isBelowMinimumStock());
         response.setIsReorderNeeded(entity.isBelowReorderPoint());
         response.setIsOutOfStock(entity.isOutOfStock());

@@ -13,8 +13,6 @@ public class CreateCategoryInput extends BaseInput {
     private String shortDescription;
     private String parentId;
     private String categoryType;
-    private String color;
-    private String icon;
     private String createdBy;
 
     // Getters and Setters
@@ -35,12 +33,6 @@ public class CreateCategoryInput extends BaseInput {
 
     public String getCategoryType() { return categoryType; }
     public void setCategoryType(String categoryType) { this.categoryType = categoryType; }
-
-    public String getColor() { return color; }
-    public void setColor(String color) { this.color = color; }
-
-    public String getIcon() { return icon; }
-    public void setIcon(String icon) { this.icon = icon; }
 
     public String getCreatedBy() { return createdBy; }
     public void setCreatedBy(String createdBy) { this.createdBy = createdBy; }

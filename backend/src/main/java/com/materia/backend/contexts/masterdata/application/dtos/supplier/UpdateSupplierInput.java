@@ -22,6 +22,7 @@ public class UpdateSupplierInput extends BaseInput {
     private Integer paymentDelay;
     private String currencyCode;
     private String status;
+    private String updatedBy;
 
     // Getters and Setters
     public UUID getId() { return id; }
@@ -65,4 +66,7 @@ public class UpdateSupplierInput extends BaseInput {
 
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+
+    public String getUpdatedBy() { return updatedBy; }
+    public void setUpdatedBy(String updatedBy) { this.updatedBy = updatedBy; }
 }

@@ -25,11 +25,6 @@ public class CreateCategoryWebRequest {
     @NotBlank(message = "Category Type is mandatory")
     private String categoryType;
     
-    @Pattern(regexp = "^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$", message = "Color must be a valid hex code")
-    private String color;
-    
-    private String icon;
-    
     @NotBlank(message = "Created by is mandatory")
     private String createdBy;
 
@@ -46,10 +41,6 @@ public class CreateCategoryWebRequest {
     public void setParentId(String parentId) { this.parentId = parentId; }
     public String getCategoryType() { return categoryType; }
     public void setCategoryType(String categoryType) { this.categoryType = categoryType; }
-    public String getColor() { return color; }
-    public void setColor(String color) { this.color = color; }
-    public String getIcon() { return icon; }
-    public void setIcon(String icon) { this.icon = icon; }
     public String getCreatedBy() { return createdBy; }
     public void setCreatedBy(String createdBy) { this.createdBy = createdBy; }
 }

@@ -21,6 +21,11 @@ public interface MaterialRepository extends BaseRepository<Material> {
     Optional<Material> findByCode(String code);
 
     /**
+     * Finds codes by prefix
+     */
+    List<String> findCodesByPrefix(String prefix);
+
+    /**
      * Finds materials by category
      */
     List<Material> findByCategoryId(String categoryId);
@@ -39,6 +44,16 @@ public interface MaterialRepository extends BaseRepository<Material> {
      * Checks if a material code already exists
      */
     boolean existsByCode(String code);
+
+    /**
+     * Checks if at least one material is linked to a category
+     */
+    boolean existsByCategoryId(String categoryId);
+
+    /**
+     * Checks if at least one material is linked to a supplier
+     */
+    boolean existsBySupplierId(String supplierId);
 
     /**
      * Searches by keyword (name, description, keywords)

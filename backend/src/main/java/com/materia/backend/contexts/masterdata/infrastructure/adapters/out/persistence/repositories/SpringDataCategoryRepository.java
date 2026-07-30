@@ -23,7 +23,11 @@ public interface SpringDataCategoryRepository extends JpaRepository<CategoryJpaE
 
     List<CategoryJpaEntity> findByParentId(String parentId);
 
-    List<CategoryJpaEntity> findByCategoryType(com.materia.backend.contexts.masterdata.domain.enums.CategoryType categoryType);
+    boolean existsByParentId(String parentId);
+
+    long countByParentId(String parentId);
+
+    List<CategoryJpaEntity> findByCategoryType(com.materia.backend.contexts.masterdata.domain.enums.MaterialCategoryType categoryType);
 
     List<CategoryJpaEntity> findByStatus(String status);
 
@@ -33,4 +37,7 @@ public interface SpringDataCategoryRepository extends JpaRepository<CategoryJpaE
            "LOWER(c.name) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
            "LOWER(c.description) LIKE LOWER(CONCAT('%', :keyword, '%'))")
     List<CategoryJpaEntity> search(@Param("keyword") String keyword);
+
+    @Query("SELECT c.parentId, c.id FROM CategoryJpaEntity c WHERE c.parentId IN :parentIds")
+    List<Object[]> findChildRelationsByParentIds(@Param("parentIds") List<String> parentIds);
 }

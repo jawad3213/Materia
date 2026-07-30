@@ -18,10 +18,9 @@ public interface BaseRepository<T extends com.materia.backend.common.domain.Base
     Optional<T> findById(UUID uuid);
 
     /**
-     * Find all entities (excluding deleted)
+     * Find all entities
      */
     List<T> findAll();
-
 
     /**
      * Save an entity
@@ -34,7 +33,7 @@ public interface BaseRepository<T extends com.materia.backend.common.domain.Base
     List<T> saveAll(List<T> entities);
 
     /**
-     * Delete by ID (soft delete)
+     * Delete by ID (hard delete)
      */
     void deleteById(UUID uuid);
 
@@ -42,7 +41,6 @@ public interface BaseRepository<T extends com.materia.backend.common.domain.Base
      * Delete an entity (hard delete)
      */
     void delete(T entity);
-
 
     /**
      * Check if entity exists

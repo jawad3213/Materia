@@ -140,6 +140,27 @@ public enum UnitOfMeasure {
         throw new IllegalArgumentException("Unknown unit: " + code);
     }
 
+    public static UnitOfMeasure fromValue(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            throw new IllegalArgumentException("Unit of measure is required");
+        }
+
+        String normalized = value.trim();
+        try {
+            return UnitOfMeasure.valueOf(normalized.toUpperCase());
+        } catch (IllegalArgumentException ignored) {
+            // Fall through to code and label matching.
+        }
+
+        for (UnitOfMeasure unit : values()) {
+            if (unit.code.equalsIgnoreCase(normalized) || unit.label.equalsIgnoreCase(normalized)) {
+                return unit;
+            }
+        }
+
+        throw new IllegalArgumentException("Unknown unit: " + value);
+    }
+
     public static boolean isValid(String code) {
         if (code == null) return false;
         for (UnitOfMeasure unit : values()) {

@@ -2,9 +2,11 @@ package com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.c
 
 import com.materia.backend.contexts.masterdata.application.dtos.supplier.CreateSupplierInput;
 import com.materia.backend.contexts.masterdata.application.dtos.supplier.SupplierOutput;
+import com.materia.backend.contexts.masterdata.application.dtos.supplier.UpdateSupplierInput;
 import com.materia.backend.contexts.masterdata.domain.ports.in.SupplierUseCase;
 import com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.dtos.supplier.CreateSupplierWebRequest;
 import com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.dtos.supplier.SupplierWebResponse;
+import com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.dtos.supplier.UpdateSupplierWebRequest;
 import com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.mappers.SupplierWebMapper;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -54,8 +56,8 @@ public class SupplierController {
     @PutMapping("/{id}")
     public ResponseEntity<SupplierWebResponse> updateSupplier(
             @PathVariable UUID id,
-            @Valid @RequestBody CreateSupplierWebRequest webRequest) {
-        CreateSupplierInput request = webMapper.toAppCreateRequest(webRequest);
+            @Valid @RequestBody UpdateSupplierWebRequest webRequest) {
+        UpdateSupplierInput request = webMapper.toAppUpdateRequest(webRequest);
         SupplierOutput response = supplierUseCase.update(id, request);
         return ResponseEntity.ok(webMapper.toWebResponse(response));
     }

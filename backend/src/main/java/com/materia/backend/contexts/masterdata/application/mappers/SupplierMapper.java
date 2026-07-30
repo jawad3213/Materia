@@ -25,7 +25,6 @@ public class SupplierMapper implements BaseMapper<Supplier, CreateSupplierInput,
         if (request == null) return null;
 
         return Supplier.builder()
-                .code(request.getCode())
                 .name(request.getName())
                 .description(request.getDescription())
                 .contactPerson(request.getContactPerson())
@@ -60,6 +59,7 @@ public class SupplierMapper implements BaseMapper<Supplier, CreateSupplierInput,
         if (request.getPaymentDelay() != null) entity.setPaymentDelay(request.getPaymentDelay());
         if (request.getCurrencyCode() != null) entity.setCurrencyCode(CurrencyCode.fromCode(request.getCurrencyCode()));
         if (request.getStatus() != null) entity.setStatus(request.getStatus());
+        if (request.getUpdatedBy() != null) entity.setUpdatedBy(request.getUpdatedBy());
     }
 
     // ============================================================

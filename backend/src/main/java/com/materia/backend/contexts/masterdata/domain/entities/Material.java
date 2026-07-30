@@ -1,6 +1,7 @@
 package com.materia.backend.contexts.masterdata.domain.entities;
 
 import com.materia.backend.contexts.masterdata.domain.enums.CurrencyCode;
+import com.materia.backend.contexts.masterdata.domain.enums.MaterialType;
 import com.materia.backend.contexts.masterdata.domain.enums.MaterialStatus;
 import com.materia.backend.contexts.masterdata.domain.enums.UnitOfMeasure;
 import com.materia.backend.contexts.masterdata.domain.valueObjects.MaterialCode;
@@ -30,6 +31,7 @@ public class Material extends BaseEntity {
     private String categoryName;
     private String supplierId;
     private String supplierName;
+    private MaterialType materialType;
     private MaterialStatus status;
 
     // ---- UNITS ----
@@ -98,6 +100,7 @@ public class Material extends BaseEntity {
         this.categoryName = builder.categoryName;
         this.supplierId = builder.supplierId;
         this.supplierName = builder.supplierName;
+        this.materialType = builder.materialType;
         this.status = builder.status;
 
         // ---- UNITS ----
@@ -155,6 +158,7 @@ public class Material extends BaseEntity {
         private String categoryName;
         private String supplierId;
         private String supplierName;
+        private MaterialType materialType;
         private MaterialStatus status = MaterialStatus.ACTIVE;
 
         // ---- UNITS ----
@@ -162,7 +166,7 @@ public class Material extends BaseEntity {
 
         // ---- STOCK ----
         private Integer currentStock = 0;
-        private Integer availableStock = 0;
+        private Integer availableStock;
         private Integer minimumStock = 10;
         private Integer maximumStock = 1000;
         private Integer reorderPoint = 20;
@@ -209,6 +213,7 @@ public class Material extends BaseEntity {
         public Builder categoryName(String categoryName) { this.categoryName = categoryName; return this; }
         public Builder supplierId(String supplierId) { this.supplierId = supplierId; return this; }
         public Builder supplierName(String supplierName) { this.supplierName = supplierName; return this; }
+        public Builder materialType(MaterialType materialType) { this.materialType = materialType; return this; }
         public Builder status(MaterialStatus status) {
             this.status = status != null ? status : MaterialStatus.ACTIVE;
             return this;
@@ -225,7 +230,7 @@ public class Material extends BaseEntity {
         // ============================================================
 
         public Builder currentStock(Integer currentStock) { this.currentStock = currentStock != null ? currentStock : 0; return this; }
-        public Builder availableStock(Integer availableStock) { this.availableStock = availableStock != null ? availableStock : 0; return this; }
+        public Builder availableStock(Integer availableStock) { this.availableStock = availableStock; return this; }
         public Builder minimumStock(Integer minimumStock) { this.minimumStock = minimumStock != null ? minimumStock : 10; return this; }
         public Builder maximumStock(Integer maximumStock) { this.maximumStock = maximumStock != null ? maximumStock : 1000; return this; }
         public Builder reorderPoint(Integer reorderPoint) { this.reorderPoint = reorderPoint != null ? reorderPoint : 20; return this; }
@@ -267,7 +272,7 @@ public class Material extends BaseEntity {
 
             // ---- DEFAULT VALUES ----
             if (this.currentStock == null) this.currentStock = 0;
-            if (this.availableStock == null) this.availableStock = 0;
+            if (this.availableStock == null) this.availableStock = this.currentStock;
             if (this.minimumStock == null) this.minimumStock = 10;
             if (this.maximumStock == null) this.maximumStock = 1000;
             if (this.reorderPoint == null) this.reorderPoint = 20;
@@ -307,6 +312,9 @@ public class Material extends BaseEntity {
             }
             if (this.name == null || this.name.trim().isEmpty()) {
                 throw new IllegalArgumentException("Material name is required");
+            }
+            if (this.materialType == null) {
+                throw new IllegalArgumentException("Material type is required");
             }
             if (this.categoryId == null || this.categoryId.trim().isEmpty()) {
                 throw new IllegalArgumentException("Category is required");
@@ -511,6 +519,13 @@ public class Material extends BaseEntity {
     public String getSupplierName() { return supplierName; }
     public void setSupplierName(String supplierName) { this.supplierName = supplierName; this.setUpdatedAt(LocalDateTime.now()); }
 
+    public MaterialType getMaterialType() { return materialType; }
+    public void setMaterialType(MaterialType materialType) {
+        if (materialType == null) { throw new IllegalArgumentException("Material type is required"); }
+        this.materialType = materialType;
+        this.setUpdatedAt(LocalDateTime.now());
+    }
+
     public MaterialStatus getStatus() { return status; }
     public void setStatus(MaterialStatus status) {
         if (status == null) { throw new IllegalArgumentException("Status is required"); }
@@ -531,6 +546,7 @@ public class Material extends BaseEntity {
     public void setCurrentStock(Integer currentStock) {
         if (isObsolete()) { throw new IllegalStateException("Cannot modify stock of an obsolete material"); }
         this.currentStock = currentStock != null ? currentStock : 0;
+        this.availableStock = this.currentStock;
         this.setUpdatedAt(LocalDateTime.now());
     }
 
@@ -579,9 +595,9 @@ public class Material extends BaseEntity {
     // VERIFICATION METHODS
     // ============================================================
 
-    public boolean isActive() { return MaterialStatus.ACTIVE.equals(this.status) && !this.isDeleted(); }
+    public boolean isActive() { return MaterialStatus.ACTIVE.equals(this.status); }
     public boolean isObsolete() { return MaterialStatus.OBSOLETE.equals(this.status); }
-    public boolean isOrderable() { return isActive() && !isObsolete() && !this.isDeleted(); }
+    public boolean isOrderable() { return isActive() && !isObsolete(); }
     public boolean isOutOfStock() { return this.currentStock <= 0; }
 
     // ============================================================

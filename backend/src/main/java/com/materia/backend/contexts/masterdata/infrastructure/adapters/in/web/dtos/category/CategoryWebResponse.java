@@ -17,8 +17,6 @@ public class CategoryWebResponse {
     private List<String> childrenIds;
     private String categoryType;
     private String status;
-    private String color;
-    private String icon;
     private Integer materialCount;
     private Integer subCategoryCount;
     private Integer totalItems;
@@ -52,10 +50,6 @@ public class CategoryWebResponse {
     public void setCategoryType(String categoryType) { this.categoryType = categoryType; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
-    public String getColor() { return color; }
-    public void setColor(String color) { this.color = color; }
-    public String getIcon() { return icon; }
-    public void setIcon(String icon) { this.icon = icon; }
     public Integer getMaterialCount() { return materialCount; }
     public void setMaterialCount(Integer materialCount) { this.materialCount = materialCount; }
     public Integer getSubCategoryCount() { return subCategoryCount; }

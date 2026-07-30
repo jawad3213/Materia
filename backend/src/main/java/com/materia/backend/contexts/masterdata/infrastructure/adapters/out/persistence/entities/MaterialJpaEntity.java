@@ -2,6 +2,7 @@ package com.materia.backend.contexts.masterdata.infrastructure.adapters.out.pers
 
 import com.materia.backend.common.infrastructure.persistence.BaseJpaEntity;
 import com.materia.backend.contexts.masterdata.domain.enums.CurrencyCode;
+import com.materia.backend.contexts.masterdata.domain.enums.MaterialType;
 import com.materia.backend.contexts.masterdata.domain.enums.MaterialStatus;
 import com.materia.backend.contexts.masterdata.domain.enums.UnitOfMeasure;
 
@@ -55,6 +56,10 @@ public class MaterialJpaEntity extends BaseJpaEntity {
     private String supplierName;
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "material_type", nullable = false, length = 30)
+    private MaterialType materialType;
+
+    @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 30)
     private MaterialStatus status;
 
@@ -89,6 +94,7 @@ public class MaterialJpaEntity extends BaseJpaEntity {
     @Column(name = "standard_price", precision = 19, scale = 4)
     private BigDecimal standardPrice;
 
+    // ---- CALCULATED (NOT IN DOMAIN) ----
     @Enumerated(EnumType.STRING)
     @Column(name = "standard_price_currency", length = 10)
     private CurrencyCode standardPriceCurrency;
@@ -96,6 +102,7 @@ public class MaterialJpaEntity extends BaseJpaEntity {
     @Column(name = "cost_price", precision = 19, scale = 4)
     private BigDecimal costPrice;
 
+    // ---- CALCULATED (NOT IN DOMAIN) ----
     @Enumerated(EnumType.STRING)
     @Column(name = "cost_price_currency", length = 10)
     private CurrencyCode costPriceCurrency;
@@ -103,6 +110,7 @@ public class MaterialJpaEntity extends BaseJpaEntity {
     @Column(name = "last_purchase_price", precision = 19, scale = 4)
     private BigDecimal lastPurchasePrice;
 
+    // ---- CALCULATED (NOT IN DOMAIN) ----
     @Enumerated(EnumType.STRING)
     @Column(name = "last_purchase_price_currency", length = 10)
     private CurrencyCode lastPurchasePriceCurrency;
@@ -110,6 +118,7 @@ public class MaterialJpaEntity extends BaseJpaEntity {
     @Column(name = "average_purchase_price", precision = 19, scale = 4)
     private BigDecimal averagePurchasePrice;
 
+    // ---- CALCULATED (NOT IN DOMAIN) ----
     @Enumerated(EnumType.STRING)
     @Column(name = "average_purchase_price_currency", length = 10)
     private CurrencyCode averagePurchasePriceCurrency;
@@ -165,6 +174,9 @@ public class MaterialJpaEntity extends BaseJpaEntity {
 
     public String getSupplierName() { return supplierName; }
     public void setSupplierName(String supplierName) { this.supplierName = supplierName; }
+
+    public MaterialType getMaterialType() { return materialType; }
+    public void setMaterialType(MaterialType materialType) { this.materialType = materialType; }
 
     public MaterialStatus getStatus() { return status; }
     public void setStatus(MaterialStatus status) { this.status = status; }

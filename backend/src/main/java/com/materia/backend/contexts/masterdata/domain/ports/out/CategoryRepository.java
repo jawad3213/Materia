@@ -1,7 +1,7 @@
 package com.materia.backend.contexts.masterdata.domain.ports.out;
 
 import com.materia.backend.contexts.masterdata.domain.entities.Category;
-import com.materia.backend.contexts.masterdata.domain.enums.CategoryType;
+import com.materia.backend.contexts.masterdata.domain.enums.MaterialCategoryType;
 
 import com.materia.backend.common.domain.BaseRepository;
 
@@ -33,7 +33,7 @@ public interface CategoryRepository extends BaseRepository<Category> {
     /**
      * Finds categories by type
      */
-    List<Category> findByCategoryType(CategoryType categoryType);
+    List<Category> findByCategoryType(MaterialCategoryType categoryType);
 
     /**
      * Finds active categories
@@ -44,6 +44,11 @@ public interface CategoryRepository extends BaseRepository<Category> {
      * Checks if a category code already exists
      */
     boolean existsByCode(String code);
+
+    /**
+     * Checks if a category has children
+     */
+    boolean existsByParentId(String parentId);
 
     /**
      * Searches by keyword (name, description)

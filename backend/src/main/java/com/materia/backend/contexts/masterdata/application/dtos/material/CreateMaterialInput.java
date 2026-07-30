@@ -1,6 +1,7 @@
 package com.materia.backend.contexts.masterdata.application.dtos.material;
 
 import com.materia.backend.common.application.BaseInput;
+import java.math.BigDecimal;
 
 /**
  * Request DTO for creating a new Material
@@ -8,7 +9,6 @@ import com.materia.backend.common.application.BaseInput;
 public class CreateMaterialInput extends BaseInput {
 
     // ---- IDENTIFICATION ----
-    private String code;
     private String name;
     private String description;
     private String shortDescription;
@@ -33,16 +33,15 @@ public class CreateMaterialInput extends BaseInput {
     private Integer economicOrderQuantity;
 
     // ---- FINANCES ----
-    private Double standardPrice;
-    private Double costPrice;
-    private String currencyCode;
+    private BigDecimal standardPrice;
+    private String standardPriceCurrency;
+    private BigDecimal costPrice;
+    private String costPriceCurrency;
 
     // ---- AUDIT ----
     private String createdBy;
 
     // Getters and Setters
-    public String getCode() { return code; }
-    public void setCode(String code) { this.code = code; }
 
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
@@ -92,14 +91,17 @@ public class CreateMaterialInput extends BaseInput {
     public Integer getEconomicOrderQuantity() { return economicOrderQuantity; }
     public void setEconomicOrderQuantity(Integer economicOrderQuantity) { this.economicOrderQuantity = economicOrderQuantity; }
 
-    public Double getStandardPrice() { return standardPrice; }
-    public void setStandardPrice(Double standardPrice) { this.standardPrice = standardPrice; }
+    public BigDecimal getStandardPrice() { return standardPrice; }
+    public void setStandardPrice(BigDecimal standardPrice) { this.standardPrice = standardPrice; }
 
-    public Double getCostPrice() { return costPrice; }
-    public void setCostPrice(Double costPrice) { this.costPrice = costPrice; }
+    public String getStandardPriceCurrency() { return standardPriceCurrency; }
+    public void setStandardPriceCurrency(String standardPriceCurrency) { this.standardPriceCurrency = standardPriceCurrency; }
 
-    public String getCurrencyCode() { return currencyCode; }
-    public void setCurrencyCode(String currencyCode) { this.currencyCode = currencyCode; }
+    public BigDecimal getCostPrice() { return costPrice; }
+    public void setCostPrice(BigDecimal costPrice) { this.costPrice = costPrice; }
+
+    public String getCostPriceCurrency() { return costPriceCurrency; }
+    public void setCostPriceCurrency(String costPriceCurrency) { this.costPriceCurrency = costPriceCurrency; }
 
     public String getCreatedBy() { return createdBy; }
     public void setCreatedBy(String createdBy) { this.createdBy = createdBy; }

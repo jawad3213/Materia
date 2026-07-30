@@ -1,6 +1,6 @@
 package com.materia.backend.contexts.masterdata.domain.valueObjects;
 
-import com.materia.backend.contexts.masterdata.domain.enums.CategoryType;
+import com.materia.backend.contexts.masterdata.domain.enums.MaterialType;
 
 import java.util.Objects;
 import java.util.regex.Pattern;
@@ -21,6 +21,11 @@ public class MaterialCode {
     public static final String COMPONENT_PREFIX = "CMP";
     public static final String PACKAGING_PREFIX = "PKG";
     public static final String SPARE_PART_PREFIX = "SPR";
+    public static final String CONSUMABLE_PREFIX = "CNS";
+    public static final String SERVICE_PREFIX = "SRV";
+    public static final String TOOL_PREFIX = "TOL";
+    public static final String CHEMICAL_PREFIX = "CHM";
+    public static final String ELECTRONIC_PREFIX = "ELC";
 
     // ============================================================
     // ATTRIBUTE
@@ -68,16 +73,11 @@ public class MaterialCode {
         return new MaterialCode("MAT-0001");
     }
 
-    public static MaterialCode createForType(CategoryType type) {
-        String prefix = switch (type) {
-            case RAW_MATERIAL -> RAW_MATERIAL_PREFIX;
-            case FINISHED_GOOD -> FINISHED_GOOD_PREFIX;
-            case COMPONENT -> COMPONENT_PREFIX;
-            case PACKAGING -> PACKAGING_PREFIX;
-            case SPARE_PART -> SPARE_PART_PREFIX;
-            default -> DEFAULT_PREFIX;
-        };
-        return fromPrefixAndNumber(prefix, 1);
+    public static MaterialCode createForType(MaterialType type) {
+        if (type == null) {
+            return createDefault();
+        }
+        return fromPrefixAndNumber(type.getPrefix(), 1);
     }
 
     // ============================================================
@@ -114,6 +114,11 @@ public class MaterialCode {
     public boolean isComponent() { return startsWith(COMPONENT_PREFIX); }
     public boolean isPackaging() { return startsWith(PACKAGING_PREFIX); }
     public boolean isSparePart() { return startsWith(SPARE_PART_PREFIX); }
+    public boolean isConsumable() { return startsWith(CONSUMABLE_PREFIX); }
+    public boolean isService() { return startsWith(SERVICE_PREFIX); }
+    public boolean isTool() { return startsWith(TOOL_PREFIX); }
+    public boolean isChemical() { return startsWith(CHEMICAL_PREFIX); }
+    public boolean isElectronic() { return startsWith(ELECTRONIC_PREFIX); }
 
     public MaterialCode increment() { return generateNext(this); }
 

@@ -18,10 +18,6 @@ public class UpdateCategoryWebRequest {
     private String categoryType;
     private String status;
     
-    @Pattern(regexp = "^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$", message = "Color must be a valid hex code")
-    private String color;
-    
-    private String icon;
     private String updatedBy;
 
     // Getters and Setters
@@ -37,10 +33,6 @@ public class UpdateCategoryWebRequest {
     public void setCategoryType(String categoryType) { this.categoryType = categoryType; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
-    public String getColor() { return color; }
-    public void setColor(String color) { this.color = color; }
-    public String getIcon() { return icon; }
-    public void setIcon(String icon) { this.icon = icon; }
     public String getUpdatedBy() { return updatedBy; }
     public void setUpdatedBy(String updatedBy) { this.updatedBy = updatedBy; }
 }

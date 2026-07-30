@@ -1,10 +1,10 @@
 package com.materia.backend.contexts.masterdata.application.mappers;
 
 import com.materia.backend.contexts.masterdata.application.dtos.category.CreateCategoryInput;
-import com.materia.backend.contexts.masterdata.application.dtos.category.UpdateCategoryInput;
 import com.materia.backend.contexts.masterdata.application.dtos.category.CategoryOutput;
+import com.materia.backend.contexts.masterdata.application.dtos.category.UpdateCategoryInput;
 import com.materia.backend.contexts.masterdata.domain.entities.Category;
-import com.materia.backend.contexts.masterdata.domain.enums.CategoryType;
+import com.materia.backend.contexts.masterdata.domain.enums.MaterialCategoryType;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -32,9 +32,7 @@ public class CategoryMapper implements BaseMapper<Category, CreateCategoryInput,
                 .createdBy(request.getCreatedBy());
 
         if (request.getParentId() != null) builder.parentId(request.getParentId());
-        if (request.getCategoryType() != null) builder.categoryType(CategoryType.valueOf(request.getCategoryType()));
-        if (request.getColor() != null) builder.color(request.getColor());
-        if (request.getIcon() != null) builder.icon(request.getIcon());
+        if (request.getCategoryType() != null) builder.categoryType(MaterialCategoryType.fromValue(request.getCategoryType()));
 
         return builder.build();
     }
@@ -46,10 +44,9 @@ public class CategoryMapper implements BaseMapper<Category, CreateCategoryInput,
         if (request.getDescription() != null) entity.setDescription(request.getDescription());
         if (request.getShortDescription() != null) entity.setShortDescription(request.getShortDescription());
         if (request.getParentId() != null) entity.setParentId(request.getParentId());
-        if (request.getCategoryType() != null) entity.setCategoryType(CategoryType.valueOf(request.getCategoryType()));
+        if (request.getCategoryType() != null) entity.setCategoryType(MaterialCategoryType.fromValue(request.getCategoryType()));
         if (request.getStatus() != null) entity.setStatus(request.getStatus());
-        if (request.getColor() != null) entity.setColor(request.getColor());
-        if (request.getIcon() != null) entity.setIcon(request.getIcon());
+        if (request.getUpdatedBy() != null) entity.setUpdatedBy(request.getUpdatedBy());
     }
 
     // ============================================================
@@ -72,8 +69,6 @@ public class CategoryMapper implements BaseMapper<Category, CreateCategoryInput,
         response.setChildrenIds(entity.getChildrenIds());
         response.setCategoryType(entity.getCategoryType() != null ? entity.getCategoryType().name() : null);
         response.setStatus(entity.getStatus());
-        response.setColor(entity.getColor());
-        response.setIcon(entity.getIcon());
         response.setMaterialCount(entity.getMaterialCount());
         response.setSubCategoryCount(entity.getSubCategoryCount());
         response.setTotalItems(entity.getTotalItems());

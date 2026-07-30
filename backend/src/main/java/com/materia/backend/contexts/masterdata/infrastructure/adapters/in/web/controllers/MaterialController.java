@@ -2,9 +2,11 @@ package com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.c
 
 import com.materia.backend.contexts.masterdata.application.dtos.material.CreateMaterialInput;
 import com.materia.backend.contexts.masterdata.application.dtos.material.MaterialOutput;
+import com.materia.backend.contexts.masterdata.application.dtos.material.UpdateMaterialInput;
 import com.materia.backend.contexts.masterdata.domain.ports.in.MaterialUseCase;
 import com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.dtos.material.CreateMaterialWebRequest;
 import com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.dtos.material.MaterialWebResponse;
+import com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.dtos.material.UpdateMaterialWebRequest;
 import com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.mappers.MaterialWebMapper;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -54,8 +56,8 @@ public class MaterialController {
     @PutMapping("/{id}")
     public ResponseEntity<MaterialWebResponse> updateMaterialById(
             @PathVariable UUID id,
-            @Valid @RequestBody CreateMaterialWebRequest webRequest) { // Using CreateMaterialWebRequest as per interface
-        CreateMaterialInput request = webMapper.toAppCreateRequest(webRequest);
+            @Valid @RequestBody UpdateMaterialWebRequest webRequest) {
+        UpdateMaterialInput request = webMapper.toAppUpdateRequest(webRequest);
         MaterialOutput response = materialUseCase.update(id, request);
         return ResponseEntity.ok(webMapper.toWebResponse(response));
     }

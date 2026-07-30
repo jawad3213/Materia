@@ -1,6 +1,12 @@
 package com.materia.backend.common.infrastructure.persistence;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.EntityListeners;
+import jakarta.persistence.Id;
+import jakarta.persistence.MappedSuperclass;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
+import jakarta.persistence.Version;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
@@ -29,8 +35,9 @@ public abstract class BaseJpaEntity {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
-    @Column(name = "deleted_at")
-    private LocalDateTime deletedAt;
+    @Version
+    @Column(name = "version")
+    private Long version;
 
     @Column(name = "created_by", length = 100)
     private String createdBy;
@@ -38,20 +45,9 @@ public abstract class BaseJpaEntity {
     @Column(name = "updated_by", length = 100)
     private String updatedBy;
 
-    @Column(name = "deleted_by", length = 100)
-    private String deletedBy;
-
-    // ============================================================
-    // CONSTRUCTORS
-    // ============================================================
-
     protected BaseJpaEntity() {
         this.id = UUID.randomUUID();
     }
-
-    // ============================================================
-    // LIFECYCLE CALLBACKS
-    // ============================================================
 
     @PrePersist
     protected void onPrePersist() {
@@ -65,10 +61,6 @@ public abstract class BaseJpaEntity {
         this.updatedAt = LocalDateTime.now();
     }
 
-    // ============================================================
-    // GETTERS & SETTERS
-    // ============================================================
-
     public UUID getId() { return id; }
     public void setId(UUID id) { this.id = id; }
 
@@ -78,15 +70,12 @@ public abstract class BaseJpaEntity {
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 
-    public LocalDateTime getDeletedAt() { return deletedAt; }
-    public void setDeletedAt(LocalDateTime deletedAt) { this.deletedAt = deletedAt; }
+    public Long getVersion() { return version; }
+    public void setVersion(Long version) { this.version = version; }
 
     public String getCreatedBy() { return createdBy; }
     public void setCreatedBy(String createdBy) { this.createdBy = createdBy; }
 
     public String getUpdatedBy() { return updatedBy; }
     public void setUpdatedBy(String updatedBy) { this.updatedBy = updatedBy; }
-
-    public String getDeletedBy() { return deletedBy; }
-    public void setDeletedBy(String deletedBy) { this.deletedBy = deletedBy; }
 }

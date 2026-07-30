@@ -1,6 +1,7 @@
 package com.materia.backend.contexts.masterdata.application.dtos.material;
 
 import com.materia.backend.common.application.BaseInput;
+import java.math.BigDecimal;
 import java.util.UUID;
 
 /**
@@ -35,9 +36,11 @@ public class UpdateMaterialInput extends BaseInput {
     private Integer economicOrderQuantity;
 
     // ---- FINANCES ----
-    private Double standardPrice;
-    private Double costPrice;
-    private String currencyCode;
+    private BigDecimal standardPrice;
+    private String standardPriceCurrency;
+    private BigDecimal costPrice;
+    private String costPriceCurrency;
+    private String updatedBy;
 
     // Getters and Setters
     public UUID getId() { return id; }
@@ -91,12 +94,18 @@ public class UpdateMaterialInput extends BaseInput {
     public Integer getEconomicOrderQuantity() { return economicOrderQuantity; }
     public void setEconomicOrderQuantity(Integer economicOrderQuantity) { this.economicOrderQuantity = economicOrderQuantity; }
 
-    public Double getStandardPrice() { return standardPrice; }
-    public void setStandardPrice(Double standardPrice) { this.standardPrice = standardPrice; }
+    public BigDecimal getStandardPrice() { return standardPrice; }
+    public void setStandardPrice(BigDecimal standardPrice) { this.standardPrice = standardPrice; }
 
-    public Double getCostPrice() { return costPrice; }
-    public void setCostPrice(Double costPrice) { this.costPrice = costPrice; }
+    public String getStandardPriceCurrency() { return standardPriceCurrency; }
+    public void setStandardPriceCurrency(String standardPriceCurrency) { this.standardPriceCurrency = standardPriceCurrency; }
 
-    public String getCurrencyCode() { return currencyCode; }
-    public void setCurrencyCode(String currencyCode) { this.currencyCode = currencyCode; }
+    public BigDecimal getCostPrice() { return costPrice; }
+    public void setCostPrice(BigDecimal costPrice) { this.costPrice = costPrice; }
+
+    public String getCostPriceCurrency() { return costPriceCurrency; }
+    public void setCostPriceCurrency(String costPriceCurrency) { this.costPriceCurrency = costPriceCurrency; }
+
+    public String getUpdatedBy() { return updatedBy; }
+    public void setUpdatedBy(String updatedBy) { this.updatedBy = updatedBy; }
 }

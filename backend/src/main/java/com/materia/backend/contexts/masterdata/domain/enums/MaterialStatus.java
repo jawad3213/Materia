@@ -59,6 +59,27 @@ public enum MaterialStatus {
         throw new IllegalArgumentException("Unknown status: " + code);
     }
 
+    public static MaterialStatus fromValue(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            throw new IllegalArgumentException("Material status is required");
+        }
+
+        String normalized = value.trim();
+        try {
+            return MaterialStatus.valueOf(normalized.toUpperCase());
+        } catch (IllegalArgumentException ignored) {
+            // Fall through to code and label matching.
+        }
+
+        for (MaterialStatus status : values()) {
+            if (status.code.equalsIgnoreCase(normalized) || status.label.equalsIgnoreCase(normalized)) {
+                return status;
+            }
+        }
+
+        throw new IllegalArgumentException("Unknown status: " + value);
+    }
+
     /**
      * Checks if a status code exists
      */

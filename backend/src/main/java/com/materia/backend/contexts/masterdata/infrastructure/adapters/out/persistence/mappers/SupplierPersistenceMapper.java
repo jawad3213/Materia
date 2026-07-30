@@ -39,10 +39,9 @@ public class SupplierPersistenceMapper {
         // Audit fields
         jpa.setCreatedAt(domain.getCreatedAt());
         jpa.setUpdatedAt(domain.getUpdatedAt());
-        jpa.setDeletedAt(domain.getDeletedAt());
+        jpa.setVersion(domain.getVersion());
         jpa.setCreatedBy(domain.getCreatedBy());
         jpa.setUpdatedBy(domain.getUpdatedBy());
-        jpa.setDeletedBy(domain.getDeletedBy());
 
         return jpa;
     }
@@ -74,8 +73,7 @@ public class SupplierPersistenceMapper {
                 .updatedAt(jpa.getUpdatedAt())
                 .build();
 
-        domain.setDeletedAt(jpa.getDeletedAt());
-        domain.setDeletedBy(jpa.getDeletedBy());
+        domain.setVersion(jpa.getVersion());
         domain.setUpdatedBy(jpa.getUpdatedBy());
 
         return domain;

@@ -34,6 +34,7 @@ public class MaterialPersistenceMapper {
         jpa.setCategoryName(domain.getCategoryName());
         jpa.setSupplierId(domain.getSupplierId());
         jpa.setSupplierName(domain.getSupplierName());
+        jpa.setMaterialType(domain.getMaterialType());
         jpa.setStatus(domain.getStatus());
 
         jpa.setUnitOfMeasure(domain.getUnitOfMeasure());
@@ -71,10 +72,9 @@ public class MaterialPersistenceMapper {
         // Audit fields
         jpa.setCreatedAt(domain.getCreatedAt());
         jpa.setUpdatedAt(domain.getUpdatedAt());
-        jpa.setDeletedAt(domain.getDeletedAt());
+        jpa.setVersion(domain.getVersion());
         jpa.setCreatedBy(domain.getCreatedBy());
         jpa.setUpdatedBy(domain.getUpdatedBy());
-        jpa.setDeletedBy(domain.getDeletedBy());
 
         return jpa;
     }
@@ -98,6 +98,7 @@ public class MaterialPersistenceMapper {
         domain.setCategoryName(jpa.getCategoryName());
         domain.setSupplierId(jpa.getSupplierId());
         domain.setSupplierName(jpa.getSupplierName());
+        domain.setMaterialType(jpa.getMaterialType());
         domain.setStatus(jpa.getStatus());
 
         domain.setUnitOfMeasure(jpa.getUnitOfMeasure());
@@ -123,10 +124,9 @@ public class MaterialPersistenceMapper {
         // Audit fields
         domain.setCreatedAt(jpa.getCreatedAt());
         domain.setUpdatedAt(jpa.getUpdatedAt());
-        domain.setDeletedAt(jpa.getDeletedAt());
+        domain.setVersion(jpa.getVersion());
         domain.setCreatedBy(jpa.getCreatedBy());
         domain.setUpdatedBy(jpa.getUpdatedBy());
-        domain.setDeletedBy(jpa.getDeletedBy());
 
         return domain;
     }

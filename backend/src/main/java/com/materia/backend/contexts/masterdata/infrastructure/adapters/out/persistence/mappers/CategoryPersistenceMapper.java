@@ -1,11 +1,8 @@
 package com.materia.backend.contexts.masterdata.infrastructure.adapters.out.persistence.mappers;
 
 import com.materia.backend.contexts.masterdata.domain.entities.Category;
-import com.materia.backend.contexts.masterdata.domain.enums.CategoryType;
 import com.materia.backend.contexts.masterdata.infrastructure.adapters.out.persistence.entities.CategoryJpaEntity;
 import org.springframework.stereotype.Component;
-
-import java.util.ArrayList;
 
 /**
  * Mapper between Category domain entity and CategoryJpaEntity
@@ -30,22 +27,15 @@ public class CategoryPersistenceMapper {
         jpa.setParentCode(domain.getParentCode());
         jpa.setLevel(domain.getLevel());
         jpa.setPath(domain.getPath());
-        jpa.setChildrenIds(domain.getChildrenIds() != null ? new ArrayList<>(domain.getChildrenIds()) : new ArrayList<>());
         jpa.setCategoryType(domain.getCategoryType());
         jpa.setStatus(domain.getStatus());
-        jpa.setColor(domain.getColor());
-        jpa.setIcon(domain.getIcon());
-        jpa.setMaterialCount(domain.getMaterialCount());
-        jpa.setSubCategoryCount(domain.getSubCategoryCount());
-        jpa.setTotalItems(domain.getTotalItems());
 
         // Audit fields
         jpa.setCreatedAt(domain.getCreatedAt());
         jpa.setUpdatedAt(domain.getUpdatedAt());
-        jpa.setDeletedAt(domain.getDeletedAt());
+        jpa.setVersion(domain.getVersion());
         jpa.setCreatedBy(domain.getCreatedBy());
         jpa.setUpdatedBy(domain.getUpdatedBy());
-        jpa.setDeletedBy(domain.getDeletedBy());
 
         return jpa;
     }
@@ -66,21 +56,14 @@ public class CategoryPersistenceMapper {
                 .parentCode(jpa.getParentCode())
                 .level(jpa.getLevel())
                 .path(jpa.getPath())
-                .childrenIds(jpa.getChildrenIds() != null ? new ArrayList<>(jpa.getChildrenIds()) : new ArrayList<>())
                 .categoryType(jpa.getCategoryType())
                 .status(jpa.getStatus())
-                .color(jpa.getColor())
-                .icon(jpa.getIcon())
-                .materialCount(jpa.getMaterialCount())
-                .subCategoryCount(jpa.getSubCategoryCount())
-                .totalItems(jpa.getTotalItems())
                 .createdBy(jpa.getCreatedBy())
                 .createdAt(jpa.getCreatedAt())
                 .updatedAt(jpa.getUpdatedAt())
                 .build();
 
-        domain.setDeletedAt(jpa.getDeletedAt());
-        domain.setDeletedBy(jpa.getDeletedBy());
+        domain.setVersion(jpa.getVersion());
         domain.setUpdatedBy(jpa.getUpdatedBy());
 
         return domain;

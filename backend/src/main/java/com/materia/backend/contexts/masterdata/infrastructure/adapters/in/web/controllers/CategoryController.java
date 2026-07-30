@@ -2,9 +2,11 @@ package com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.c
 
 import com.materia.backend.contexts.masterdata.application.dtos.category.CreateCategoryInput;
 import com.materia.backend.contexts.masterdata.application.dtos.category.CategoryOutput;
+import com.materia.backend.contexts.masterdata.application.dtos.category.UpdateCategoryInput;
 import com.materia.backend.contexts.masterdata.domain.ports.in.CategoryUseCase;
 import com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.dtos.category.CreateCategoryWebRequest;
 import com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.dtos.category.CategoryWebResponse;
+import com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.dtos.category.UpdateCategoryWebRequest;
 import com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.mappers.CategoryWebMapper;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -54,8 +56,8 @@ public class CategoryController {
     @PutMapping("/{id}")
     public ResponseEntity<CategoryWebResponse> updateCategory(
             @PathVariable UUID id,
-            @Valid @RequestBody CreateCategoryWebRequest webRequest) {
-        CreateCategoryInput request = webMapper.toAppCreateRequest(webRequest);
+            @Valid @RequestBody UpdateCategoryWebRequest webRequest) {
+        UpdateCategoryInput request = webMapper.toAppUpdateRequest(webRequest);
         CategoryOutput response = categoryUseCase.update(id, request);
         return ResponseEntity.ok(webMapper.toWebResponse(response));
     }
