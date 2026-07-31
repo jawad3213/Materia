@@ -10,7 +10,7 @@ import java.util.UUID;
  * This is a port in Hexagonal Architecture
  * NO framework dependencies
  */
-public interface BaseRepository<T extends BaseEntity> {
+public interface BaseRepository<T extends com.materia.backend.common.domain.BaseEntity> {
 
     /**
      * Find entity by ID
@@ -18,10 +18,9 @@ public interface BaseRepository<T extends BaseEntity> {
     Optional<T> findById(UUID uuid);
 
     /**
-     * Find all entities (excluding deleted)
+     * Find all entities
      */
     List<T> findAll();
-
 
     /**
      * Save an entity
@@ -34,15 +33,14 @@ public interface BaseRepository<T extends BaseEntity> {
     List<T> saveAll(List<T> entities);
 
     /**
-     * Delete by ID (soft delete)
+     * Delete by ID (hard delete)
      */
     void deleteById(UUID uuid);
 
     /**
-     * Delete an entity (soft delete)
+     * Delete an entity (hard delete)
      */
     void delete(T entity);
-
 
     /**
      * Check if entity exists

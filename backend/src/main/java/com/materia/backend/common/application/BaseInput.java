@@ -8,18 +8,18 @@ import java.util.UUID;
  * All request DTOs should extend this class
  * Used for input validation and data transfer from clients
  */
-public abstract class BaseRequest {
+public abstract class BaseInput {
 
     private final String requestId;
     private final LocalDateTime timestamp;
     private String userId;
 
-    protected BaseRequest() {
+    protected BaseInput() {
         this.requestId = UUID.randomUUID().toString();
         this.timestamp = LocalDateTime.now();
     }
 
-    protected BaseRequest(String userId) {
+    protected BaseInput(String userId) {
         this();
         this.userId = userId;
     }

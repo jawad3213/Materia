@@ -8,10 +8,11 @@ import java.util.stream.Collectors;
  * Use MapStruct or custom implementations in infrastructure layer
  *
  * @param <E> Entity type (Domain)
- * @param <R> Request DTO type
+ * @param <CR> Create Request DTO type
+ * @param <UR> Update Request DTO type
  * @param <D> Response DTO type
  */
-public interface BaseMapper<E, R extends BaseRequest, D extends BaseResponse> {
+public interface BaseMapper<E, CR extends BaseInput, UR extends BaseInput, D extends BaseOutput> {
 
     /**
      * Convert Entity to Response DTO
@@ -19,19 +20,19 @@ public interface BaseMapper<E, R extends BaseRequest, D extends BaseResponse> {
     D toResponse(E entity);
 
     /**
-     * Convert Request DTO to Entity
+     * Convert Create Request DTO to Entity
      */
-    E toEntity(R request);
+    E toEntity(CR request);
 
     /**
-     * Convert Request DTO to existing Entity (partial update)
+     * Convert Update Request DTO to existing Entity (partial update)
      */
-    void updateEntity(R request, E entity);
+    void updateEntity(E entity, UR request);
 
     /**
      * Convert list of Entities to list of Response DTOs
      */
-    default List<D> toResponses(List<E> entities) {
+    default List<D> toResponseList(List<E> entities) {
         if (entities == null) {
             return List.of();
         }
@@ -41,9 +42,9 @@ public interface BaseMapper<E, R extends BaseRequest, D extends BaseResponse> {
     }
 
     /**
-     * Convert list of Request DTOs to list of Entities
+     * Convert list of Create Request DTOs to list of Entities
      */
-    default List<E> toEntities(List<R> requests) {
+    default List<E> toEntities(List<CR> requests) {
         if (requests == null) {
             return List.of();
         }
