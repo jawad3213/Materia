@@ -1,0 +1,108 @@
+package com.materia.backend.contexts.masterdata.application.dtos.material;
+
+import com.materia.backend.common.application.BaseInput;
+import java.math.BigDecimal;
+
+/**
+ * Request DTO for creating a new Material
+ */
+public class CreateMaterialInput extends BaseInput {
+
+    // ---- IDENTIFICATION ----
+    private String name;
+    private String description;
+    private String shortDescription;
+    private String searchKeywords;
+    private String alternativeName;
+
+    // ---- CLASSIFICATION ----
+    private String categoryId;
+    private String supplierId;
+    private String materialType;
+    private String status;
+
+    // ---- UNITS ----
+    private String unitOfMeasure;
+
+    // ---- STOCK ----
+    private Integer currentStock;
+    private Integer minimumStock;
+    private Integer maximumStock;
+    private Integer reorderPoint;
+    private Integer safetyStock;
+    private Integer economicOrderQuantity;
+
+    // ---- FINANCES ----
+    private BigDecimal standardPrice;
+    private String standardPriceCurrency;
+    private BigDecimal costPrice;
+    private String costPriceCurrency;
+
+    // ---- AUDIT ----
+    private String createdBy;
+
+    // Getters and Setters
+
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
+
+    public String getShortDescription() { return shortDescription; }
+    public void setShortDescription(String shortDescription) { this.shortDescription = shortDescription; }
+
+    public String getSearchKeywords() { return searchKeywords; }
+    public void setSearchKeywords(String searchKeywords) { this.searchKeywords = searchKeywords; }
+
+    public String getAlternativeName() { return alternativeName; }
+    public void setAlternativeName(String alternativeName) { this.alternativeName = alternativeName; }
+
+    public String getCategoryId() { return categoryId; }
+    public void setCategoryId(String categoryId) { this.categoryId = categoryId; }
+
+    public String getSupplierId() { return supplierId; }
+    public void setSupplierId(String supplierId) { this.supplierId = supplierId; }
+
+    public String getMaterialType() { return materialType; }
+    public void setMaterialType(String materialType) { this.materialType = materialType; }
+
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
+
+    public String getUnitOfMeasure() { return unitOfMeasure; }
+    public void setUnitOfMeasure(String unitOfMeasure) { this.unitOfMeasure = unitOfMeasure; }
+
+    public Integer getCurrentStock() { return currentStock; }
+    public void setCurrentStock(Integer currentStock) { this.currentStock = currentStock; }
+
+    public Integer getMinimumStock() { return minimumStock; }
+    public void setMinimumStock(Integer minimumStock) { this.minimumStock = minimumStock; }
+
+    public Integer getMaximumStock() { return maximumStock; }
+    public void setMaximumStock(Integer maximumStock) { this.maximumStock = maximumStock; }
+
+    public Integer getReorderPoint() { return reorderPoint; }
+    public void setReorderPoint(Integer reorderPoint) { this.reorderPoint = reorderPoint; }
+
+    public Integer getSafetyStock() { return safetyStock; }
+    public void setSafetyStock(Integer safetyStock) { this.safetyStock = safetyStock; }
+
+    public Integer getEconomicOrderQuantity() { return economicOrderQuantity; }
+    public void setEconomicOrderQuantity(Integer economicOrderQuantity) { this.economicOrderQuantity = economicOrderQuantity; }
+
+    public BigDecimal getStandardPrice() { return standardPrice; }
+    public void setStandardPrice(BigDecimal standardPrice) { this.standardPrice = standardPrice; }
+
+    public String getStandardPriceCurrency() { return standardPriceCurrency; }
+    public void setStandardPriceCurrency(String standardPriceCurrency) { this.standardPriceCurrency = standardPriceCurrency; }
+
+    public BigDecimal getCostPrice() { return costPrice; }
+    public void setCostPrice(BigDecimal costPrice) { this.costPrice = costPrice; }
+
+    public String getCostPriceCurrency() { return costPriceCurrency; }
+    public void setCostPriceCurrency(String costPriceCurrency) { this.costPriceCurrency = costPriceCurrency; }
+
+    public String getCreatedBy() { return createdBy; }
+    public void setCreatedBy(String createdBy) { this.createdBy = createdBy; }
+}
