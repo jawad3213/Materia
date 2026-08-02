@@ -1,4 +1,4 @@
-package com.materia.backend.contexts.requisition.domain.valueObjects;
+package com.materia.backend.contexts.purchaseRequisition.domain.valueObjects;
 
 import java.util.Objects;
 import java.util.regex.Pattern;

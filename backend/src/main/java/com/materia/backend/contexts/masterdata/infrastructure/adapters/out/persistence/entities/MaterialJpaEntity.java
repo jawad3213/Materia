@@ -9,6 +9,8 @@ import com.materia.backend.contexts.masterdata.domain.enums.UnitOfMeasure;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * JPA Entity for Material
@@ -133,6 +135,10 @@ public class MaterialJpaEntity extends BaseJpaEntity {
     @Column(name = "obsoleted_reason", length = 500)
     private String obsoletedReason;
 
+    @OneToMany(mappedBy = "material", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @OrderBy("occurredAt DESC")
+    private List<MaterialStockMovementJpaEntity> stockMovements = new ArrayList<>();
+
     // ============================================================
     // CONSTRUCTORS
     // ============================================================
@@ -237,4 +243,9 @@ public class MaterialJpaEntity extends BaseJpaEntity {
 
     public String getObsoletedReason() { return obsoletedReason; }
     public void setObsoletedReason(String obsoletedReason) { this.obsoletedReason = obsoletedReason; }
+
+    public List<MaterialStockMovementJpaEntity> getStockMovements() { return stockMovements; }
+    public void setStockMovements(List<MaterialStockMovementJpaEntity> stockMovements) {
+        this.stockMovements = stockMovements != null ? stockMovements : new ArrayList<>();
+    }
 }

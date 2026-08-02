@@ -3,12 +3,15 @@ package com.materia.backend.contexts.masterdata.domain.entities;
 import com.materia.backend.contexts.masterdata.domain.enums.CurrencyCode;
 import com.materia.backend.contexts.masterdata.domain.enums.MaterialType;
 import com.materia.backend.contexts.masterdata.domain.enums.MaterialStatus;
+import com.materia.backend.contexts.masterdata.domain.enums.StockMovementType;
 import com.materia.backend.contexts.masterdata.domain.enums.UnitOfMeasure;
 import com.materia.backend.contexts.masterdata.domain.valueObjects.MaterialCode;
 import com.materia.backend.contexts.masterdata.domain.valueObjects.Money;
 
 import com.materia.backend.common.domain.BaseEntity;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -57,6 +60,9 @@ public class Material extends BaseEntity {
     private String obsoletedBy;
     private String obsoletedReason;
 
+    // ---- HISTORY ----
+    private List<StockMovement> stockMovements;
+
     // ============================================================
     // CONSTRUCTORS
     // ============================================================
@@ -78,6 +84,7 @@ public class Material extends BaseEntity {
         this.lastPurchasePrice = Money.zero(CurrencyCode.MAD);
         this.averagePurchasePrice = Money.zero(CurrencyCode.MAD);
         this.status = MaterialStatus.ACTIVE;
+        this.stockMovements = new ArrayList<>();
     }
 
     /**
@@ -125,6 +132,11 @@ public class Material extends BaseEntity {
         this.obsoletedAt = builder.obsoletedAt;
         this.obsoletedBy = builder.obsoletedBy;
         this.obsoletedReason = builder.obsoletedReason;
+
+        // ---- HISTORY ----
+        this.stockMovements = builder.stockMovements != null
+                ? new ArrayList<>(builder.stockMovements)
+                : new ArrayList<>();
 
         // ---- AUDIT ----
         if (builder.createdAt != null) {
@@ -183,6 +195,9 @@ public class Material extends BaseEntity {
         private LocalDateTime obsoletedAt;
         private String obsoletedBy;
         private String obsoletedReason;
+
+        // ---- HISTORY ----
+        private List<StockMovement> stockMovements = new ArrayList<>();
 
         // ---- AUDIT ----
         private String createdBy;
@@ -253,6 +268,10 @@ public class Material extends BaseEntity {
         public Builder obsoletedAt(LocalDateTime obsoletedAt) { this.obsoletedAt = obsoletedAt; return this; }
         public Builder obsoletedBy(String obsoletedBy) { this.obsoletedBy = obsoletedBy; return this; }
         public Builder obsoletedReason(String obsoletedReason) { this.obsoletedReason = obsoletedReason; return this; }
+        public Builder stockMovements(List<StockMovement> stockMovements) {
+            this.stockMovements = stockMovements != null ? new ArrayList<>(stockMovements) : new ArrayList<>();
+            return this;
+        }
 
         // ============================================================
         // BUILDERS - AUDIT
@@ -407,8 +426,10 @@ public class Material extends BaseEntity {
         if (quantity == null || quantity <= 0) {
             throw new IllegalArgumentException("Quantity must be positive");
         }
+        int previousStock = this.currentStock != null ? this.currentStock : 0;
         this.currentStock += quantity;
         this.availableStock += quantity;
+        recordStockMovement(StockMovementType.RECEIPT, quantity, previousStock, this.currentStock, "Stock increase");
         this.setUpdatedAt(LocalDateTime.now());
     }
 
@@ -425,9 +446,63 @@ public class Material extends BaseEntity {
         if (this.currentStock < quantity) {
             throw new IllegalStateException("Insufficient stock. Available: " + this.currentStock);
         }
+        int previousStock = this.currentStock;
         this.currentStock -= quantity;
         this.availableStock -= quantity;
+        recordStockMovement(StockMovementType.ISSUE, quantity, previousStock, this.currentStock, "Stock decrease");
         this.setUpdatedAt(LocalDateTime.now());
+    }
+
+    public void adjustStock(Integer newCurrentStock, String reason) {
+        if (isObsolete()) {
+            throw new IllegalStateException("Cannot modify stock of an obsolete material");
+        }
+        if (newCurrentStock == null || newCurrentStock < 0) {
+            throw new IllegalArgumentException("Current stock cannot be negative");
+        }
+
+        int previousStock = this.currentStock != null ? this.currentStock : 0;
+        this.currentStock = newCurrentStock;
+        this.availableStock = newCurrentStock;
+
+        if (previousStock != newCurrentStock) {
+            recordStockMovement(
+                    StockMovementType.ADJUSTMENT,
+                    Math.abs(newCurrentStock - previousStock),
+                    previousStock,
+                    newCurrentStock,
+                    reason != null && !reason.trim().isEmpty() ? reason : "Manual stock adjustment"
+            );
+        }
+
+        this.setUpdatedAt(LocalDateTime.now());
+    }
+
+    public void recordOpeningBalance(String reason) {
+        int openingStock = this.currentStock != null ? this.currentStock : 0;
+        if (openingStock <= 0 || !this.stockMovements.isEmpty()) {
+            return;
+        }
+
+        recordStockMovement(
+                StockMovementType.OPENING_BALANCE,
+                openingStock,
+                0,
+                openingStock,
+                reason != null && !reason.trim().isEmpty() ? reason : "Initial stock"
+        );
+    }
+
+    private void recordStockMovement(StockMovementType type,
+                                     Integer quantity,
+                                     Integer previousStock,
+                                     Integer newStock,
+                                     String reason) {
+        if (this.stockMovements == null) {
+            this.stockMovements = new ArrayList<>();
+        }
+
+        this.stockMovements.add(0, StockMovement.create(type, quantity, previousStock, newStock, reason));
     }
 
     /**
@@ -590,6 +665,11 @@ public class Material extends BaseEntity {
 
     public String getObsoletedReason() { return obsoletedReason; }
     public void setObsoletedReason(String obsoletedReason) { this.obsoletedReason = obsoletedReason; this.setUpdatedAt(LocalDateTime.now()); }
+
+    public List<StockMovement> getStockMovements() { return stockMovements; }
+    public void setStockMovements(List<StockMovement> stockMovements) {
+        this.stockMovements = stockMovements != null ? new ArrayList<>(stockMovements) : new ArrayList<>();
+    }
 
     // ============================================================
     // VERIFICATION METHODS
