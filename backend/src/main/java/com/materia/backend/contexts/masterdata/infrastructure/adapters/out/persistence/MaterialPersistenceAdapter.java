@@ -89,10 +89,7 @@ public class MaterialPersistenceAdapter implements MaterialRepository {
         return jpaRepository.findByCode(code).map(mapper::toDomainEntity);
     }
 
-    @Override
-    public List<String> findCodesByPrefix(String prefix) {
-        return jpaRepository.findCodesByPrefix(prefix);
-    }
+
 
     @Override
     public List<Material> findByCategoryId(String categoryId) {

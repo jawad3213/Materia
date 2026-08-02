@@ -20,10 +20,7 @@ public interface MaterialRepository extends BaseRepository<Material> {
      */
     Optional<Material> findByCode(String code);
 
-    /**
-     * Finds codes by prefix
-     */
-    List<String> findCodesByPrefix(String prefix);
+
 
     /**
      * Finds materials by category

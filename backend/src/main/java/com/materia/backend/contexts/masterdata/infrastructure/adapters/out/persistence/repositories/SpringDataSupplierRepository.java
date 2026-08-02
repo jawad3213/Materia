@@ -18,8 +18,7 @@ public interface SpringDataSupplierRepository extends JpaRepository<SupplierJpaE
 
     Optional<SupplierJpaEntity> findByCode(String code);
 
-    @Query("SELECT s.code FROM SupplierJpaEntity s WHERE s.code LIKE CONCAT(:prefix, '-%')")
-    List<String> findCodesByPrefix(@Param("prefix") String prefix);
+
 
     List<SupplierJpaEntity> findByStatus(String status);
 

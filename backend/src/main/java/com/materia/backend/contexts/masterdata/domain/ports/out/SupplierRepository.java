@@ -19,10 +19,7 @@ public interface SupplierRepository extends BaseRepository<Supplier> {
      */
     Optional<Supplier> findByCode(String code);
 
-    /**
-     * Finds codes by prefix
-     */
-    List<String> findCodesByPrefix(String prefix);
+
 
     /**
      * Finds active suppliers

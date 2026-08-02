@@ -1,6 +1,6 @@
 package com.materia.backend.contexts.masterdata.application.services;
 
-import com.materia.backend.contexts.masterdata.domain.ports.out.SupplierRepository;
+import com.materia.backend.contexts.masterdata.domain.ports.out.CodeSequenceRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -8,36 +8,18 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public class SupplierCodeGeneratorService {
 
-    private final SupplierRepository repository;
+    private final CodeSequenceRepository sequenceRepository;
     private static final String PREFIX_SUPPLIER = "SUP";
 
-    public SupplierCodeGeneratorService(SupplierRepository repository) {
-        this.repository = repository;
+    public SupplierCodeGeneratorService(CodeSequenceRepository sequenceRepository) {
+        this.sequenceRepository = sequenceRepository;
     }
 
     /**
      * Generates a code automatically for supplier
      */
     public String generateCode() {
-        int nextNumber = getNextSequenceNumber(PREFIX_SUPPLIER);
+        int nextNumber = sequenceRepository.getNextValueAndIncrement(PREFIX_SUPPLIER);
         return String.format("%s-%04d", PREFIX_SUPPLIER, nextNumber);
-    }
-
-    /**
-     * Gets the next sequence number for the prefix
-     */
-    private int getNextSequenceNumber(String prefix) {
-        var codes = repository.findCodesByPrefix(prefix);
-        
-        if (codes.isEmpty()) {
-            return 1;
-        }
-        
-        return codes.stream()
-            .map(code -> code.replace(prefix + "-", ""))
-            .filter(s -> s.matches("\\d{4}"))
-            .mapToInt(Integer::parseInt)
-            .max()
-            .orElse(0) + 1;
     }
 }
