@@ -21,7 +21,6 @@ public interface MaterialRepository extends BaseRepository<Material> {
     Optional<Material> findByCode(String code);
 
 
-
     /**
      * Finds materials by category
      */

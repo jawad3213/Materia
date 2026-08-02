@@ -90,7 +90,6 @@ public class MaterialPersistenceAdapter implements MaterialRepository {
     }
 
 
-
     @Override
     public List<Material> findByCategoryId(String categoryId) {
         return jpaRepository.findByCategoryId(categoryId).stream()

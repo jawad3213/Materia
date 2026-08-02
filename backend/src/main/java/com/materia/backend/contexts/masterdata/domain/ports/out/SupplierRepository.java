@@ -20,7 +20,6 @@ public interface SupplierRepository extends BaseRepository<Supplier> {
     Optional<Supplier> findByCode(String code);
 
 
-
     /**
      * Finds active suppliers
      */

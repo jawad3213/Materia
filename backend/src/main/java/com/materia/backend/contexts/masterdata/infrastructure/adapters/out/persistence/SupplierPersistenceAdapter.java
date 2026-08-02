@@ -85,7 +85,6 @@ public class SupplierPersistenceAdapter implements SupplierRepository {
     }
 
 
-
     @Override
     public List<Supplier> findByStatus(String status) {
         return jpaRepository.findByStatus(status).stream()
