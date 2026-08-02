@@ -39,7 +39,7 @@ public class MaterialMapper implements BaseMapper<Material, CreateMaterialInput,
                 ? CurrencyCode.fromCode(request.getCostPriceCurrency())
                 : CurrencyCode.MAD;
 
-        return Material.builder()
+        Material material = Material.builder()
                 .name(request.getName())
                 .description(request.getDescription())
                 .shortDescription(request.getShortDescription())
@@ -71,6 +71,9 @@ public class MaterialMapper implements BaseMapper<Material, CreateMaterialInput,
                         : null)
                 .createdBy(request.getCreatedBy())
                 .build();
+
+        material.recordOpeningBalance("Initial stock");
+        return material;
     }
 
     /**
@@ -89,7 +92,7 @@ public class MaterialMapper implements BaseMapper<Material, CreateMaterialInput,
         if (request.getMaterialType() != null) entity.setMaterialType(MaterialType.fromValue(request.getMaterialType()));
         if (request.getStatus() != null) entity.setStatus(MaterialStatus.fromValue(request.getStatus()));
         if (request.getUnitOfMeasure() != null) entity.setUnitOfMeasure(UnitOfMeasure.fromValue(request.getUnitOfMeasure()));
-        if (request.getCurrentStock() != null) entity.setCurrentStock(request.getCurrentStock());
+        if (request.getCurrentStock() != null) entity.adjustStock(request.getCurrentStock(), "Manual stock adjustment");
         if (request.getMinimumStock() != null) entity.setMinimumStock(request.getMinimumStock());
         if (request.getMaximumStock() != null) entity.setMaximumStock(request.getMaximumStock());
         if (request.getReorderPoint() != null) entity.setReorderPoint(request.getReorderPoint());

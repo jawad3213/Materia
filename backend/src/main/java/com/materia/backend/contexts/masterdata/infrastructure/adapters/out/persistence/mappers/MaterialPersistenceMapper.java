@@ -1,13 +1,17 @@
 package com.materia.backend.contexts.masterdata.infrastructure.adapters.out.persistence.mappers;
 
 import com.materia.backend.contexts.masterdata.domain.entities.Material;
+import com.materia.backend.contexts.masterdata.domain.entities.StockMovement;
 import com.materia.backend.contexts.masterdata.domain.enums.CurrencyCode;
 import com.materia.backend.contexts.masterdata.domain.valueObjects.MaterialCode;
 import com.materia.backend.contexts.masterdata.domain.valueObjects.Money;
 import com.materia.backend.contexts.masterdata.infrastructure.adapters.out.persistence.entities.MaterialJpaEntity;
+import com.materia.backend.contexts.masterdata.infrastructure.adapters.out.persistence.entities.MaterialStockMovementJpaEntity;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Mapper between Material domain entity and MaterialJpaEntity
@@ -68,6 +72,7 @@ public class MaterialPersistenceMapper {
         jpa.setObsoletedAt(domain.getObsoletedAt());
         jpa.setObsoletedBy(domain.getObsoletedBy());
         jpa.setObsoletedReason(domain.getObsoletedReason());
+        jpa.setStockMovements(toMovementJpaEntities(domain.getStockMovements(), jpa));
 
         // Audit fields
         jpa.setCreatedAt(domain.getCreatedAt());
@@ -120,6 +125,7 @@ public class MaterialPersistenceMapper {
         domain.setObsoletedAt(jpa.getObsoletedAt());
         domain.setObsoletedBy(jpa.getObsoletedBy());
         domain.setObsoletedReason(jpa.getObsoletedReason());
+        domain.setStockMovements(toDomainMovements(jpa.getStockMovements()));
 
         // Audit fields
         domain.setCreatedAt(jpa.getCreatedAt());
@@ -135,5 +141,57 @@ public class MaterialPersistenceMapper {
         if (amount == null) return null;
         CurrencyCode cur = currency != null ? currency : CurrencyCode.MAD;
         return Money.of(amount, cur);
+    }
+
+    private List<MaterialStockMovementJpaEntity> toMovementJpaEntities(List<StockMovement> movements,
+                                                                       MaterialJpaEntity parent) {
+        List<MaterialStockMovementJpaEntity> entities = new ArrayList<>();
+        if (movements == null) {
+            return entities;
+        }
+
+        for (StockMovement movement : movements) {
+            if (movement == null) {
+                continue;
+            }
+
+            MaterialStockMovementJpaEntity entity = new MaterialStockMovementJpaEntity();
+            entity.setId(movement.getId());
+            entity.setMaterial(parent);
+            entity.setMovementType(movement.getMovementType());
+            entity.setQuantity(movement.getQuantity());
+            entity.setPreviousStock(movement.getPreviousStock());
+            entity.setNewStock(movement.getNewStock());
+            entity.setReason(movement.getReason());
+            entity.setOccurredAt(movement.getOccurredAt());
+            entities.add(entity);
+        }
+
+        return entities;
+    }
+
+    private List<StockMovement> toDomainMovements(List<MaterialStockMovementJpaEntity> entities) {
+        List<StockMovement> movements = new ArrayList<>();
+        if (entities == null) {
+            return movements;
+        }
+
+        for (MaterialStockMovementJpaEntity entity : entities) {
+            if (entity == null) {
+                continue;
+            }
+
+            StockMovement movement = new StockMovement();
+            movement.setId(entity.getId());
+            movement.setMovementType(entity.getMovementType());
+            movement.setQuantity(entity.getQuantity());
+            movement.setPreviousStock(entity.getPreviousStock());
+            movement.setNewStock(entity.getNewStock());
+            movement.setReason(entity.getReason());
+            movement.setOccurredAt(entity.getOccurredAt());
+            movements.add(movement);
+        }
+
+        return movements;
     }
 }

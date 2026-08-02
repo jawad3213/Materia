@@ -1,0 +1,271 @@
+package com.materia.backend.contexts.purchaseRequisition.application.services;
+
+import com.materia.backend.common.application.PageResponse;
+import com.materia.backend.common.application.exceptions.NotFoundException;
+import com.materia.backend.common.application.exceptions.ValidationException;
+import com.materia.backend.contexts.masterdata.domain.entities.Material;
+import com.materia.backend.contexts.masterdata.domain.ports.out.MaterialRepository;
+import com.materia.backend.contexts.purchaseRequisition.application.dtos.CreateRequisitionInput;
+import com.materia.backend.contexts.purchaseRequisition.application.dtos.RequisitionOutput;
+import com.materia.backend.contexts.purchaseRequisition.application.dtos.RequisitionSearchCriteria;
+import com.materia.backend.contexts.purchaseRequisition.application.dtos.UpdateRequisitionInput;
+import com.materia.backend.contexts.purchaseRequisition.application.mappers.RequisitionMapper;
+import com.materia.backend.contexts.purchaseRequisition.domain.entities.Requisition;
+import com.materia.backend.contexts.purchaseRequisition.domain.entities.RequisitionLine;
+import com.materia.backend.contexts.purchaseRequisition.domain.exceptions.RequisitionMaterialNotFoundException;
+import com.materia.backend.contexts.purchaseRequisition.domain.exceptions.RequisitionNotFoundException;
+import com.materia.backend.contexts.purchaseRequisition.domain.enums.RequisitionStatus;
+import com.materia.backend.contexts.purchaseRequisition.domain.ports.in.RequisitionUseCase;
+import com.materia.backend.contexts.purchaseRequisition.domain.ports.out.RequisitionRepository;
+import com.materia.backend.contexts.purchaseRequisition.domain.valueObjects.RequisitionSearchFilter;
+import org.springframework.stereotype.Service;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Retryable;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+/**
+ * Application service for purchase requisitions.
+ */
+@Service
+public class RequisitionService implements RequisitionUseCase {
+
+    private final RequisitionRepository requisitionRepository;
+    private final MaterialRepository materialRepository;
+    private final RequisitionMapper mapper;
+    private final RequisitionCodeGeneratorService codeGenerator;
+
+    public RequisitionService(RequisitionRepository requisitionRepository,
+                              MaterialRepository materialRepository,
+                              RequisitionMapper mapper,
+                              RequisitionCodeGeneratorService codeGenerator) {
+        this.requisitionRepository = requisitionRepository;
+        this.materialRepository = materialRepository;
+        this.mapper = mapper;
+        this.codeGenerator = codeGenerator;
+    }
+
+    @Override
+    @Retryable(retryFor = DataIntegrityViolationException.class, maxAttempts = 3, backoff = @Backoff(delay = 100))
+    @Transactional
+    public RequisitionOutput create(CreateRequisitionInput request) {
+        Requisition requisition = mapper.toEntity(request);
+        hydrateAndValidateLines(requisition.getLines());
+        requisition.setLines(requisition.getLines());
+        requisition.recalculateTotal();
+        requisition.setRequisitionCode(generateNextCode());
+        return mapper.toResponse(requisitionRepository.save(requisition));
+    }
+
+    @Override
+    public RequisitionOutput update(UUID id, CreateRequisitionInput request) {
+        UpdateRequisitionInput updateRequest = new UpdateRequisitionInput();
+        updateRequest.setTitle(request.getTitle());
+        updateRequest.setDescription(request.getDescription());
+        updateRequest.setJustification(request.getJustification());
+        updateRequest.setRequiredDate(request.getRequiredDate());
+        updateRequest.setCurrencyCode(request.getCurrencyCode());
+        updateRequest.setLines(request.getLines());
+        updateRequest.setUserId(request.getUserId());
+        return update(id, updateRequest);
+    }
+
+    @Override
+    @Transactional
+    public RequisitionOutput update(UUID id, UpdateRequisitionInput request) {
+        Requisition existing = getEntityById(id);
+        if (!existing.isModifiable()) {
+            throw new IllegalStateException("Only draft requisitions can be updated");
+        }
+        mapper.updateEntity(existing, request);
+        hydrateAndValidateLines(existing.getLines());
+        existing.setLines(existing.getLines());
+        existing.recalculateTotal();
+        existing.setUpdatedAt(LocalDateTime.now());
+        existing.setUpdatedBy(request.getUserId());
+        return mapper.toResponse(requisitionRepository.save(existing));
+    }
+
+    @Override
+    @Transactional
+    public void delete(UUID id) {
+        Requisition requisition = getEntityById(id);
+        if (!requisition.isDeletable()) {
+            throw new IllegalStateException("Only draft requisitions can be deleted");
+        }
+        requisitionRepository.deleteById(id);
+    }
+
+    @Override
+    public RequisitionOutput getById(UUID id) {
+        return mapper.toResponse(getEntityById(id));
+    }
+
+    @Override
+    public RequisitionOutput getByCode(String code) {
+        return mapper.toResponse(
+                requisitionRepository.findByCode(code)
+                        .orElseThrow(() -> new NotFoundException("Purchase requisition not found: " + code))
+        );
+    }
+
+    @Override
+    public List<RequisitionOutput> getAll() {
+        return mapper.toResponseList(requisitionRepository.findAll());
+    }
+
+    @Override
+    public List<RequisitionOutput> getByStatus(String status) {
+        RequisitionStatus requisitionStatus = mapper.toStatus(status);
+        return mapper.toResponseList(requisitionRepository.findByStatus(requisitionStatus));
+    }
+
+    @Override
+    public List<RequisitionOutput> getByRequesterId(String requesterId) {
+        return mapper.toResponseList(requisitionRepository.findByRequesterId(requesterId));
+    }
+
+    @Override
+    public List<RequisitionOutput> searchByKeyword(String keyword) {
+        return mapper.toResponseList(requisitionRepository.search(keyword));
+    }
+
+    @Override
+    public PageResponse<RequisitionOutput> searchAdvanced(RequisitionSearchCriteria criteria, int page, int size) {
+        RequisitionStatus status = null;
+        if (criteria != null && criteria.getStatus() != null && !criteria.getStatus().trim().isEmpty()) {
+            status = mapper.toStatus(criteria.getStatus());
+        }
+
+        RequisitionSearchFilter filter = RequisitionSearchFilter.builder()
+                .keyword(criteria != null ? criteria.getKeyword() : null)
+                .requesterId(criteria != null ? criteria.getRequesterId() : null)
+                .approverId(criteria != null ? criteria.getApproverId() : null)
+                .status(status)
+                .currencyCode(criteria != null ? criteria.getCurrencyCode() : null)
+                .requiredDateFrom(criteria != null ? criteria.getRequiredDateFrom() : null)
+                .requiredDateTo(criteria != null ? criteria.getRequiredDateTo() : null)
+                .submittedDateFrom(criteria != null ? criteria.getSubmittedDateFrom() : null)
+                .submittedDateTo(criteria != null ? criteria.getSubmittedDateTo() : null)
+                .build();
+
+        PageResponse<Requisition> domainPage = requisitionRepository.searchAdvanced(filter, page, size);
+        return new PageResponse<>(
+                mapper.toResponseList(domainPage.getContent()),
+                domainPage.getPageNumber(),
+                domainPage.getPageSize(),
+                domainPage.getTotalElements(),
+                domainPage.getTotalPages(),
+                domainPage.isLast()
+        );
+    }
+
+    @Override
+    @Transactional
+    public RequisitionOutput submit(UUID id, String userId) {
+        Requisition requisition = getEntityById(id);
+        requisition.submit(userId);
+        return mapper.toResponse(requisitionRepository.save(requisition));
+    }
+
+    @Override
+    @Transactional
+    public RequisitionOutput approve(UUID id, String approverId, String approverName, String notes) {
+        Requisition requisition = getEntityById(id);
+        requisition.approve(approverId, approverName, notes);
+        return mapper.toResponse(requisitionRepository.save(requisition));
+    }
+
+    @Override
+    @Transactional
+    public RequisitionOutput reject(UUID id, String approverId, String approverName, String reason) {
+        Requisition requisition = getEntityById(id);
+        requisition.reject(approverId, approverName, reason);
+        return mapper.toResponse(requisitionRepository.save(requisition));
+    }
+
+    @Override
+    @Transactional
+    public RequisitionOutput cancel(UUID id, String userId, String reason) {
+        Requisition requisition = getEntityById(id);
+        requisition.cancel(userId, reason);
+        return mapper.toResponse(requisitionRepository.save(requisition));
+    }
+
+    @Override
+    @Transactional
+    public RequisitionOutput convert(UUID id, String purchaseOrderId, String purchaseOrderCode, String userId) {
+        Requisition requisition = getEntityById(id);
+        requisition.convert(purchaseOrderId, purchaseOrderCode, userId);
+        return mapper.toResponse(requisitionRepository.save(requisition));
+    }
+
+    private Requisition getEntityById(UUID id) {
+        return requisitionRepository.findById(id)
+                .orElseThrow(() -> new RequisitionNotFoundException(id));
+    }
+
+    private void hydrateAndValidateLines(List<RequisitionLine> lines) {
+        if (lines == null || lines.isEmpty()) {
+            throw new ValidationException("At least one requisition line is required",
+                    Map.of("lines", "At least one line is required"));
+        }
+
+        for (int i = 0; i < lines.size(); i++) {
+            RequisitionLine line = lines.get(i);
+            if (line == null) {
+                throw new ValidationException("Invalid requisition lines",
+                        Map.of("lines[" + i + "]", "Line cannot be null"));
+            }
+
+            Material material = resolveMaterial(line, i);
+            UUID existingId = line.getId();
+            line.populateFromMaterial(material);
+
+            if (existingId != null) {
+                line.setId(existingId);
+            } else {
+                line.setId(UUID.randomUUID());
+            }
+
+            line.setLineNumber(i + 1);
+
+            if (line.getQuantity() == null || line.getQuantity() <= 0) {
+                throw new ValidationException("Invalid requisition line quantity",
+                        Map.of("lines[" + i + "].quantity", "Must be greater than zero"));
+            }
+
+            line.calculateLineTotal();
+        }
+    }
+
+    private Material resolveMaterial(RequisitionLine line, int index) {
+        Material material;
+        if (line.getMaterialId() != null) {
+            material = materialRepository.findById(line.getMaterialId())
+                    .orElseThrow(() -> new RequisitionMaterialNotFoundException("Material not found for line " + (index + 1)));
+        } else if (line.getMaterialCode() != null && !line.getMaterialCode().trim().isEmpty()) {
+            material = materialRepository.findByCode(line.getMaterialCode().trim())
+                    .orElseThrow(() -> new RequisitionMaterialNotFoundException("Material not found for code: " + line.getMaterialCode()));
+        } else {
+            throw new ValidationException("Material is required for each requisition line",
+                    Map.of("lines[" + index + "].material", "Material id or code is required"));
+        }
+
+        if (!material.isOrderable()) {
+            throw new ValidationException("Material is not available for requisition",
+                    Map.of("lines[" + index + "].material", "Only active and orderable materials can be requested"));
+        }
+
+        return material;
+    }
+
+    private com.materia.backend.contexts.purchaseRequisition.domain.valueObjects.RequisitionCode generateNextCode() {
+        return codeGenerator.generateCode();
+    }
+}
