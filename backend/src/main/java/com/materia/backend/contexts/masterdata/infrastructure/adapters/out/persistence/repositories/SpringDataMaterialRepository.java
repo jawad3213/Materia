@@ -20,8 +20,7 @@ public interface SpringDataMaterialRepository extends JpaRepository<MaterialJpaE
 
     Optional<MaterialJpaEntity> findByCode(String code);
 
-    @Query("SELECT m.code FROM MaterialJpaEntity m WHERE m.code LIKE CONCAT(:prefix, '-%')")
-    List<String> findCodesByPrefix(@Param("prefix") String prefix);
+
 
     List<MaterialJpaEntity> findByCategoryId(String categoryId);
 

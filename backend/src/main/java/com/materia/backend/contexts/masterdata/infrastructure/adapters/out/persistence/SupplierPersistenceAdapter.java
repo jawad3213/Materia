@@ -84,10 +84,7 @@ public class SupplierPersistenceAdapter implements SupplierRepository {
         return jpaRepository.findByCode(code).map(mapper::toDomainEntity);
     }
 
-    @Override
-    public List<String> findCodesByPrefix(String prefix) {
-        return jpaRepository.findCodesByPrefix(prefix);
-    }
+
 
     @Override
     public List<Supplier> findByStatus(String status) {
