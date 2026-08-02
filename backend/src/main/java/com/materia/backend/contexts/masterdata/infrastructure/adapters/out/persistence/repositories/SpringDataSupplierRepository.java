@@ -19,7 +19,6 @@ public interface SpringDataSupplierRepository extends JpaRepository<SupplierJpaE
     Optional<SupplierJpaEntity> findByCode(String code);
 
 
-
     List<SupplierJpaEntity> findByStatus(String status);
 
     List<SupplierJpaEntity> findByCountry(String country);

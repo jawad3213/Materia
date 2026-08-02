@@ -21,7 +21,6 @@ public interface SpringDataMaterialRepository extends JpaRepository<MaterialJpaE
     Optional<MaterialJpaEntity> findByCode(String code);
 
 
-
     List<MaterialJpaEntity> findByCategoryId(String categoryId);
 
     boolean existsByCategoryId(String categoryId);
