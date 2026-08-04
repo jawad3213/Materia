@@ -3,8 +3,8 @@ package com.materia.backend.contexts.purchaseRequisition.application.services;
 import com.materia.backend.common.application.PageResponse;
 import com.materia.backend.common.application.exceptions.NotFoundException;
 import com.materia.backend.common.application.exceptions.ValidationException;
-import com.materia.backend.contexts.masterdata.domain.entities.Material;
-import com.materia.backend.contexts.masterdata.domain.ports.out.MaterialRepository;
+import com.materia.backend.contexts.masterData.domain.entities.Material;
+import com.materia.backend.contexts.masterData.domain.ports.out.MaterialRepository;
 import com.materia.backend.contexts.purchaseRequisition.application.dtos.CreateRequisitionInput;
 import com.materia.backend.contexts.purchaseRequisition.application.dtos.RequisitionOutput;
 import com.materia.backend.contexts.purchaseRequisition.application.dtos.RequisitionSearchCriteria;
@@ -13,6 +13,9 @@ import com.materia.backend.contexts.purchaseRequisition.application.mappers.Requ
 import com.materia.backend.contexts.purchaseRequisition.domain.entities.Requisition;
 import com.materia.backend.contexts.purchaseRequisition.domain.entities.RequisitionLine;
 import com.materia.backend.contexts.purchaseRequisition.domain.exceptions.RequisitionMaterialNotFoundException;
+import com.materia.backend.contexts.purchaseRequisition.domain.exceptions.RequisitionMaterialNotOrderableException;
+import com.materia.backend.contexts.purchaseRequisition.domain.exceptions.RequisitionNotDeletableException;
+import com.materia.backend.contexts.purchaseRequisition.domain.exceptions.RequisitionNotModifiableException;
 import com.materia.backend.contexts.purchaseRequisition.domain.exceptions.RequisitionNotFoundException;
 import com.materia.backend.contexts.purchaseRequisition.domain.enums.RequisitionStatus;
 import com.materia.backend.contexts.purchaseRequisition.domain.ports.in.RequisitionUseCase;
@@ -80,7 +83,7 @@ public class RequisitionService implements RequisitionUseCase {
     public RequisitionOutput update(UUID id, UpdateRequisitionInput request) {
         Requisition existing = getEntityById(id);
         if (!existing.isModifiable()) {
-            throw new IllegalStateException("Only draft requisitions can be updated");
+            throw new RequisitionNotModifiableException();
         }
         mapper.updateEntity(existing, request);
         hydrateAndValidateLines(existing.getLines());
@@ -96,7 +99,7 @@ public class RequisitionService implements RequisitionUseCase {
     public void delete(UUID id) {
         Requisition requisition = getEntityById(id);
         if (!requisition.isDeletable()) {
-            throw new IllegalStateException("Only draft requisitions can be deleted");
+            throw new RequisitionNotDeletableException();
         }
         requisitionRepository.deleteById(id);
     }
@@ -258,8 +261,7 @@ public class RequisitionService implements RequisitionUseCase {
         }
 
         if (!material.isOrderable()) {
-            throw new ValidationException("Material is not available for requisition",
-                    Map.of("lines[" + index + "].material", "Only active and orderable materials can be requested"));
+            throw new RequisitionMaterialNotOrderableException(index);
         }
 
         return material;

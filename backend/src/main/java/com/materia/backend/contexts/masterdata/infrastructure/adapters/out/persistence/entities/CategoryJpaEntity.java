@@ -1,7 +1,7 @@
-package com.materia.backend.contexts.masterdata.infrastructure.adapters.out.persistence.entities;
+package com.materia.backend.contexts.masterData.infrastructure.adapters.out.persistence.entities;
 
 import com.materia.backend.common.infrastructure.persistence.BaseJpaEntity;
-import com.materia.backend.contexts.masterdata.domain.enums.MaterialCategoryType;
+import com.materia.backend.contexts.masterData.domain.enums.MaterialCategoryType;
 
 import jakarta.persistence.*;
 import java.util.ArrayList;

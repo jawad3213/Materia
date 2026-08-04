@@ -1,13 +1,13 @@
-package com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.controllers;
+package com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.controllers;
 
-import com.materia.backend.contexts.masterdata.application.dtos.material.CreateMaterialInput;
-import com.materia.backend.contexts.masterdata.application.dtos.material.MaterialOutput;
-import com.materia.backend.contexts.masterdata.application.dtos.material.UpdateMaterialInput;
-import com.materia.backend.contexts.masterdata.domain.ports.in.MaterialUseCase;
-import com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.dtos.material.CreateMaterialWebRequest;
-import com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.dtos.material.MaterialWebResponse;
-import com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.dtos.material.UpdateMaterialWebRequest;
-import com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.mappers.MaterialWebMapper;
+import com.materia.backend.contexts.masterData.application.dtos.material.CreateMaterialInput;
+import com.materia.backend.contexts.masterData.application.dtos.material.MaterialOutput;
+import com.materia.backend.contexts.masterData.application.dtos.material.UpdateMaterialInput;
+import com.materia.backend.contexts.masterData.domain.ports.in.MaterialUseCase;
+import com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.dtos.material.CreateMaterialWebRequest;
+import com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.dtos.material.MaterialWebResponse;
+import com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.dtos.material.UpdateMaterialWebRequest;
+import com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.mappers.MaterialWebMapper;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -130,11 +130,11 @@ public class MaterialController {
 
     @PostMapping("/search")
     public ResponseEntity<com.materia.backend.common.application.PageResponse<MaterialWebResponse>> searchAdvanced(
-            @RequestBody com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.dtos.material.MaterialSearchWebRequest webRequest,
+            @RequestBody com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.dtos.material.MaterialSearchWebRequest webRequest,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
             
-        com.materia.backend.contexts.masterdata.application.dtos.material.MaterialSearchCriteria criteria = webMapper.toAppSearchCriteria(webRequest);
+        com.materia.backend.contexts.masterData.application.dtos.material.MaterialSearchCriteria criteria = webMapper.toAppSearchCriteria(webRequest);
         com.materia.backend.common.application.PageResponse<MaterialOutput> appPage = materialUseCase.searchAdvanced(criteria, page, size);
         
         com.materia.backend.common.application.PageResponse<MaterialWebResponse> webPage = new com.materia.backend.common.application.PageResponse<>(

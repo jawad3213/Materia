@@ -1,10 +1,12 @@
 package com.materia.backend.contexts.purchaseRequisition.domain.entities;
 
 import com.materia.backend.common.domain.BaseEntity;
-import com.materia.backend.contexts.masterdata.domain.enums.CurrencyCode;
+import com.materia.backend.contexts.masterData.domain.enums.CurrencyCode;
 import com.materia.backend.contexts.purchaseRequisition.domain.enums.RequisitionStatus;
+import com.materia.backend.contexts.purchaseRequisition.domain.exceptions.RequisitionCurrencyMismatchException;
+import com.materia.backend.contexts.purchaseRequisition.domain.exceptions.RequisitionInvalidStatusTransitionException;
 import com.materia.backend.contexts.purchaseRequisition.domain.valueObjects.RequisitionCode;
-import com.materia.backend.contexts.masterdata.domain.valueObjects.Money;
+import com.materia.backend.contexts.masterData.domain.valueObjects.Money;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -13,13 +15,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
-/**
- * Purchase Requisition Domain Entity
- * Demande d'achat avec support multi-lignes
- *
- * @author SAP MM Team
- * @version 2.0
- */
+
 public class Requisition extends BaseEntity {
 
     // ============================================================
@@ -36,7 +32,7 @@ public class Requisition extends BaseEntity {
     // ============================================================
 
     // ---- IDENTIFICATION ----
-    private RequisitionCode requisitionCode;  // ✅ Utilisation de RequisitionCode
+    private RequisitionCode requisitionCode;  
     private String title;
     private String description;
     private String justification;
@@ -357,7 +353,7 @@ public class Requisition extends BaseEntity {
         public Builder title(String title) {
             if (title != null && title.length() > MAX_TITLE_LENGTH) {
                 throw new IllegalArgumentException(
-                        "Le titre ne peut pas dépasser " + MAX_TITLE_LENGTH + " caractères"
+                        "Title cannot exceed " + MAX_TITLE_LENGTH + " characters"
                 );
             }
             this.title = title;
@@ -568,34 +564,34 @@ public class Requisition extends BaseEntity {
 
         private void validateRequiredFields() {
             if (this.title == null || this.title.trim().isEmpty()) {
-                throw new IllegalArgumentException("Le titre est obligatoire");
+                throw new IllegalArgumentException("Title is required");
             }
             if (this.requesterId == null || this.requesterId.trim().isEmpty()) {
-                throw new IllegalArgumentException("Le demandeur est obligatoire");
+                throw new IllegalArgumentException("Requester is required");
             }
             if (this.requesterName == null || this.requesterName.trim().isEmpty()) {
-                throw new IllegalArgumentException("Le nom du demandeur est obligatoire");
+                throw new IllegalArgumentException("Requester name is required");
             }
         }
 
         private void validateLines() {
             if (this.lines == null || this.lines.isEmpty()) {
-                throw new IllegalArgumentException("Au moins une ligne est requise");
+                throw new IllegalArgumentException("At least one line is required");
             }
 
             for (int i = 0; i < this.lines.size(); i++) {
                 RequisitionLine line = this.lines.get(i);
                 if (line.getMaterialCode() == null || line.getMaterialCode().trim().isEmpty()) {
-                    throw new IllegalArgumentException("Le matériau est obligatoire pour la ligne " + (i + 1));
+                    throw new IllegalArgumentException("Material is required for line " + (i + 1));
                 }
                 if (line.getQuantity() == null || line.getQuantity() <= 0) {
                     throw new IllegalArgumentException(
-                            "La quantité doit être positive pour la ligne " + (i + 1)
+                            "Quantity must be greater than zero for line " + (i + 1)
                     );
                 }
                 if (line.getMaterialName() == null || line.getMaterialName().trim().isEmpty()) {
                     throw new IllegalArgumentException(
-                            "Le nom du matériau est obligatoire pour la ligne " + (i + 1)
+                            "Material name is required for line " + (i + 1)
                     );
                 }
             }
@@ -626,7 +622,7 @@ public class Requisition extends BaseEntity {
      */
     public void addLine(RequisitionLine line) {
         if (line == null) {
-            throw new IllegalArgumentException("La ligne ne peut pas être nulle");
+            throw new IllegalArgumentException("Line cannot be null");
         }
         // Assigner le numéro de ligne
         line.setLineNumber(this.lines.size() + 1);
@@ -640,7 +636,7 @@ public class Requisition extends BaseEntity {
      */
     public void removeLine(int index) {
         if (index < 0 || index >= this.lines.size()) {
-            throw new IllegalArgumentException("Index de ligne invalide: " + index);
+            throw new IllegalArgumentException("Invalid line index: " + index);
         }
         this.lines.remove(index);
         // Réassigner les numéros de ligne
@@ -656,7 +652,7 @@ public class Requisition extends BaseEntity {
      */
     public void removeLine(UUID lineId) {
         if (lineId == null) {
-            throw new IllegalArgumentException("L'ID de la ligne est obligatoire");
+            throw new IllegalArgumentException("Line ID is required");
         }
         boolean removed = this.lines.removeIf(line -> lineId.equals(line.getId()));
         if (removed) {
@@ -674,10 +670,10 @@ public class Requisition extends BaseEntity {
      */
     public void updateLine(int index, RequisitionLine updatedLine) {
         if (index < 0 || index >= this.lines.size()) {
-            throw new IllegalArgumentException("Index de ligne invalide: " + index);
+            throw new IllegalArgumentException("Invalid line index: " + index);
         }
         if (updatedLine == null) {
-            throw new IllegalArgumentException("La ligne mise à jour ne peut pas être nulle");
+            throw new IllegalArgumentException("Updated line cannot be null");
         }
         // Conserver le numéro de ligne
         updatedLine.setLineNumber(index + 1);
@@ -717,7 +713,7 @@ public class Requisition extends BaseEntity {
             }
 
             if (!total.getCurrency().equals(line.getLineTotal().getCurrency())) {
-                throw new IllegalStateException("All requisition lines must use the same currency");
+                throw new RequisitionCurrencyMismatchException();
             }
 
             total = total.add(line.getLineTotal());
@@ -770,10 +766,10 @@ public class Requisition extends BaseEntity {
      */
     public void submit(String userId) {
         if (status != RequisitionStatus.DRAFT) {
-            throw new IllegalStateException("Seule une demande en brouillon peut être soumise");
+            throw new RequisitionInvalidStatusTransitionException("Only draft requisitions can be submitted");
         }
         if (this.lines == null || this.lines.isEmpty()) {
-            throw new IllegalStateException("Impossible de soumettre une demande sans lignes");
+            throw new RequisitionInvalidStatusTransitionException("A requisition without lines cannot be submitted");
         }
         this.status = RequisitionStatus.SUBMITTED;
         this.submittedDate = LocalDate.now();
@@ -786,8 +782,8 @@ public class Requisition extends BaseEntity {
      */
     public void approve(String approverId, String approverName, String notes) {
         if (status != RequisitionStatus.SUBMITTED && status != RequisitionStatus.UNDER_REVIEW) {
-            throw new IllegalStateException(
-                    "Seule une demande soumise ou en révision peut être approuvée"
+            throw new RequisitionInvalidStatusTransitionException(
+                    "Only submitted or under-review requisitions can be approved"
             );
         }
         this.status = RequisitionStatus.APPROVED;
@@ -804,8 +800,8 @@ public class Requisition extends BaseEntity {
      */
     public void reject(String approverId, String approverName, String reason) {
         if (status != RequisitionStatus.SUBMITTED && status != RequisitionStatus.UNDER_REVIEW) {
-            throw new IllegalStateException(
-                    "Seule une demande soumise ou en révision peut être rejetée"
+            throw new RequisitionInvalidStatusTransitionException(
+                    "Only submitted or under-review requisitions can be rejected"
             );
         }
         this.status = RequisitionStatus.REJECTED;
@@ -821,7 +817,7 @@ public class Requisition extends BaseEntity {
      */
     public void cancel(String userId, String reason) {
         if (!status.isCancellable()) {
-            throw new IllegalStateException("Cette demande ne peut pas être annulée");
+            throw new RequisitionInvalidStatusTransitionException("This requisition cannot be cancelled");
         }
         this.status = RequisitionStatus.CANCELLED;
         this.setUpdatedAt(LocalDateTime.now());
@@ -833,7 +829,7 @@ public class Requisition extends BaseEntity {
      */
     public void convert(String purchaseOrderId, String purchaseOrderCode, String userId) {
         if (status != RequisitionStatus.APPROVED) {
-            throw new IllegalStateException("Seule une demande approuvée peut être convertie");
+            throw new RequisitionInvalidStatusTransitionException("Only approved requisitions can be converted");
         }
         this.status = RequisitionStatus.CONVERTED;
         this.purchaseOrderId = purchaseOrderId;

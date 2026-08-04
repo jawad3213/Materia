@@ -1,25 +1,16 @@
 package com.materia.backend.contexts.purchaseRequisition.domain.entities;
 
-import com.materia.backend.contexts.masterdata.domain.entities.Material;
-import com.materia.backend.contexts.masterdata.domain.valueObjects.Money;
+import com.materia.backend.contexts.masterData.domain.entities.Material;
+import com.materia.backend.contexts.masterData.domain.valueObjects.Money;
 
 import java.time.LocalDate;
 import java.util.UUID;
 
-
 public class RequisitionLine {
 
-    // ============================================================
-    // IDENTIFICATION
-    // ============================================================
-    
     private UUID id;
     private Integer lineNumber;
 
-    // ============================================================
-    // MATÉRIAU
-    // ============================================================
-    
     private String materialCode;
     private UUID materialId;
     private String materialName;
@@ -29,49 +20,25 @@ public class RequisitionLine {
     private Money unitPrice;
     private String currencyCode;
 
-    // ============================================================
-    // QUANTITÉ
-    // ============================================================
-    
     private Integer quantity;
     private Integer quantityReceived;
     private Integer quantityRejected;
 
-    // ============================================================
-    // DATES
-    // ============================================================
-    
     private LocalDate requiredDate;
 
-    // ============================================================
-    // FINANCES
-    // ============================================================
-    
     private Money lineTotal;
     private String currencyCodeLine;
 
-    // ============================================================
-    // FOURNISSEUR
-    // ============================================================
-    
     private UUID supplierId;
     private String supplierName;
     private String supplierCode;
 
-    // ============================================================
-    // DIVERS
-    // ============================================================
-    
     private String notes;
     private String deliveryTerms;
     private String storageLocation;
     private String batchNumber;
     private LocalDate expiryDate;
 
-    // ============================================================
-    // CONSTRUCTEURS
-    // ============================================================
-    
     public RequisitionLine() {
         this.quantityReceived = 0;
         this.quantityRejected = 0;
@@ -80,10 +47,10 @@ public class RequisitionLine {
     public RequisitionLine(Material material, Integer quantity, LocalDate requiredDate) {
         this();
         if (material == null) {
-            throw new IllegalArgumentException("Le matériau est obligatoire");
+            throw new IllegalArgumentException("Material is required");
         }
         if (quantity == null || quantity <= 0) {
-            throw new IllegalArgumentException("La quantité doit être positive");
+            throw new IllegalArgumentException("Quantity must be greater than zero");
         }
         populateFromMaterial(material);
         this.quantity = quantity;
@@ -92,10 +59,6 @@ public class RequisitionLine {
         calculateLineTotal();
     }
 
-    // ============================================================
-    // GETTERS & SETTERS
-    // ============================================================
-    
     public UUID getId() {
         return id;
     }
@@ -288,13 +251,9 @@ public class RequisitionLine {
         this.expiryDate = expiryDate;
     }
 
-    // ============================================================
-    // MÉTHODES MÉTIER
-    // ============================================================
-    
     public void populateFromMaterial(Material material) {
         if (material == null) {
-            throw new IllegalArgumentException("Le matériau est obligatoire");
+            throw new IllegalArgumentException("Material is required");
         }
         this.materialId = material.getId();
         this.materialCode = material.getCode().getValue();
@@ -323,7 +282,7 @@ public class RequisitionLine {
 
     public void updateQuantity(Integer newQuantity) {
         if (newQuantity == null || newQuantity <= 0) {
-            throw new IllegalArgumentException("La quantité doit être positive");
+            throw new IllegalArgumentException("Quantity must be greater than zero");
         }
         this.quantity = newQuantity;
         calculateLineTotal();
@@ -331,10 +290,10 @@ public class RequisitionLine {
 
     public void updateUnitPrice(Money newUnitPrice) {
         if (newUnitPrice == null) {
-            throw new IllegalArgumentException("Le prix unitaire est obligatoire");
+            throw new IllegalArgumentException("Unit price is required");
         }
         if (!newUnitPrice.isPositive()) {
-            throw new IllegalArgumentException("Le prix unitaire doit être positif");
+            throw new IllegalArgumentException("Unit price must be positive");
         }
         this.unitPrice = newUnitPrice;
         calculateLineTotal();
@@ -342,14 +301,14 @@ public class RequisitionLine {
 
     public void receiveQuantity(Integer received, Integer rejected) {
         if (received == null || received < 0) {
-            throw new IllegalArgumentException("La quantité reçue ne peut pas être négative");
+            throw new IllegalArgumentException("Received quantity cannot be negative");
         }
         if (rejected == null || rejected < 0) {
-            throw new IllegalArgumentException("La quantité rejetée ne peut pas être négative");
+            throw new IllegalArgumentException("Rejected quantity cannot be negative");
         }
         if (received + rejected > this.quantity) {
             throw new IllegalArgumentException(
-                "La quantité reçue et rejetée ne peut pas dépasser la quantité totale"
+                    "Received and rejected quantities cannot exceed the total quantity"
             );
         }
         this.quantityReceived = received;
@@ -357,7 +316,7 @@ public class RequisitionLine {
     }
 
     public boolean isFullyReceived() {
-        return quantityReceived != null && quantity != null && 
+        return quantityReceived != null && quantity != null &&
                quantityReceived >= quantity;
     }
 
@@ -395,9 +354,9 @@ public class RequisitionLine {
     }
 
     public boolean isValid() {
-        return materialCode != null && 
+        return materialCode != null &&
                !materialCode.isEmpty() &&
-               quantity != null && 
+               quantity != null &&
                quantity > 0 &&
                unitPrice != null;
     }
@@ -439,10 +398,6 @@ public class RequisitionLine {
         return copy;
     }
 
-    // ============================================================
-    // EQUALS & HASHCODE
-    // ============================================================
-    
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -456,10 +411,6 @@ public class RequisitionLine {
         return id != null ? id.hashCode() : 0;
     }
 
-    // ============================================================
-    // TOSTRING
-    // ============================================================
-    
     @Override
     public String toString() {
         return "RequisitionLine{" +

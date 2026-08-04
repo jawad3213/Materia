@@ -1,6 +1,6 @@
-package com.materia.backend.contexts.masterdata.domain.valueObjects;
+package com.materia.backend.contexts.masterData.domain.valueObjects;
 
-import com.materia.backend.contexts.masterdata.domain.enums.MaterialStatus;
+import com.materia.backend.contexts.masterData.domain.enums.MaterialStatus;
 import java.math.BigDecimal;
 
 /**

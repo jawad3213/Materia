@@ -1,4 +1,4 @@
-package com.materia.backend.contexts.masterdata.infrastructure.adapters.out.persistence.entities;
+package com.materia.backend.contexts.masterData.infrastructure.adapters.out.persistence.entities;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -6,7 +6,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
 @Entity
-@Table(name = "code_sequences")
+@Table(name = "global_code_sequences")
 public class CodeSequenceJpaEntity {
 
     @Id

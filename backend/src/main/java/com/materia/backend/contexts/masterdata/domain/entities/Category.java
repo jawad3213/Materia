@@ -1,6 +1,6 @@
-package com.materia.backend.contexts.masterdata.domain.entities;
+package com.materia.backend.contexts.masterData.domain.entities;
 
-import com.materia.backend.contexts.masterdata.domain.enums.MaterialCategoryType;
+import com.materia.backend.contexts.masterData.domain.enums.MaterialCategoryType;
 
 import com.materia.backend.common.domain.BaseEntity;
 import java.time.LocalDateTime;

@@ -1,14 +1,14 @@
-package com.materia.backend.contexts.masterdata.application.mappers;
+package com.materia.backend.contexts.masterData.application.mappers;
 
-import com.materia.backend.contexts.masterdata.application.dtos.material.CreateMaterialInput;
-import com.materia.backend.contexts.masterdata.application.dtos.material.MaterialOutput;
-import com.materia.backend.contexts.masterdata.application.dtos.material.UpdateMaterialInput;
-import com.materia.backend.contexts.masterdata.domain.entities.Material;
-import com.materia.backend.contexts.masterdata.domain.enums.CurrencyCode;
-import com.materia.backend.contexts.masterdata.domain.enums.MaterialType;
-import com.materia.backend.contexts.masterdata.domain.enums.MaterialStatus;
-import com.materia.backend.contexts.masterdata.domain.enums.UnitOfMeasure;
-import com.materia.backend.contexts.masterdata.domain.valueObjects.Money;
+import com.materia.backend.contexts.masterData.application.dtos.material.CreateMaterialInput;
+import com.materia.backend.contexts.masterData.application.dtos.material.MaterialOutput;
+import com.materia.backend.contexts.masterData.application.dtos.material.UpdateMaterialInput;
+import com.materia.backend.contexts.masterData.domain.entities.Material;
+import com.materia.backend.contexts.masterData.domain.enums.CurrencyCode;
+import com.materia.backend.contexts.masterData.domain.enums.MaterialType;
+import com.materia.backend.contexts.masterData.domain.enums.MaterialStatus;
+import com.materia.backend.contexts.masterData.domain.enums.UnitOfMeasure;
+import com.materia.backend.contexts.masterData.domain.valueObjects.Money;
 import org.springframework.stereotype.Component;
 
 import java.util.List;

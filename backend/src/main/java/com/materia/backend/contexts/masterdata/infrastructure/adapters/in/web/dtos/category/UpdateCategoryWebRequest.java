@@ -1,6 +1,5 @@
-package com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.dtos.category;
+package com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.dtos.category;
 
-import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 public class UpdateCategoryWebRequest {

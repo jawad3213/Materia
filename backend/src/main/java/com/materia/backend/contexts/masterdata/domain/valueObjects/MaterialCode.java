@@ -1,6 +1,6 @@
-package com.materia.backend.contexts.masterdata.domain.valueObjects;
+package com.materia.backend.contexts.masterData.domain.valueObjects;
 
-import com.materia.backend.contexts.masterdata.domain.enums.MaterialType;
+import com.materia.backend.contexts.masterData.domain.enums.MaterialType;
 
 import java.util.Objects;
 import java.util.regex.Pattern;

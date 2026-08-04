@@ -9,13 +9,13 @@ import java.util.stream.Collectors;
  */
 public enum RequisitionStatus {
 
-    DRAFT("DRAFT", "Brouillon", "Demande en cours de saisie", "#94a3b8"),
-    SUBMITTED("SUBMITTED", "Soumise", "Demande soumise pour traitement", "#2563eb"),
-    UNDER_REVIEW("UNDER_REVIEW", "En revision", "Demande en cours d'analyse", "#3b82f6"),
-    APPROVED("APPROVED", "Approuvee", "Demande approuvee pour conversion", "#22c55e"),
-    REJECTED("REJECTED", "Rejetee", "Demande rejetee", "#ef4444"),
-    CANCELLED("CANCELLED", "Annulee", "Demande annulee", "#6b7280"),
-    CONVERTED("CONVERTED", "Convertie", "Demande convertie en commande", "#8b5cf6");
+    DRAFT("DRAFT", "Draft", "Requisition is being prepared", "#94a3b8"),
+    SUBMITTED("SUBMITTED", "Submitted", "Requisition submitted for processing", "#2563eb"),
+    UNDER_REVIEW("UNDER_REVIEW", "Under Review", "Requisition is under review", "#3b82f6"),
+    APPROVED("APPROVED", "Approved", "Requisition approved for conversion", "#22c55e"),
+    REJECTED("REJECTED", "Rejected", "Requisition rejected", "#ef4444"),
+    CANCELLED("CANCELLED", "Cancelled", "Requisition cancelled", "#6b7280"),
+    CONVERTED("CONVERTED", "Converted", "Requisition converted to purchase order", "#8b5cf6");
 
     private final String code;
     private final String label;
@@ -47,14 +47,14 @@ public enum RequisitionStatus {
 
     public static RequisitionStatus fromCode(String code) {
         if (code == null || code.isEmpty()) {
-            throw new IllegalArgumentException("Le code est obligatoire");
+            throw new IllegalArgumentException("Status code is required");
         }
         for (RequisitionStatus status : values()) {
             if (status.code.equals(code)) {
                 return status;
             }
         }
-        throw new IllegalArgumentException("Statut inconnu : " + code);
+        throw new IllegalArgumentException("Unknown requisition status: " + code);
     }
 
     public static boolean isValidCode(String code) {
@@ -108,3 +108,5 @@ public enum RequisitionStatus {
         return CONVERTED.equals(this) || REJECTED.equals(this) || CANCELLED.equals(this);
     }
 }
+
+

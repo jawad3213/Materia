@@ -1,4 +1,4 @@
-package com.materia.backend.contexts.masterdata.application.dtos.material;
+package com.materia.backend.contexts.masterData.application.dtos.material;
 
 import java.math.BigDecimal;
 

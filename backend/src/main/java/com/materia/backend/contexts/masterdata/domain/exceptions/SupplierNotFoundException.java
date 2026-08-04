@@ -1,4 +1,4 @@
-package com.materia.backend.contexts.masterdata.domain.exceptions;
+package com.materia.backend.contexts.masterData.domain.exceptions;
 
 import com.materia.backend.common.application.exceptions.NotFoundException;
 

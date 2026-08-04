@@ -1,17 +1,14 @@
-package com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.mappers;
+package com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.mappers;
 
-import com.materia.backend.contexts.masterdata.application.dtos.category.CreateCategoryInput;
-import com.materia.backend.contexts.masterdata.application.dtos.category.UpdateCategoryInput;
-import com.materia.backend.contexts.masterdata.application.dtos.category.CategoryOutput;
-import com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.dtos.category.CreateCategoryWebRequest;
-import com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.dtos.category.UpdateCategoryWebRequest;
-import com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.dtos.category.CategoryWebResponse;
+import com.materia.backend.contexts.masterData.application.dtos.category.CreateCategoryInput;
+import com.materia.backend.contexts.masterData.application.dtos.category.UpdateCategoryInput;
+import com.materia.backend.contexts.masterData.application.dtos.category.CategoryOutput;
+import com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.dtos.category.CreateCategoryWebRequest;
+import com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.dtos.category.UpdateCategoryWebRequest;
+import com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.dtos.category.CategoryWebResponse;
 import org.springframework.beans.BeanUtils;
 import com.materia.backend.common.infrastructure.web.BaseWebMapper;
 import org.springframework.stereotype.Component;
-
-import java.util.List;
-import java.util.stream.Collectors;
 
 @Component
 public class CategoryWebMapper implements BaseWebMapper<CreateCategoryWebRequest, UpdateCategoryWebRequest, CreateCategoryInput, UpdateCategoryInput, CategoryWebResponse, CategoryOutput> {

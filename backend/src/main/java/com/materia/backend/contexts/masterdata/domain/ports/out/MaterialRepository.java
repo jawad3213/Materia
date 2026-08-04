@@ -1,7 +1,7 @@
-package com.materia.backend.contexts.masterdata.domain.ports.out;
+package com.materia.backend.contexts.masterData.domain.ports.out;
 
-import com.materia.backend.contexts.masterdata.domain.entities.Material;
-import com.materia.backend.contexts.masterdata.domain.enums.MaterialStatus;
+import com.materia.backend.contexts.masterData.domain.entities.Material;
+import com.materia.backend.contexts.masterData.domain.enums.MaterialStatus;
 
 import com.materia.backend.common.domain.BaseRepository;
 
@@ -80,7 +80,7 @@ public interface MaterialRepository extends BaseRepository<Material> {
      * Advanced paginated search with multiple filters
      */
     com.materia.backend.common.application.PageResponse<Material> searchAdvanced(
-            com.materia.backend.contexts.masterdata.domain.valueObjects.MaterialSearchFilter filter, 
+            com.materia.backend.contexts.masterData.domain.valueObjects.MaterialSearchFilter filter, 
             int page, 
             int size);
 }

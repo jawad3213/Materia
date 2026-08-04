@@ -1,6 +1,6 @@
-package com.materia.backend.contexts.masterdata.infrastructure.adapters.out.persistence.repositories;
+package com.materia.backend.contexts.masterData.infrastructure.adapters.out.persistence.repositories;
 
-import com.materia.backend.contexts.masterdata.infrastructure.adapters.out.persistence.entities.CategoryJpaEntity;
+import com.materia.backend.contexts.masterData.infrastructure.adapters.out.persistence.entities.CategoryJpaEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -27,7 +27,7 @@ public interface SpringDataCategoryRepository extends JpaRepository<CategoryJpaE
 
     long countByParentId(String parentId);
 
-    List<CategoryJpaEntity> findByCategoryType(com.materia.backend.contexts.masterdata.domain.enums.MaterialCategoryType categoryType);
+    List<CategoryJpaEntity> findByCategoryType(com.materia.backend.contexts.masterData.domain.enums.MaterialCategoryType categoryType);
 
     List<CategoryJpaEntity> findByStatus(String status);
 

@@ -1,7 +1,7 @@
 package com.materia.backend.contexts.purchaseRequisition.application.dtos;
 
 import com.materia.backend.common.application.BaseOutput;
-import com.materia.backend.contexts.masterdata.domain.valueObjects.Money;
+import com.materia.backend.contexts.masterData.domain.valueObjects.Money;
 import com.materia.backend.contexts.purchaseRequisition.domain.entities.RequisitionLine;
 
 import java.time.LocalDate;

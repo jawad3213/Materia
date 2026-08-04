@@ -1,16 +1,16 @@
-package com.materia.backend.contexts.masterdata.application.services;
+package com.materia.backend.contexts.masterData.application.services;
 
-import com.materia.backend.contexts.masterdata.application.dtos.category.CreateCategoryInput;
-import com.materia.backend.contexts.masterdata.application.dtos.category.CategoryOutput;
-import com.materia.backend.contexts.masterdata.application.dtos.category.UpdateCategoryInput;
-import com.materia.backend.contexts.masterdata.application.mappers.CategoryMapper;
+import com.materia.backend.contexts.masterData.application.dtos.category.CreateCategoryInput;
+import com.materia.backend.contexts.masterData.application.dtos.category.CategoryOutput;
+import com.materia.backend.contexts.masterData.application.dtos.category.UpdateCategoryInput;
+import com.materia.backend.contexts.masterData.application.mappers.CategoryMapper;
 import com.materia.backend.common.application.exceptions.BusinessException;
 import com.materia.backend.common.application.exceptions.ValidationException;
-import com.materia.backend.contexts.masterdata.domain.entities.Category;
-import com.materia.backend.contexts.masterdata.domain.exceptions.CategoryNotFoundException;
-import com.materia.backend.contexts.masterdata.domain.ports.in.CategoryUseCase;
-import com.materia.backend.contexts.masterdata.domain.ports.out.CategoryRepository;
-import com.materia.backend.contexts.masterdata.domain.ports.out.MaterialRepository;
+import com.materia.backend.contexts.masterData.domain.entities.Category;
+import com.materia.backend.contexts.masterData.domain.exceptions.CategoryNotFoundException;
+import com.materia.backend.contexts.masterData.domain.ports.in.CategoryUseCase;
+import com.materia.backend.contexts.masterData.domain.ports.out.CategoryRepository;
+import com.materia.backend.contexts.masterData.domain.ports.out.MaterialRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -200,14 +200,14 @@ public class CategoryService implements CategoryUseCase {
     }
 
     private void syncMaterialCategoryNames(Category category) {
-        List<com.materia.backend.contexts.masterdata.domain.entities.Material> materials =
+        List<com.materia.backend.contexts.masterData.domain.entities.Material> materials =
                 materialRepository.findByCategoryId(category.getId().toString());
 
         if (materials.isEmpty()) {
             return;
         }
 
-        for (com.materia.backend.contexts.masterdata.domain.entities.Material material : materials) {
+        for (com.materia.backend.contexts.masterData.domain.entities.Material material : materials) {
             material.setCategoryName(category.getName());
         }
         materialRepository.saveAll(materials);

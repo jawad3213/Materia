@@ -1,17 +1,14 @@
-package com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.mappers;
+package com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.mappers;
 
-import com.materia.backend.contexts.masterdata.application.dtos.material.CreateMaterialInput;
-import com.materia.backend.contexts.masterdata.application.dtos.material.UpdateMaterialInput;
-import com.materia.backend.contexts.masterdata.application.dtos.material.MaterialOutput;
-import com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.dtos.material.CreateMaterialWebRequest;
-import com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.dtos.material.UpdateMaterialWebRequest;
-import com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.dtos.material.MaterialWebResponse;
+import com.materia.backend.contexts.masterData.application.dtos.material.CreateMaterialInput;
+import com.materia.backend.contexts.masterData.application.dtos.material.UpdateMaterialInput;
+import com.materia.backend.contexts.masterData.application.dtos.material.MaterialOutput;
+import com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.dtos.material.CreateMaterialWebRequest;
+import com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.dtos.material.UpdateMaterialWebRequest;
+import com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.dtos.material.MaterialWebResponse;
 import org.springframework.beans.BeanUtils;
 import com.materia.backend.common.infrastructure.web.BaseWebMapper;
 import org.springframework.stereotype.Component;
-
-import java.util.List;
-import java.util.stream.Collectors;
 
 @Component
 public class MaterialWebMapper implements BaseWebMapper<CreateMaterialWebRequest, UpdateMaterialWebRequest, CreateMaterialInput, UpdateMaterialInput, MaterialWebResponse, MaterialOutput> {
@@ -40,11 +37,11 @@ public class MaterialWebMapper implements BaseWebMapper<CreateMaterialWebRequest
         return response;
     }
 
-    public com.materia.backend.contexts.masterdata.application.dtos.material.MaterialSearchCriteria toAppSearchCriteria(
-            com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.dtos.material.MaterialSearchWebRequest webRequest) {
+    public com.materia.backend.contexts.masterData.application.dtos.material.MaterialSearchCriteria toAppSearchCriteria(
+            com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.dtos.material.MaterialSearchWebRequest webRequest) {
         if (webRequest == null) return null;
-        com.materia.backend.contexts.masterdata.application.dtos.material.MaterialSearchCriteria criteria = 
-            new com.materia.backend.contexts.masterdata.application.dtos.material.MaterialSearchCriteria();
+        com.materia.backend.contexts.masterData.application.dtos.material.MaterialSearchCriteria criteria =
+            new com.materia.backend.contexts.masterData.application.dtos.material.MaterialSearchCriteria();
         BeanUtils.copyProperties(webRequest, criteria);
         return criteria;
     }

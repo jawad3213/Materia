@@ -1,4 +1,4 @@
-package com.materia.backend.contexts.masterdata.domain.exceptions;
+package com.materia.backend.contexts.masterData.domain.exceptions;
 
 /**
  * Exception thrown when a material code already exists

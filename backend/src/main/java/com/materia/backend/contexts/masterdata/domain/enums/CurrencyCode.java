@@ -1,4 +1,4 @@
-package com.materia.backend.contexts.masterdata.domain.enums;
+package com.materia.backend.contexts.masterData.domain.enums;
 
 import java.math.BigDecimal;
 import java.util.Arrays;
