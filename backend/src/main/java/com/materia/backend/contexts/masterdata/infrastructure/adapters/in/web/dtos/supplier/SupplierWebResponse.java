@@ -1,4 +1,4 @@
-package com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.dtos.supplier;
+package com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.dtos.supplier;
 
 import java.time.LocalDateTime;
 import java.util.UUID;

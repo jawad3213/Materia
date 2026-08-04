@@ -1,8 +1,8 @@
-package com.materia.backend.contexts.masterdata.domain.ports.in;
+package com.materia.backend.contexts.masterData.domain.ports.in;
 
-import com.materia.backend.contexts.masterdata.application.dtos.category.CreateCategoryInput;
-import com.materia.backend.contexts.masterdata.application.dtos.category.CategoryOutput;
-import com.materia.backend.contexts.masterdata.application.dtos.category.UpdateCategoryInput;
+import com.materia.backend.contexts.masterData.application.dtos.category.CreateCategoryInput;
+import com.materia.backend.contexts.masterData.application.dtos.category.CategoryOutput;
+import com.materia.backend.contexts.masterData.application.dtos.category.UpdateCategoryInput;
 import com.materia.backend.common.domain.BaseUseCase;
 
 import java.util.List;

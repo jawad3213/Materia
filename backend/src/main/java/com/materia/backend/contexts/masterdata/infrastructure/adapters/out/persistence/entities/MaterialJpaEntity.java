@@ -1,10 +1,10 @@
-package com.materia.backend.contexts.masterdata.infrastructure.adapters.out.persistence.entities;
+package com.materia.backend.contexts.masterData.infrastructure.adapters.out.persistence.entities;
 
 import com.materia.backend.common.infrastructure.persistence.BaseJpaEntity;
-import com.materia.backend.contexts.masterdata.domain.enums.CurrencyCode;
-import com.materia.backend.contexts.masterdata.domain.enums.MaterialType;
-import com.materia.backend.contexts.masterdata.domain.enums.MaterialStatus;
-import com.materia.backend.contexts.masterdata.domain.enums.UnitOfMeasure;
+import com.materia.backend.contexts.masterData.domain.enums.CurrencyCode;
+import com.materia.backend.contexts.masterData.domain.enums.MaterialType;
+import com.materia.backend.contexts.masterData.domain.enums.MaterialStatus;
+import com.materia.backend.contexts.masterData.domain.enums.UnitOfMeasure;
 
 import jakarta.persistence.*;
 import java.math.BigDecimal;

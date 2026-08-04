@@ -1,6 +1,6 @@
-package com.materia.backend.contexts.masterdata.application.services;
+package com.materia.backend.contexts.masterData.application.services;
 
-import com.materia.backend.contexts.masterdata.domain.ports.out.CodeSequenceRepository;
+import com.materia.backend.contexts.masterData.domain.ports.out.CodeSequenceRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

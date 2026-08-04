@@ -1,6 +1,6 @@
-package com.materia.backend.contexts.masterdata.domain.ports.out;
+package com.materia.backend.contexts.masterData.domain.ports.out;
 
-import com.materia.backend.contexts.masterdata.domain.entities.Supplier;
+import com.materia.backend.contexts.masterData.domain.entities.Supplier;
 
 import com.materia.backend.common.domain.BaseRepository;
 

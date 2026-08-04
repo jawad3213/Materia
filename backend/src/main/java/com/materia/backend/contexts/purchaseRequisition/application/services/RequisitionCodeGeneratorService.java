@@ -1,6 +1,6 @@
 package com.materia.backend.contexts.purchaseRequisition.application.services;
 
-import com.materia.backend.contexts.purchaseRequisition.domain.ports.out.RequisitionCodeSequenceRepository;
+import com.materia.backend.contexts.masterData.domain.ports.out.CodeSequenceRepository;
 import com.materia.backend.contexts.purchaseRequisition.domain.valueObjects.RequisitionCode;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,9 +14,9 @@ public class RequisitionCodeGeneratorService {
 
     private static final String PREFIX = "REQ";
 
-    private final RequisitionCodeSequenceRepository sequenceRepository;
+    private final CodeSequenceRepository sequenceRepository;
 
-    public RequisitionCodeGeneratorService(RequisitionCodeSequenceRepository sequenceRepository) {
+    public RequisitionCodeGeneratorService(CodeSequenceRepository sequenceRepository) {
         this.sequenceRepository = sequenceRepository;
     }
 

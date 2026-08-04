@@ -1,15 +1,15 @@
-package com.materia.backend.contexts.masterdata.application.services;
+package com.materia.backend.contexts.masterData.application.services;
 
-import com.materia.backend.contexts.masterdata.application.dtos.supplier.CreateSupplierInput;
-import com.materia.backend.contexts.masterdata.application.dtos.supplier.SupplierOutput;
-import com.materia.backend.contexts.masterdata.application.dtos.supplier.UpdateSupplierInput;
-import com.materia.backend.contexts.masterdata.application.mappers.SupplierMapper;
+import com.materia.backend.contexts.masterData.application.dtos.supplier.CreateSupplierInput;
+import com.materia.backend.contexts.masterData.application.dtos.supplier.SupplierOutput;
+import com.materia.backend.contexts.masterData.application.dtos.supplier.UpdateSupplierInput;
+import com.materia.backend.contexts.masterData.application.mappers.SupplierMapper;
 import com.materia.backend.common.application.exceptions.BusinessException;
-import com.materia.backend.contexts.masterdata.domain.entities.Supplier;
-import com.materia.backend.contexts.masterdata.domain.exceptions.SupplierNotFoundException;
-import com.materia.backend.contexts.masterdata.domain.ports.in.SupplierUseCase;
-import com.materia.backend.contexts.masterdata.domain.ports.out.MaterialRepository;
-import com.materia.backend.contexts.masterdata.domain.ports.out.SupplierRepository;
+import com.materia.backend.contexts.masterData.domain.entities.Supplier;
+import com.materia.backend.contexts.masterData.domain.exceptions.SupplierNotFoundException;
+import com.materia.backend.contexts.masterData.domain.ports.in.SupplierUseCase;
+import com.materia.backend.contexts.masterData.domain.ports.out.MaterialRepository;
+import com.materia.backend.contexts.masterData.domain.ports.out.SupplierRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -131,14 +131,14 @@ public class SupplierService implements SupplierUseCase {
     }
 
     private void syncMaterialSupplierNames(Supplier supplier) {
-        List<com.materia.backend.contexts.masterdata.domain.entities.Material> materials =
+        List<com.materia.backend.contexts.masterData.domain.entities.Material> materials =
                 materialRepository.findBySupplierId(supplier.getId().toString());
 
         if (materials.isEmpty()) {
             return;
         }
 
-        for (com.materia.backend.contexts.masterdata.domain.entities.Material material : materials) {
+        for (com.materia.backend.contexts.masterData.domain.entities.Material material : materials) {
             material.setSupplierName(supplier.getName());
         }
         materialRepository.saveAll(materials);

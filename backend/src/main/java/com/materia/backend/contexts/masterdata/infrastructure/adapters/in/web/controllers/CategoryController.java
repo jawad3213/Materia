@@ -1,13 +1,13 @@
-package com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.controllers;
+package com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.controllers;
 
-import com.materia.backend.contexts.masterdata.application.dtos.category.CreateCategoryInput;
-import com.materia.backend.contexts.masterdata.application.dtos.category.CategoryOutput;
-import com.materia.backend.contexts.masterdata.application.dtos.category.UpdateCategoryInput;
-import com.materia.backend.contexts.masterdata.domain.ports.in.CategoryUseCase;
-import com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.dtos.category.CreateCategoryWebRequest;
-import com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.dtos.category.CategoryWebResponse;
-import com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.dtos.category.UpdateCategoryWebRequest;
-import com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.mappers.CategoryWebMapper;
+import com.materia.backend.contexts.masterData.application.dtos.category.CreateCategoryInput;
+import com.materia.backend.contexts.masterData.application.dtos.category.CategoryOutput;
+import com.materia.backend.contexts.masterData.application.dtos.category.UpdateCategoryInput;
+import com.materia.backend.contexts.masterData.domain.ports.in.CategoryUseCase;
+import com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.dtos.category.CreateCategoryWebRequest;
+import com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.dtos.category.CategoryWebResponse;
+import com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.dtos.category.UpdateCategoryWebRequest;
+import com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.mappers.CategoryWebMapper;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

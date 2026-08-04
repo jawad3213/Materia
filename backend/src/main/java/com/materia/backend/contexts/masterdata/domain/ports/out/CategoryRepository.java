@@ -1,7 +1,7 @@
-package com.materia.backend.contexts.masterdata.domain.ports.out;
+package com.materia.backend.contexts.masterData.domain.ports.out;
 
-import com.materia.backend.contexts.masterdata.domain.entities.Category;
-import com.materia.backend.contexts.masterdata.domain.enums.MaterialCategoryType;
+import com.materia.backend.contexts.masterData.domain.entities.Category;
+import com.materia.backend.contexts.masterData.domain.enums.MaterialCategoryType;
 
 import com.materia.backend.common.domain.BaseRepository;
 

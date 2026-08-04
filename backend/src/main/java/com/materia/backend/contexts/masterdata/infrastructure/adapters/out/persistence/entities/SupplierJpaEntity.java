@@ -1,7 +1,7 @@
-package com.materia.backend.contexts.masterdata.infrastructure.adapters.out.persistence.entities;
+package com.materia.backend.contexts.masterData.infrastructure.adapters.out.persistence.entities;
 
 import com.materia.backend.common.infrastructure.persistence.BaseJpaEntity;
-import com.materia.backend.contexts.masterdata.domain.enums.CurrencyCode;
+import com.materia.backend.contexts.masterData.domain.enums.CurrencyCode;
 
 import jakarta.persistence.*;
 

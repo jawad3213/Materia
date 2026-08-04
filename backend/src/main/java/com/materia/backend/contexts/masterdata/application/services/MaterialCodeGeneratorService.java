@@ -1,8 +1,8 @@
-package com.materia.backend.contexts.masterdata.application.services;
+package com.materia.backend.contexts.masterData.application.services;
 
-import com.materia.backend.contexts.masterdata.domain.enums.MaterialType;
-import com.materia.backend.contexts.masterdata.domain.valueObjects.MaterialCode;
-import com.materia.backend.contexts.masterdata.domain.ports.out.CodeSequenceRepository;
+import com.materia.backend.contexts.masterData.domain.enums.MaterialType;
+import com.materia.backend.contexts.masterData.domain.valueObjects.MaterialCode;
+import com.materia.backend.contexts.masterData.domain.ports.out.CodeSequenceRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

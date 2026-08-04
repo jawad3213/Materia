@@ -1,12 +1,12 @@
-package com.materia.backend.contexts.masterdata.infrastructure.adapters.out.persistence;
+package com.materia.backend.contexts.masterData.infrastructure.adapters.out.persistence;
 
-import com.materia.backend.contexts.masterdata.domain.entities.Category;
-import com.materia.backend.contexts.masterdata.domain.enums.MaterialCategoryType;
-import com.materia.backend.contexts.masterdata.domain.ports.out.CategoryRepository;
-import com.materia.backend.contexts.masterdata.infrastructure.adapters.out.persistence.entities.CategoryJpaEntity;
-import com.materia.backend.contexts.masterdata.infrastructure.adapters.out.persistence.mappers.CategoryPersistenceMapper;
-import com.materia.backend.contexts.masterdata.infrastructure.adapters.out.persistence.repositories.SpringDataCategoryRepository;
-import com.materia.backend.contexts.masterdata.infrastructure.adapters.out.persistence.repositories.SpringDataMaterialRepository;
+import com.materia.backend.contexts.masterData.domain.entities.Category;
+import com.materia.backend.contexts.masterData.domain.enums.MaterialCategoryType;
+import com.materia.backend.contexts.masterData.domain.ports.out.CategoryRepository;
+import com.materia.backend.contexts.masterData.infrastructure.adapters.out.persistence.entities.CategoryJpaEntity;
+import com.materia.backend.contexts.masterData.infrastructure.adapters.out.persistence.mappers.CategoryPersistenceMapper;
+import com.materia.backend.contexts.masterData.infrastructure.adapters.out.persistence.repositories.SpringDataCategoryRepository;
+import com.materia.backend.contexts.masterData.infrastructure.adapters.out.persistence.repositories.SpringDataMaterialRepository;
 import org.springframework.stereotype.Component;
 
 import java.util.List;

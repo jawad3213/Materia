@@ -1,4 +1,4 @@
-package com.materia.backend.contexts.masterdata.application.dtos.category;
+package com.materia.backend.contexts.masterData.application.dtos.category;
 
 import com.materia.backend.common.application.BaseOutput;
 import java.time.LocalDateTime;

@@ -1,6 +1,6 @@
-package com.materia.backend.contexts.masterdata.infrastructure.adapters.out.persistence.repositories;
+package com.materia.backend.contexts.masterData.infrastructure.adapters.out.persistence.repositories;
 
-import com.materia.backend.contexts.masterdata.infrastructure.adapters.out.persistence.entities.SupplierJpaEntity;
+import com.materia.backend.contexts.masterData.infrastructure.adapters.out.persistence.entities.SupplierJpaEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;

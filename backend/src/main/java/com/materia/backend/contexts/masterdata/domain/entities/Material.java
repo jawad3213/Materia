@@ -1,12 +1,12 @@
-package com.materia.backend.contexts.masterdata.domain.entities;
+package com.materia.backend.contexts.masterData.domain.entities;
 
-import com.materia.backend.contexts.masterdata.domain.enums.CurrencyCode;
-import com.materia.backend.contexts.masterdata.domain.enums.MaterialType;
-import com.materia.backend.contexts.masterdata.domain.enums.MaterialStatus;
-import com.materia.backend.contexts.masterdata.domain.enums.StockMovementType;
-import com.materia.backend.contexts.masterdata.domain.enums.UnitOfMeasure;
-import com.materia.backend.contexts.masterdata.domain.valueObjects.MaterialCode;
-import com.materia.backend.contexts.masterdata.domain.valueObjects.Money;
+import com.materia.backend.contexts.masterData.domain.enums.CurrencyCode;
+import com.materia.backend.contexts.masterData.domain.enums.MaterialType;
+import com.materia.backend.contexts.masterData.domain.enums.MaterialStatus;
+import com.materia.backend.contexts.masterData.domain.enums.StockMovementType;
+import com.materia.backend.contexts.masterData.domain.enums.UnitOfMeasure;
+import com.materia.backend.contexts.masterData.domain.valueObjects.MaterialCode;
+import com.materia.backend.contexts.masterData.domain.valueObjects.Money;
 
 import com.materia.backend.common.domain.BaseEntity;
 import java.time.LocalDateTime;

@@ -1,6 +1,6 @@
-package com.materia.backend.contexts.masterdata.domain.valueObjects;
+package com.materia.backend.contexts.masterData.domain.valueObjects;
 
-import com.materia.backend.contexts.masterdata.domain.enums.CurrencyCode;
+import com.materia.backend.contexts.masterData.domain.enums.CurrencyCode;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -55,6 +55,20 @@ public class Money {
     }
 
     /**
+     * Creates a Money with zero amount
+     */
+    public static Money zero(CurrencyCode currency) {
+        return new Money(BigDecimal.ZERO, currency);
+    }
+
+    /**
+     * Creates a Money with zero amount from a currency string
+     */
+    public static Money zero(String currencyCode) {
+        return new Money(BigDecimal.ZERO, CurrencyCode.valueOf(currencyCode));
+    }
+
+    /**
      * Creates a Money from an amount (String) and a currency
      */
     public static Money of(String amount, CurrencyCode currency) {
@@ -87,13 +101,6 @@ public class Money {
      */
     public static Money ofUSD(BigDecimal amount) {
         return new Money(amount, CurrencyCode.USD);
-    }
-
-    /**
-     * Creates a zero Money in a given currency
-     */
-    public static Money zero(CurrencyCode currency) {
-        return new Money(BigDecimal.ZERO, currency);
     }
 
     // ============================================================

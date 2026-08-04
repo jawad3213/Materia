@@ -1,4 +1,4 @@
-package com.materia.backend.contexts.masterdata.domain.enums;
+package com.materia.backend.contexts.masterData.domain.enums;
 
 import java.util.Arrays;
 import java.util.List;

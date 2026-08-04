@@ -1,22 +1,22 @@
-package com.materia.backend.contexts.masterdata.application.services;
+package com.materia.backend.contexts.masterData.application.services;
 
-import com.materia.backend.contexts.masterdata.application.dtos.material.CreateMaterialInput;
-import com.materia.backend.contexts.masterdata.application.dtos.material.MaterialOutput;
-import com.materia.backend.contexts.masterdata.application.dtos.material.UpdateMaterialInput;
-import com.materia.backend.contexts.masterdata.application.mappers.MaterialMapper;
+import com.materia.backend.contexts.masterData.application.dtos.material.CreateMaterialInput;
+import com.materia.backend.contexts.masterData.application.dtos.material.MaterialOutput;
+import com.materia.backend.contexts.masterData.application.dtos.material.UpdateMaterialInput;
+import com.materia.backend.contexts.masterData.application.mappers.MaterialMapper;
 import com.materia.backend.common.application.exceptions.BusinessException;
 import com.materia.backend.common.application.exceptions.ValidationException;
-import com.materia.backend.contexts.masterdata.domain.entities.Category;
-import com.materia.backend.contexts.masterdata.domain.entities.Material;
-import com.materia.backend.contexts.masterdata.domain.entities.Supplier;
-import com.materia.backend.contexts.masterdata.domain.exceptions.MaterialNotFoundException;
-import com.materia.backend.contexts.masterdata.domain.exceptions.InsufficientStockException;
-import com.materia.backend.contexts.masterdata.domain.enums.MaterialStatus;
-import com.materia.backend.contexts.masterdata.domain.enums.MaterialType;
-import com.materia.backend.contexts.masterdata.domain.ports.in.MaterialUseCase;
-import com.materia.backend.contexts.masterdata.domain.ports.out.CategoryRepository;
-import com.materia.backend.contexts.masterdata.domain.ports.out.MaterialRepository;
-import com.materia.backend.contexts.masterdata.domain.ports.out.SupplierRepository;
+import com.materia.backend.contexts.masterData.domain.entities.Category;
+import com.materia.backend.contexts.masterData.domain.entities.Material;
+import com.materia.backend.contexts.masterData.domain.entities.Supplier;
+import com.materia.backend.contexts.masterData.domain.exceptions.MaterialNotFoundException;
+import com.materia.backend.contexts.masterData.domain.exceptions.InsufficientStockException;
+import com.materia.backend.contexts.masterData.domain.enums.MaterialStatus;
+import com.materia.backend.contexts.masterData.domain.enums.MaterialType;
+import com.materia.backend.contexts.masterData.domain.ports.in.MaterialUseCase;
+import com.materia.backend.contexts.masterData.domain.ports.out.CategoryRepository;
+import com.materia.backend.contexts.masterData.domain.ports.out.MaterialRepository;
+import com.materia.backend.contexts.masterData.domain.ports.out.SupplierRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -230,7 +230,7 @@ public class MaterialService implements MaterialUseCase {
 
     @Override
     public com.materia.backend.common.application.PageResponse<MaterialOutput> searchAdvanced(
-            com.materia.backend.contexts.masterdata.application.dtos.material.MaterialSearchCriteria criteria, 
+            com.materia.backend.contexts.masterData.application.dtos.material.MaterialSearchCriteria criteria,
             int page, 
             int size) {
         
@@ -239,8 +239,8 @@ public class MaterialService implements MaterialUseCase {
             statusEnum = MaterialStatus.fromValue(criteria.getStatus());
         }
 
-        com.materia.backend.contexts.masterdata.domain.valueObjects.MaterialSearchFilter filter = 
-            com.materia.backend.contexts.masterdata.domain.valueObjects.MaterialSearchFilter.builder()
+        com.materia.backend.contexts.masterData.domain.valueObjects.MaterialSearchFilter filter =
+            com.materia.backend.contexts.masterData.domain.valueObjects.MaterialSearchFilter.builder()
                 .keyword(criteria.getKeyword())
                 .categoryId(criteria.getCategoryId())
                 .supplierId(criteria.getSupplierId())
@@ -250,7 +250,7 @@ public class MaterialService implements MaterialUseCase {
                 .lowStockOnly(criteria.getLowStockOnly())
                 .build();
                 
-        com.materia.backend.common.application.PageResponse<com.materia.backend.contexts.masterdata.domain.entities.Material> domainPage = 
+        com.materia.backend.common.application.PageResponse<com.materia.backend.contexts.masterData.domain.entities.Material> domainPage =
             materialRepository.searchAdvanced(filter, page, size);
             
         return new com.materia.backend.common.application.PageResponse<>(
@@ -272,13 +272,13 @@ public class MaterialService implements MaterialUseCase {
     private Category getCategoryByStringId(String rawId, String fieldName) {
         UUID uuid = parseUuid(rawId, fieldName);
         return categoryRepository.findById(uuid)
-                .orElseThrow(() -> new com.materia.backend.contexts.masterdata.domain.exceptions.CategoryNotFoundException(rawId));
+                .orElseThrow(() -> new com.materia.backend.contexts.masterData.domain.exceptions.CategoryNotFoundException(rawId));
     }
 
     private Supplier getSupplierByStringId(String rawId, String fieldName) {
         UUID uuid = parseUuid(rawId, fieldName);
         return supplierRepository.findById(uuid)
-                .orElseThrow(() -> new com.materia.backend.contexts.masterdata.domain.exceptions.SupplierNotFoundException(rawId));
+                .orElseThrow(() -> new com.materia.backend.contexts.masterData.domain.exceptions.SupplierNotFoundException(rawId));
     }
 
     private UUID parseUuid(String rawId, String fieldName) {

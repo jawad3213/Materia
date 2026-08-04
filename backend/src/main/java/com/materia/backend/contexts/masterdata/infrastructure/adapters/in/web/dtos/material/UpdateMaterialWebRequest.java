@@ -1,4 +1,4 @@
-package com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.dtos.material;
+package com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.dtos.material;
 
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;

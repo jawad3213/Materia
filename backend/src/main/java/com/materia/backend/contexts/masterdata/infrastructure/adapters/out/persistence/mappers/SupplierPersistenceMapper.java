@@ -1,7 +1,7 @@
-package com.materia.backend.contexts.masterdata.infrastructure.adapters.out.persistence.mappers;
+package com.materia.backend.contexts.masterData.infrastructure.adapters.out.persistence.mappers;
 
-import com.materia.backend.contexts.masterdata.domain.entities.Supplier;
-import com.materia.backend.contexts.masterdata.infrastructure.adapters.out.persistence.entities.SupplierJpaEntity;
+import com.materia.backend.contexts.masterData.domain.entities.Supplier;
+import com.materia.backend.contexts.masterData.infrastructure.adapters.out.persistence.entities.SupplierJpaEntity;
 import org.springframework.stereotype.Component;
 
 /**

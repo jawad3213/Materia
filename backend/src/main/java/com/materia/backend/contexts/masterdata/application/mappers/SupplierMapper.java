@@ -1,10 +1,10 @@
-package com.materia.backend.contexts.masterdata.application.mappers;
+package com.materia.backend.contexts.masterData.application.mappers;
 
-import com.materia.backend.contexts.masterdata.application.dtos.supplier.CreateSupplierInput;
-import com.materia.backend.contexts.masterdata.application.dtos.supplier.UpdateSupplierInput;
-import com.materia.backend.contexts.masterdata.application.dtos.supplier.SupplierOutput;
-import com.materia.backend.contexts.masterdata.domain.entities.Supplier;
-import com.materia.backend.contexts.masterdata.domain.enums.CurrencyCode;
+import com.materia.backend.contexts.masterData.application.dtos.supplier.CreateSupplierInput;
+import com.materia.backend.contexts.masterData.application.dtos.supplier.UpdateSupplierInput;
+import com.materia.backend.contexts.masterData.application.dtos.supplier.SupplierOutput;
+import com.materia.backend.contexts.masterData.domain.entities.Supplier;
+import com.materia.backend.contexts.masterData.domain.enums.CurrencyCode;
 import org.springframework.stereotype.Component;
 
 import java.util.List;

@@ -1,4 +1,4 @@
-package com.materia.backend.contexts.masterdata.domain.enums;
+package com.materia.backend.contexts.masterData.domain.enums;
 
 public enum StockMovementType {
     OPENING_BALANCE,

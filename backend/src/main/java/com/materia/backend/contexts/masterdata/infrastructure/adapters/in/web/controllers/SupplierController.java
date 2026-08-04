@@ -1,13 +1,13 @@
-package com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.controllers;
+package com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.controllers;
 
-import com.materia.backend.contexts.masterdata.application.dtos.supplier.CreateSupplierInput;
-import com.materia.backend.contexts.masterdata.application.dtos.supplier.SupplierOutput;
-import com.materia.backend.contexts.masterdata.application.dtos.supplier.UpdateSupplierInput;
-import com.materia.backend.contexts.masterdata.domain.ports.in.SupplierUseCase;
-import com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.dtos.supplier.CreateSupplierWebRequest;
-import com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.dtos.supplier.SupplierWebResponse;
-import com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.dtos.supplier.UpdateSupplierWebRequest;
-import com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.mappers.SupplierWebMapper;
+import com.materia.backend.contexts.masterData.application.dtos.supplier.CreateSupplierInput;
+import com.materia.backend.contexts.masterData.application.dtos.supplier.SupplierOutput;
+import com.materia.backend.contexts.masterData.application.dtos.supplier.UpdateSupplierInput;
+import com.materia.backend.contexts.masterData.domain.ports.in.SupplierUseCase;
+import com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.dtos.supplier.CreateSupplierWebRequest;
+import com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.dtos.supplier.SupplierWebResponse;
+import com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.dtos.supplier.UpdateSupplierWebRequest;
+import com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.mappers.SupplierWebMapper;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

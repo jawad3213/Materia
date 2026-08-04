@@ -1,4 +1,4 @@
-package com.materia.backend.contexts.masterdata.domain.ports.out;
+package com.materia.backend.contexts.masterData.domain.ports.out;
 
 /**
  * Output port for managing code sequences.

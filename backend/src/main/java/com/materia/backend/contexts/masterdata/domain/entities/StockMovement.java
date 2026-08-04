@@ -1,6 +1,6 @@
-package com.materia.backend.contexts.masterdata.domain.entities;
+package com.materia.backend.contexts.masterData.domain.entities;
 
-import com.materia.backend.contexts.masterdata.domain.enums.StockMovementType;
+import com.materia.backend.contexts.masterData.domain.enums.StockMovementType;
 
 import java.time.LocalDateTime;
 import java.util.UUID;

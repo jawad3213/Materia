@@ -1,11 +1,11 @@
-package com.materia.backend.contexts.masterdata.infrastructure.adapters.out.persistence;
+package com.materia.backend.contexts.masterData.infrastructure.adapters.out.persistence;
 
-import com.materia.backend.contexts.masterdata.domain.entities.Material;
-import com.materia.backend.contexts.masterdata.domain.enums.MaterialStatus;
-import com.materia.backend.contexts.masterdata.domain.ports.out.MaterialRepository;
-import com.materia.backend.contexts.masterdata.infrastructure.adapters.out.persistence.entities.MaterialJpaEntity;
-import com.materia.backend.contexts.masterdata.infrastructure.adapters.out.persistence.mappers.MaterialPersistenceMapper;
-import com.materia.backend.contexts.masterdata.infrastructure.adapters.out.persistence.repositories.SpringDataMaterialRepository;
+import com.materia.backend.contexts.masterData.domain.entities.Material;
+import com.materia.backend.contexts.masterData.domain.enums.MaterialStatus;
+import com.materia.backend.contexts.masterData.domain.ports.out.MaterialRepository;
+import com.materia.backend.contexts.masterData.infrastructure.adapters.out.persistence.entities.MaterialJpaEntity;
+import com.materia.backend.contexts.masterData.infrastructure.adapters.out.persistence.mappers.MaterialPersistenceMapper;
+import com.materia.backend.contexts.masterData.infrastructure.adapters.out.persistence.repositories.SpringDataMaterialRepository;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
@@ -153,7 +153,7 @@ public class MaterialPersistenceAdapter implements MaterialRepository {
 
     @Override
     public com.materia.backend.common.application.PageResponse<Material> searchAdvanced(
-            com.materia.backend.contexts.masterdata.domain.valueObjects.MaterialSearchFilter filter, 
+            com.materia.backend.contexts.masterData.domain.valueObjects.MaterialSearchFilter filter,
             int page, 
             int size) {
         org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size);

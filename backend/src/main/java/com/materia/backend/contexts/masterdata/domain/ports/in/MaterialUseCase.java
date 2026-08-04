@@ -1,8 +1,8 @@
-package com.materia.backend.contexts.masterdata.domain.ports.in;
+package com.materia.backend.contexts.masterData.domain.ports.in;
 
-import com.materia.backend.contexts.masterdata.application.dtos.material.CreateMaterialInput;
-import com.materia.backend.contexts.masterdata.application.dtos.material.MaterialOutput;
-import com.materia.backend.contexts.masterdata.application.dtos.material.UpdateMaterialInput;
+import com.materia.backend.contexts.masterData.application.dtos.material.CreateMaterialInput;
+import com.materia.backend.contexts.masterData.application.dtos.material.MaterialOutput;
+import com.materia.backend.contexts.masterData.application.dtos.material.UpdateMaterialInput;
 import com.materia.backend.common.domain.BaseUseCase;
 
 import java.util.List;
@@ -34,7 +34,7 @@ public interface MaterialUseCase extends BaseUseCase<CreateMaterialInput, Materi
     List<MaterialOutput> searchByKeyword(String keyword);
 
     com.materia.backend.common.application.PageResponse<MaterialOutput> searchAdvanced(
-            com.materia.backend.contexts.masterdata.application.dtos.material.MaterialSearchCriteria criteria, 
+            com.materia.backend.contexts.masterData.application.dtos.material.MaterialSearchCriteria criteria, 
             int page, 
             int size);
 }

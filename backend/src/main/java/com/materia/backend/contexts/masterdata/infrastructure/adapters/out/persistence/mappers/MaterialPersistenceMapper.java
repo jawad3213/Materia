@@ -1,12 +1,12 @@
-package com.materia.backend.contexts.masterdata.infrastructure.adapters.out.persistence.mappers;
+package com.materia.backend.contexts.masterData.infrastructure.adapters.out.persistence.mappers;
 
-import com.materia.backend.contexts.masterdata.domain.entities.Material;
-import com.materia.backend.contexts.masterdata.domain.entities.StockMovement;
-import com.materia.backend.contexts.masterdata.domain.enums.CurrencyCode;
-import com.materia.backend.contexts.masterdata.domain.valueObjects.MaterialCode;
-import com.materia.backend.contexts.masterdata.domain.valueObjects.Money;
-import com.materia.backend.contexts.masterdata.infrastructure.adapters.out.persistence.entities.MaterialJpaEntity;
-import com.materia.backend.contexts.masterdata.infrastructure.adapters.out.persistence.entities.MaterialStockMovementJpaEntity;
+import com.materia.backend.contexts.masterData.domain.entities.Material;
+import com.materia.backend.contexts.masterData.domain.entities.StockMovement;
+import com.materia.backend.contexts.masterData.domain.enums.CurrencyCode;
+import com.materia.backend.contexts.masterData.domain.valueObjects.MaterialCode;
+import com.materia.backend.contexts.masterData.domain.valueObjects.Money;
+import com.materia.backend.contexts.masterData.infrastructure.adapters.out.persistence.entities.MaterialJpaEntity;
+import com.materia.backend.contexts.masterData.infrastructure.adapters.out.persistence.entities.MaterialStockMovementJpaEntity;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;

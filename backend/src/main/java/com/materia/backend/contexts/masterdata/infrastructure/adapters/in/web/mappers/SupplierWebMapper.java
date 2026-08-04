@@ -1,19 +1,16 @@
-    package com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.mappers;
+    package com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.mappers;
 
-import com.materia.backend.contexts.masterdata.application.dtos.supplier.CreateSupplierInput;
-import com.materia.backend.contexts.masterdata.application.dtos.supplier.UpdateSupplierInput;
-import com.materia.backend.contexts.masterdata.application.dtos.supplier.SupplierOutput;
-import com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.dtos.supplier.CreateSupplierWebRequest;
-import com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.dtos.supplier.UpdateSupplierWebRequest;
-import com.materia.backend.contexts.masterdata.infrastructure.adapters.in.web.dtos.supplier.SupplierWebResponse;
+import com.materia.backend.contexts.masterData.application.dtos.supplier.CreateSupplierInput;
+import com.materia.backend.contexts.masterData.application.dtos.supplier.UpdateSupplierInput;
+import com.materia.backend.contexts.masterData.application.dtos.supplier.SupplierOutput;
+import com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.dtos.supplier.CreateSupplierWebRequest;
+import com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.dtos.supplier.UpdateSupplierWebRequest;
+import com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.dtos.supplier.SupplierWebResponse;
 import org.springframework.beans.BeanUtils;
 import com.materia.backend.common.infrastructure.web.BaseWebMapper;
 import org.springframework.stereotype.Component;
 
-import java.util.List;
-import java.util.stream.Collectors;
-
-@Component
+    @Component
 public class SupplierWebMapper implements BaseWebMapper<CreateSupplierWebRequest, UpdateSupplierWebRequest, CreateSupplierInput, UpdateSupplierInput, SupplierWebResponse, SupplierOutput> {
 
     @Override

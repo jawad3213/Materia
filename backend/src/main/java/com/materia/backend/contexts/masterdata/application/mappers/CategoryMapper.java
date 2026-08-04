@@ -1,10 +1,10 @@
-package com.materia.backend.contexts.masterdata.application.mappers;
+package com.materia.backend.contexts.masterData.application.mappers;
 
-import com.materia.backend.contexts.masterdata.application.dtos.category.CreateCategoryInput;
-import com.materia.backend.contexts.masterdata.application.dtos.category.CategoryOutput;
-import com.materia.backend.contexts.masterdata.application.dtos.category.UpdateCategoryInput;
-import com.materia.backend.contexts.masterdata.domain.entities.Category;
-import com.materia.backend.contexts.masterdata.domain.enums.MaterialCategoryType;
+import com.materia.backend.contexts.masterData.application.dtos.category.CreateCategoryInput;
+import com.materia.backend.contexts.masterData.application.dtos.category.CategoryOutput;
+import com.materia.backend.contexts.masterData.application.dtos.category.UpdateCategoryInput;
+import com.materia.backend.contexts.masterData.domain.entities.Category;
+import com.materia.backend.contexts.masterData.domain.enums.MaterialCategoryType;
 import org.springframework.stereotype.Component;
 
 import java.util.List;

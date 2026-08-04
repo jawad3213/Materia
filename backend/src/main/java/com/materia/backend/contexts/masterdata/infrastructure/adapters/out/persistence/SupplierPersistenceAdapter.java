@@ -1,10 +1,10 @@
-package com.materia.backend.contexts.masterdata.infrastructure.adapters.out.persistence;
+package com.materia.backend.contexts.masterData.infrastructure.adapters.out.persistence;
 
-import com.materia.backend.contexts.masterdata.domain.entities.Supplier;
-import com.materia.backend.contexts.masterdata.domain.ports.out.SupplierRepository;
-import com.materia.backend.contexts.masterdata.infrastructure.adapters.out.persistence.entities.SupplierJpaEntity;
-import com.materia.backend.contexts.masterdata.infrastructure.adapters.out.persistence.mappers.SupplierPersistenceMapper;
-import com.materia.backend.contexts.masterdata.infrastructure.adapters.out.persistence.repositories.SpringDataSupplierRepository;
+import com.materia.backend.contexts.masterData.domain.entities.Supplier;
+import com.materia.backend.contexts.masterData.domain.ports.out.SupplierRepository;
+import com.materia.backend.contexts.masterData.infrastructure.adapters.out.persistence.entities.SupplierJpaEntity;
+import com.materia.backend.contexts.masterData.infrastructure.adapters.out.persistence.mappers.SupplierPersistenceMapper;
+import com.materia.backend.contexts.masterData.infrastructure.adapters.out.persistence.repositories.SpringDataSupplierRepository;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
