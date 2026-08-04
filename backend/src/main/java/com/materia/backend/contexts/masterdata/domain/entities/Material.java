@@ -420,6 +420,11 @@ public class Material extends BaseEntity {
      * Increases stock (e.g. after receipt)
      */
     public void increaseStock(Integer quantity) {
+        increaseStock(quantity, "Stock increase");
+    }
+
+    /** Increases stock while keeping the source document in the movement history. */
+    public void increaseStock(Integer quantity, String reason) {
         if (isObsolete()) {
             throw new IllegalStateException("Cannot increase stock of an obsolete material");
         }
@@ -429,7 +434,8 @@ public class Material extends BaseEntity {
         int previousStock = this.currentStock != null ? this.currentStock : 0;
         this.currentStock += quantity;
         this.availableStock += quantity;
-        recordStockMovement(StockMovementType.RECEIPT, quantity, previousStock, this.currentStock, "Stock increase");
+        recordStockMovement(StockMovementType.RECEIPT, quantity, previousStock, this.currentStock,
+                reason != null && !reason.isBlank() ? reason : "Stock increase");
         this.setUpdatedAt(LocalDateTime.now());
     }
 
