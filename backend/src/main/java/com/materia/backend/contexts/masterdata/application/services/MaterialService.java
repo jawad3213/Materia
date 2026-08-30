@@ -263,6 +263,46 @@ public class MaterialService implements MaterialUseCase {
         );
     }
 
+    @Override
+    public List<com.materia.backend.contexts.masterData.application.dtos.material.MaterialListOutput> getAllList() {
+        return mapper.toListResponseList(materialRepository.findAll());
+    }
+
+    @Override
+    public com.materia.backend.common.application.PageResponse<com.materia.backend.contexts.masterData.application.dtos.material.MaterialListOutput> searchAdvancedList(
+            com.materia.backend.contexts.masterData.application.dtos.material.MaterialSearchCriteria criteria,
+            int page, 
+            int size) {
+        
+        MaterialStatus statusEnum = null;
+        if (criteria.getStatus() != null && !criteria.getStatus().trim().isEmpty()) {
+            statusEnum = MaterialStatus.fromValue(criteria.getStatus());
+        }
+
+        com.materia.backend.contexts.masterData.domain.valueObjects.MaterialSearchFilter filter =
+            com.materia.backend.contexts.masterData.domain.valueObjects.MaterialSearchFilter.builder()
+                .keyword(criteria.getKeyword())
+                .categoryId(criteria.getCategoryId())
+                .supplierId(criteria.getSupplierId())
+                .status(statusEnum)
+                .minPrice(criteria.getMinPrice())
+                .maxPrice(criteria.getMaxPrice())
+                .lowStockOnly(criteria.getLowStockOnly())
+                .build();
+                
+        com.materia.backend.common.application.PageResponse<com.materia.backend.contexts.masterData.domain.entities.Material> domainPage =
+            materialRepository.searchAdvanced(filter, page, size);
+            
+        return new com.materia.backend.common.application.PageResponse<>(
+                mapper.toListResponseList(domainPage.getContent()),
+                domainPage.getPageNumber(),
+                domainPage.getPageSize(),
+                domainPage.getTotalElements(),
+                domainPage.getTotalPages(),
+                domainPage.isLast()
+        );
+    }
+
     private void validatePositiveQuantity(int quantity) {
         if (quantity <= 0) {
             throw new ValidationException("Quantity must be positive", Map.of("quantity", "Must be greater than zero"));

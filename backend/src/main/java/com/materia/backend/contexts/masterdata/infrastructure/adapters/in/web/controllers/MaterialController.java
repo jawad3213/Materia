@@ -148,4 +148,31 @@ public class MaterialController {
         
         return ResponseEntity.ok(webPage);
     }
+
+    @GetMapping("/list")
+    public ResponseEntity<List<com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.dtos.material.MaterialListWebResponse>> getAllMaterialsList() {
+        List<com.materia.backend.contexts.masterData.application.dtos.material.MaterialListOutput> responses = materialUseCase.getAllList();
+        return ResponseEntity.ok(webMapper.toWebListResponseList(responses));
+    }
+
+    @PostMapping("/search/list")
+    public ResponseEntity<com.materia.backend.common.application.PageResponse<com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.dtos.material.MaterialListWebResponse>> searchAdvancedList(
+            @RequestBody com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.dtos.material.MaterialSearchWebRequest webRequest,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+            
+        com.materia.backend.contexts.masterData.application.dtos.material.MaterialSearchCriteria criteria = webMapper.toAppSearchCriteria(webRequest);
+        com.materia.backend.common.application.PageResponse<com.materia.backend.contexts.masterData.application.dtos.material.MaterialListOutput> appPage = materialUseCase.searchAdvancedList(criteria, page, size);
+        
+        com.materia.backend.common.application.PageResponse<com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.dtos.material.MaterialListWebResponse> webPage = new com.materia.backend.common.application.PageResponse<>(
+                webMapper.toWebListResponseList(appPage.getContent()),
+                appPage.getPageNumber(),
+                appPage.getPageSize(),
+                appPage.getTotalElements(),
+                appPage.getTotalPages(),
+                appPage.isLast()
+        );
+        
+        return ResponseEntity.ok(webPage);
+    }
 }

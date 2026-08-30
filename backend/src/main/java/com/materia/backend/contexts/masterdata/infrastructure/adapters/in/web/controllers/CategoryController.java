@@ -6,6 +6,7 @@ import com.materia.backend.contexts.masterData.application.dtos.category.UpdateC
 import com.materia.backend.contexts.masterData.domain.ports.in.CategoryUseCase;
 import com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.dtos.category.CreateCategoryWebRequest;
 import com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.dtos.category.CategoryWebResponse;
+import com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.dtos.category.CategoryListWebResponse;
 import com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.dtos.category.UpdateCategoryWebRequest;
 import com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.mappers.CategoryWebMapper;
 import jakarta.validation.Valid;
@@ -48,9 +49,9 @@ public class CategoryController {
     }
 
     @GetMapping
-    public ResponseEntity<List<CategoryWebResponse>> getAllCategories() {
+    public ResponseEntity<List<CategoryListWebResponse>> getAllCategories() {
         List<CategoryOutput> responses = categoryUseCase.getAll();
-        return ResponseEntity.ok(webMapper.toWebResponseList(responses));
+        return ResponseEntity.ok(webMapper.toWebListResponseList(responses));
     }
 
     @PutMapping("/{id}")
@@ -71,14 +72,14 @@ public class CategoryController {
     // ---- Custom Endpoints ----
 
     @GetMapping("/roots")
-    public ResponseEntity<List<CategoryWebResponse>> getRootCategories() {
+    public ResponseEntity<List<CategoryListWebResponse>> getRootCategories() {
         List<CategoryOutput> responses = categoryUseCase.getRootCategories();
-        return ResponseEntity.ok(webMapper.toWebResponseList(responses));
+        return ResponseEntity.ok(webMapper.toWebListResponseList(responses));
     }
 
     @GetMapping("/{parentId}/subcategories")
-    public ResponseEntity<List<CategoryWebResponse>> getSubCategories(@PathVariable UUID parentId) {
+    public ResponseEntity<List<CategoryListWebResponse>> getSubCategories(@PathVariable UUID parentId) {
         List<CategoryOutput> responses = categoryUseCase.getSubCategories(parentId);
-        return ResponseEntity.ok(webMapper.toWebResponseList(responses));
+        return ResponseEntity.ok(webMapper.toWebListResponseList(responses));
     }
 }

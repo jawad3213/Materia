@@ -33,6 +33,7 @@ public class CategoryMapper implements BaseMapper<Category, CreateCategoryInput,
 
         if (request.getParentId() != null) builder.parentId(request.getParentId());
         if (request.getCategoryType() != null) builder.categoryType(MaterialCategoryType.fromValue(request.getCategoryType()));
+        if (request.getStatus() != null) builder.status(request.getStatus());
 
         return builder.build();
     }

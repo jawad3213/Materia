@@ -45,4 +45,19 @@ public class MaterialWebMapper implements BaseWebMapper<CreateMaterialWebRequest
         BeanUtils.copyProperties(webRequest, criteria);
         return criteria;
     }
+
+    public com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.dtos.material.MaterialListWebResponse toWebListResponse(
+            com.materia.backend.contexts.masterData.application.dtos.material.MaterialListOutput appResponse) {
+        if (appResponse == null) return null;
+        com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.dtos.material.MaterialListWebResponse response =
+            new com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.dtos.material.MaterialListWebResponse();
+        BeanUtils.copyProperties(appResponse, response);
+        return response;
+    }
+
+    public java.util.List<com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.dtos.material.MaterialListWebResponse> toWebListResponseList(
+            java.util.List<com.materia.backend.contexts.masterData.application.dtos.material.MaterialListOutput> appResponses) {
+        if (appResponses == null) return java.util.List.of();
+        return appResponses.stream().map(this::toWebListResponse).collect(java.util.stream.Collectors.toList());
+    }
 }

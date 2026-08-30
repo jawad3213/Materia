@@ -177,4 +177,38 @@ public class MaterialMapper implements BaseMapper<Material, CreateMaterialInput,
         if (entities == null) return List.of();
         return entities.stream().map(this::toResponse).collect(Collectors.toList());
     }
+
+    // ============================================================
+    // ENTITY -> LIST RESPONSE DTO
+    // ============================================================
+
+    /**
+     * Convert Material entity to MaterialListOutput
+     */
+    public com.materia.backend.contexts.masterData.application.dtos.material.MaterialListOutput toListResponse(Material entity) {
+        if (entity == null) return null;
+
+        com.materia.backend.contexts.masterData.application.dtos.material.MaterialListOutput response = new com.materia.backend.contexts.masterData.application.dtos.material.MaterialListOutput();
+        response.setId(entity.getId());
+        response.setCode(entity.getCode() != null ? entity.getCode().getValue() : null);
+        response.setName(entity.getName());
+        response.setShortDescription(entity.getShortDescription());
+        response.setMaterialType(entity.getMaterialType() != null ? entity.getMaterialType().name() : null);
+        response.setStatus(entity.getStatus() != null ? entity.getStatus().name() : null);
+        response.setUnitOfMeasure(entity.getUnitOfMeasure() != null ? entity.getUnitOfMeasure().name() : null);
+        response.setCurrentStock(entity.getCurrentStock());
+        response.setStandardPrice(entity.getStandardPrice() != null ? entity.getStandardPrice().getAmount() : null);
+        response.setStandardPriceCurrency(entity.getStandardPrice() != null ? entity.getStandardPrice().getCurrency().getCode() : null);
+        response.setCategoryId(entity.getCategoryId());
+        response.setSupplierId(entity.getSupplierId());
+        return response;
+    }
+
+    /**
+     * Convert list of Material entities to list of MaterialListOutput
+     */
+    public List<com.materia.backend.contexts.masterData.application.dtos.material.MaterialListOutput> toListResponseList(List<Material> entities) {
+        if (entities == null) return List.of();
+        return entities.stream().map(this::toListResponse).collect(Collectors.toList());
+    }
 }

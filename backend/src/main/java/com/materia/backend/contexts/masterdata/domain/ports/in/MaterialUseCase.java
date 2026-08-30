@@ -37,4 +37,11 @@ public interface MaterialUseCase extends BaseUseCase<CreateMaterialInput, Materi
             com.materia.backend.contexts.masterData.application.dtos.material.MaterialSearchCriteria criteria, 
             int page, 
             int size);
+
+    List<com.materia.backend.contexts.masterData.application.dtos.material.MaterialListOutput> getAllList();
+
+    com.materia.backend.common.application.PageResponse<com.materia.backend.contexts.masterData.application.dtos.material.MaterialListOutput> searchAdvancedList(
+            com.materia.backend.contexts.masterData.application.dtos.material.MaterialSearchCriteria criteria, 
+            int page, 
+            int size);
 }

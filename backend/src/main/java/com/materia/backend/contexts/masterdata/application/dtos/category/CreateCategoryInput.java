@@ -13,6 +13,7 @@ public class CreateCategoryInput extends BaseInput {
     private String shortDescription;
     private String parentId;
     private String categoryType;
+    private String status;
     private String createdBy;
 
     // Getters and Setters
@@ -33,6 +34,9 @@ public class CreateCategoryInput extends BaseInput {
 
     public String getCategoryType() { return categoryType; }
     public void setCategoryType(String categoryType) { this.categoryType = categoryType; }
+
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
 
     public String getCreatedBy() { return createdBy; }
     public void setCreatedBy(String createdBy) { this.createdBy = createdBy; }

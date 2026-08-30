@@ -6,9 +6,11 @@ import com.materia.backend.contexts.masterData.application.dtos.category.Categor
 import com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.dtos.category.CreateCategoryWebRequest;
 import com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.dtos.category.UpdateCategoryWebRequest;
 import com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.dtos.category.CategoryWebResponse;
+import com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.dtos.category.CategoryListWebResponse;
 import org.springframework.beans.BeanUtils;
 import com.materia.backend.common.infrastructure.web.BaseWebMapper;
 import org.springframework.stereotype.Component;
+import java.util.List;
 
 @Component
 public class CategoryWebMapper implements BaseWebMapper<CreateCategoryWebRequest, UpdateCategoryWebRequest, CreateCategoryInput, UpdateCategoryInput, CategoryWebResponse, CategoryOutput> {
@@ -37,5 +39,13 @@ public class CategoryWebMapper implements BaseWebMapper<CreateCategoryWebRequest
         return response;
     }
 
-    
+    public List<CategoryListWebResponse> toWebListResponseList(List<CategoryOutput> appResponses) {
+        if (appResponses == null) return List.of();
+        return appResponses.stream().map(appResponse -> {
+            CategoryListWebResponse response = new CategoryListWebResponse();
+            BeanUtils.copyProperties(appResponse, response);
+            return response;
+        }).toList();
+    }
+
 }
