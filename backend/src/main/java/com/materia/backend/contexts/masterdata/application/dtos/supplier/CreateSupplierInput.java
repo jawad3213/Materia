@@ -1,5 +1,7 @@
 package com.materia.backend.contexts.masterData.application.dtos.supplier;
 
+import java.util.List;
+
 import com.materia.backend.common.application.BaseInput;
 
 /**
@@ -16,8 +18,7 @@ public class CreateSupplierInput extends BaseInput {
     private String city;
     private String country;
     private String postalCode;
-    private String paymentTerms;
-    private Integer paymentDelay;
+    private List<String> paymentTerms;
     private String currencyCode;
     private String createdBy;
 
@@ -49,11 +50,8 @@ public class CreateSupplierInput extends BaseInput {
     public String getPostalCode() { return postalCode; }
     public void setPostalCode(String postalCode) { this.postalCode = postalCode; }
 
-    public String getPaymentTerms() { return paymentTerms; }
-    public void setPaymentTerms(String paymentTerms) { this.paymentTerms = paymentTerms; }
-
-    public Integer getPaymentDelay() { return paymentDelay; }
-    public void setPaymentDelay(Integer paymentDelay) { this.paymentDelay = paymentDelay; }
+    public List<String> getPaymentTerms() { return paymentTerms; }
+    public void setPaymentTerms(List<String> paymentTerms) { this.paymentTerms = paymentTerms; }
 
     public String getCurrencyCode() { return currencyCode; }
     public void setCurrencyCode(String currencyCode) { this.currencyCode = currencyCode; }

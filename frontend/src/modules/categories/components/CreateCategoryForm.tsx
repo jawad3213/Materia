@@ -78,8 +78,8 @@ export default function CreateCategoryForm() {
         shortDescription: formData.shortDescription || undefined,
         parentId: formData.parentId || undefined,
         // Using type assertion since we populate from enum
-        categoryType: formData.categoryType as any, 
-        status: formData.status as any,
+        categoryType: formData.categoryType || undefined as any, 
+        status: formData.status || undefined as any,
         createdBy: formData.createdBy,
       };
       
@@ -206,6 +206,7 @@ export default function CreateCategoryForm() {
                   value: cat.id,
                   label: cat.name
                 }))}
+                error={!!fieldErrors.parentId}
               />
               {fieldErrors.parentId && <p className="mt-1.5 text-xs text-error-500">{fieldErrors.parentId}</p>}
               <p className="mt-1 text-xs text-gray-500">Leave blank to create a top-level Master Category</p>
@@ -222,6 +223,7 @@ export default function CreateCategoryForm() {
                   value: val,
                   label: key.replace(/_/g, ' ')
                 }))}
+                error={!!fieldErrors.categoryType}
               />
               {fieldErrors.categoryType && <p className="mt-1.5 text-xs text-error-500">{fieldErrors.categoryType}</p>}
             </div>
@@ -236,6 +238,7 @@ export default function CreateCategoryForm() {
                   value: val,
                   label: key
                 }))}
+                error={!!fieldErrors.status}
               />
               {fieldErrors.status && <p className="mt-1.5 text-xs text-error-500">{fieldErrors.status}</p>}
             </div>

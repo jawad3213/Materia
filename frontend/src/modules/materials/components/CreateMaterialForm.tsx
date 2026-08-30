@@ -4,8 +4,10 @@ import { MaterialStatus, MaterialType, UnitOfMeasure, CurrencyCode } from "../en
 import CustomSelect from "./CustomSelect";
 import { materialApi } from "../services/materialApi";
 import { categoryApi } from "../../categories/services/categoryApi";
+import { supplierApi } from "../../suppliers/services/supplierApi";
 import type { CreateMaterialRequest } from "../types/CreateMaterialRequest";
 import type { CategoryListItem } from "../../categories/types/CategoryListItem";
+import type { SupplierListItem } from "../../suppliers/types/SupplierListItem";
 import type { ErrorResponse } from "../../../shared/types/ErrorResponse";
 
 // Shared Components
@@ -22,11 +24,16 @@ export default function CreateMaterialForm() {
   const [submitMessage, setSubmitMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [categories, setCategories] = useState<CategoryListItem[]>([]);
+  const [suppliers, setSuppliers] = useState<SupplierListItem[]>([]);
 
   React.useEffect(() => {
     categoryApi.getAll()
       .then(res => setCategories(res.data))
       .catch(err => console.error("Failed to load categories", err));
+      
+    supplierApi.getAll()
+      .then(res => setSuppliers(res.data))
+      .catch(err => console.error("Failed to load suppliers", err));
   }, []);
 
   // Auto-dismiss the toast notification after 5 seconds
@@ -106,6 +113,13 @@ export default function CreateMaterialForm() {
     try {
       const requestPayload: CreateMaterialRequest = {
         ...formData,
+        materialType: formData.materialType || undefined as any,
+        unitOfMeasure: formData.unitOfMeasure || undefined as any,
+        status: formData.status || undefined as any,
+        standardPriceCurrency: formData.standardPriceCurrency || undefined as any,
+        costPriceCurrency: formData.costPriceCurrency || undefined as any,
+        categoryId: formData.categoryId || undefined as any,
+        supplierId: formData.supplierId || undefined as any,
         searchKeywords: keywords.join(","),
         // Ensure numbers are properly cast for the backend
         currentStock: Number(formData.currentStock) || 0,
@@ -281,6 +295,7 @@ export default function CreateMaterialForm() {
                   value: cat.id,
                   label: cat.name
                 }))}
+                error={!!fieldErrors.categoryId}
               />
               {fieldErrors.categoryId && <p className="mt-1.5 text-xs text-error-500">{fieldErrors.categoryId}</p>}
             </div>
@@ -291,11 +306,11 @@ export default function CreateMaterialForm() {
                 onChange={(val) => handleStringChange('supplierId', val)}
                 placeholder="Select Supplier"
                 showSearch
-                options={[
-                  // Valid UUIDs required by backend parsing
-                  { value: "4a08fc23-0df1-4a16-9214-9ff53be76b5c", label: "Acme Corp" },
-                  { value: "b49fa4b0-3f26-4d2b-980e-cb65a9a83597", label: "Global Supplies Ltd" }
-                ]}
+                options={suppliers.map((sup) => ({
+                  value: sup.id,
+                  label: sup.name
+                }))}
+                error={!!fieldErrors.supplierId}
               />
               {fieldErrors.supplierId && <p className="mt-1.5 text-xs text-error-500">{fieldErrors.supplierId}</p>}
             </div>
@@ -310,6 +325,7 @@ export default function CreateMaterialForm() {
                   value: val,
                   label: key.replace(/_/g, ' ')
                 }))}
+                error={!!fieldErrors.materialType}
               />
               {fieldErrors.materialType && <p className="mt-1.5 text-xs text-error-500">{fieldErrors.materialType}</p>}
             </div>
@@ -323,6 +339,7 @@ export default function CreateMaterialForm() {
                   value: val,
                   label: key
                 }))}
+                error={!!fieldErrors.status}
               />
               {fieldErrors.status && <p className="mt-1.5 text-xs text-error-500">{fieldErrors.status}</p>}
             </div>
@@ -358,6 +375,7 @@ export default function CreateMaterialForm() {
                   value: val,
                   label: key
                 }))}
+                error={!!fieldErrors.unitOfMeasure}
               />
               {fieldErrors.unitOfMeasure && <p className="mt-1.5 text-xs text-error-500">{fieldErrors.unitOfMeasure}</p>}
             </div>
@@ -465,6 +483,7 @@ export default function CreateMaterialForm() {
                   value: val,
                   label: key
                 }))}
+                error={!!fieldErrors.standardPriceCurrency}
               />
               {fieldErrors.standardPriceCurrency && <p className="mt-1.5 text-xs text-error-500">{fieldErrors.standardPriceCurrency}</p>}
             </div>
@@ -490,6 +509,7 @@ export default function CreateMaterialForm() {
                   value: val,
                   label: key
                 }))}
+                error={!!fieldErrors.costPriceCurrency}
               />
               {fieldErrors.costPriceCurrency && <p className="mt-1.5 text-xs text-error-500">{fieldErrors.costPriceCurrency}</p>}
             </div>

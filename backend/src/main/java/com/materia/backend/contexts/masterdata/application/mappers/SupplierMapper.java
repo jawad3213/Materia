@@ -25,6 +25,7 @@ public class SupplierMapper implements BaseMapper<Supplier, CreateSupplierInput,
         if (request == null) return null;
 
         return Supplier.builder()
+                .code("SUP-0000")
                 .name(request.getName())
                 .description(request.getDescription())
                 .contactPerson(request.getContactPerson())
@@ -35,7 +36,6 @@ public class SupplierMapper implements BaseMapper<Supplier, CreateSupplierInput,
                 .country(request.getCountry())
                 .postalCode(request.getPostalCode())
                 .paymentTerms(request.getPaymentTerms())
-                .paymentDelay(request.getPaymentDelay())
                 .currencyCode(request.getCurrencyCode() != null
                         ? CurrencyCode.fromCode(request.getCurrencyCode())
                         : CurrencyCode.MAD)

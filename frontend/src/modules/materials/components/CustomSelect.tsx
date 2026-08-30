@@ -13,6 +13,7 @@ interface CustomSelectProps {
   className?: string;
   maxHeightClass?: string;
   showSearch?: boolean;
+  error?: boolean;
 }
 
 export default function CustomSelect({
@@ -23,6 +24,7 @@ export default function CustomSelect({
   className = "",
   maxHeightClass = "max-h-[248px]", // Exactly fits 6 items + padding
   showSearch = false,
+  error = false,
 }: CustomSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -47,7 +49,11 @@ export default function CustomSelect({
   return (
     <div className={`relative ${className}`} ref={selectRef}>
       <div
-        className={`w-full cursor-pointer appearance-none rounded-lg border border-gray-200 bg-transparent px-4 py-3 pr-10 text-sm outline-none focus:border-brand-500 dark:border-gray-800 dark:focus:border-brand-500 bg-no-repeat bg-[position:right_1rem_center] bg-[length:1.25rem_1.25rem] ${
+        className={`w-full cursor-pointer appearance-none rounded-lg border bg-transparent px-4 py-3 pr-10 text-sm outline-none bg-no-repeat bg-[position:right_1rem_center] bg-[length:1.25rem_1.25rem] ${
+          error 
+            ? "border-error-500 focus:border-error-300 focus:ring-error-500/20 dark:border-error-500 dark:focus:border-error-800" 
+            : "border-gray-200 focus:border-brand-500 dark:border-gray-800 dark:focus:border-brand-500"
+        } ${
           value ? "text-gray-800 dark:text-white/90" : "text-gray-500 dark:text-gray-400"
         }`}
         style={{

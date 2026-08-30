@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import MaterialsRoutes from '../../modules/materials/MaterialsRoutes';
 import CategoriesRoutes from '../../modules/categories/CategoriesRoutes';
+import SuppliersRoutes from '../../modules/suppliers/SuppliersRoutes';
 
 export default function AppRoutes() {
   return (
@@ -10,6 +11,7 @@ export default function AppRoutes() {
       {/* Mount all materials routes under /materials/* */}
       <Route path="/materials/*" element={<MaterialsRoutes />} />
       <Route path="/categories/*" element={<CategoriesRoutes />} />
+      <Route path="/suppliers/*" element={<SuppliersRoutes />} />
     </Routes>
   );
 }

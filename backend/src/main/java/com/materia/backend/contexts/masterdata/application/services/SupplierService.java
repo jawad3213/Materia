@@ -67,7 +67,6 @@ public class SupplierService implements SupplierUseCase {
         updateRequest.setCountry(request.getCountry());
         updateRequest.setPostalCode(request.getPostalCode());
         updateRequest.setPaymentTerms(request.getPaymentTerms());
-        updateRequest.setPaymentDelay(request.getPaymentDelay());
         updateRequest.setCurrencyCode(request.getCurrencyCode());
         updateRequest.setUpdatedBy(request.getCreatedBy());
         return update(id, updateRequest);

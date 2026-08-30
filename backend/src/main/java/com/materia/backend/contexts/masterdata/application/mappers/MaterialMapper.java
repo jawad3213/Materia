@@ -40,6 +40,7 @@ public class MaterialMapper implements BaseMapper<Material, CreateMaterialInput,
                 : CurrencyCode.MAD;
 
         Material material = Material.builder()
+                .code("TMP-0000")
                 .name(request.getName())
                 .description(request.getDescription())
                 .shortDescription(request.getShortDescription())

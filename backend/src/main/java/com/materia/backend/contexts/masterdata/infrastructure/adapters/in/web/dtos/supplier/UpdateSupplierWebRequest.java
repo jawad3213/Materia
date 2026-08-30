@@ -4,6 +4,8 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
 
+import java.util.List;
+
 public class UpdateSupplierWebRequest {
     @Size(max = 500, message = "Description must not exceed 500 characters")
     private String description;
@@ -24,7 +26,7 @@ public class UpdateSupplierWebRequest {
     private String city;
     private String country;
     private String postalCode;
-    private String paymentTerms;
+    private List<String> paymentTerms;
     
     @PositiveOrZero(message = "Payment delay cannot be negative")
     private Integer paymentDelay;
@@ -53,8 +55,8 @@ public class UpdateSupplierWebRequest {
     public void setCountry(String country) { this.country = country; }
     public String getPostalCode() { return postalCode; }
     public void setPostalCode(String postalCode) { this.postalCode = postalCode; }
-    public String getPaymentTerms() { return paymentTerms; }
-    public void setPaymentTerms(String paymentTerms) { this.paymentTerms = paymentTerms; }
+    public List<String> getPaymentTerms() { return paymentTerms; }
+    public void setPaymentTerms(List<String> paymentTerms) { this.paymentTerms = paymentTerms; }
     public Integer getPaymentDelay() { return paymentDelay; }
     public void setPaymentDelay(Integer paymentDelay) { this.paymentDelay = paymentDelay; }
     public String getCurrencyCode() { return currencyCode; }

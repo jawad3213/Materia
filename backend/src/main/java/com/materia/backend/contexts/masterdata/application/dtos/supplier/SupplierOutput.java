@@ -3,6 +3,7 @@ package com.materia.backend.contexts.masterData.application.dtos.supplier;
 import com.materia.backend.common.application.BaseOutput;
 import java.time.LocalDateTime;
 import java.util.UUID;
+import java.util.List;
 
 /**
  * Response DTO for Supplier data
@@ -21,7 +22,7 @@ public class SupplierOutput extends BaseOutput {
     private String country;
     private String postalCode;
     private String fullAddress;
-    private String paymentTerms;
+    private List<String> paymentTerms;
     private Integer paymentDelay;
     private String currencyCode;
     private String status;
@@ -69,8 +70,8 @@ public class SupplierOutput extends BaseOutput {
     public String getFullAddress() { return fullAddress; }
     public void setFullAddress(String fullAddress) { this.fullAddress = fullAddress; }
 
-    public String getPaymentTerms() { return paymentTerms; }
-    public void setPaymentTerms(String paymentTerms) { this.paymentTerms = paymentTerms; }
+    public List<String> getPaymentTerms() { return paymentTerms; }
+    public void setPaymentTerms(List<String> paymentTerms) { this.paymentTerms = paymentTerms; }
 
     public Integer getPaymentDelay() { return paymentDelay; }
     public void setPaymentDelay(Integer paymentDelay) { this.paymentDelay = paymentDelay; }
