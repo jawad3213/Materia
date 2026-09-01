@@ -1,29 +1,74 @@
 package com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.dtos.material;
 
-import java.math.BigDecimal;
-
 /**
  * Request payload for advanced material search.
+ * Supports searching by individual fields (code, name, description, etc.)
+ * and filtering by categoryId, materialType, status.
  */
 public class MaterialSearchWebRequest {
 
-    private String keyword;
+    // ---- Search fields ----
+    private String code;
+    private String name;
+    private String description;
+    private String shortDescription;
+    private String searchKeywords;
+    private String alternativeName;
+
+    // ---- Filter fields ----
     private String categoryId;
-    private String supplierId;
+    private String materialType;
     private String status;
-    private BigDecimal minPrice;
-    private BigDecimal maxPrice;
-    private Boolean lowStockOnly;
 
     public MaterialSearchWebRequest() {
     }
 
-    public String getKeyword() {
-        return keyword;
+    public String getCode() {
+        return code;
     }
 
-    public void setKeyword(String keyword) {
-        this.keyword = keyword;
+    public void setCode(String code) {
+        this.code = code;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public String getShortDescription() {
+        return shortDescription;
+    }
+
+    public void setShortDescription(String shortDescription) {
+        this.shortDescription = shortDescription;
+    }
+
+    public String getSearchKeywords() {
+        return searchKeywords;
+    }
+
+    public void setSearchKeywords(String searchKeywords) {
+        this.searchKeywords = searchKeywords;
+    }
+
+    public String getAlternativeName() {
+        return alternativeName;
+    }
+
+    public void setAlternativeName(String alternativeName) {
+        this.alternativeName = alternativeName;
     }
 
     public String getCategoryId() {
@@ -34,12 +79,12 @@ public class MaterialSearchWebRequest {
         this.categoryId = categoryId;
     }
 
-    public String getSupplierId() {
-        return supplierId;
+    public String getMaterialType() {
+        return materialType;
     }
 
-    public void setSupplierId(String supplierId) {
-        this.supplierId = supplierId;
+    public void setMaterialType(String materialType) {
+        this.materialType = materialType;
     }
 
     public String getStatus() {
@@ -48,29 +93,5 @@ public class MaterialSearchWebRequest {
 
     public void setStatus(String status) {
         this.status = status;
-    }
-
-    public BigDecimal getMinPrice() {
-        return minPrice;
-    }
-
-    public void setMinPrice(BigDecimal minPrice) {
-        this.minPrice = minPrice;
-    }
-
-    public BigDecimal getMaxPrice() {
-        return maxPrice;
-    }
-
-    public void setMaxPrice(BigDecimal maxPrice) {
-        this.maxPrice = maxPrice;
-    }
-
-    public Boolean getLowStockOnly() {
-        return lowStockOnly;
-    }
-
-    public void setLowStockOnly(Boolean lowStockOnly) {
-        this.lowStockOnly = lowStockOnly;
     }
 }

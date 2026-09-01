@@ -118,7 +118,8 @@ public class Money {
             throw new IllegalArgumentException("Amount cannot be negative: " + amount);
         }
         // Decimal places check
-        if (amount.scale() > currency.getDecimalPlaces()) {
+        int actualScale = amount.stripTrailingZeros().scale();
+        if (actualScale > currency.getDecimalPlaces()) {
             throw new IllegalArgumentException(
                     "Amount cannot have more than " +
                             currency.getDecimalPlaces() + " decimal places for currency " +

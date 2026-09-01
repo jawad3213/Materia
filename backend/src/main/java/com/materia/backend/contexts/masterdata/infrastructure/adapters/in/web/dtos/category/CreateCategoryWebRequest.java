@@ -5,10 +5,6 @@ import jakarta.validation.constraints.Size;
 
 public class CreateCategoryWebRequest {
     
-    @NotBlank(message = "Code is mandatory")
-    @Size(max = 50, message = "Code must not exceed 50 characters")
-    private String code;
-    
     @NotBlank(message = "Name is mandatory")
     @Size(max = 100, message = "Name must not exceed 100 characters")
     private String name;
@@ -24,12 +20,13 @@ public class CreateCategoryWebRequest {
     @NotBlank(message = "Category Type is mandatory")
     private String categoryType;
     
+    @NotBlank(message = "Status is mandatory")
+    private String status;
+    
     @NotBlank(message = "Created by is mandatory")
     private String createdBy;
 
     // Getters and Setters
-    public String getCode() { return code; }
-    public void setCode(String code) { this.code = code; }
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
     public String getDescription() { return description; }
@@ -40,6 +37,8 @@ public class CreateCategoryWebRequest {
     public void setParentId(String parentId) { this.parentId = parentId; }
     public String getCategoryType() { return categoryType; }
     public void setCategoryType(String categoryType) { this.categoryType = categoryType; }
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
     public String getCreatedBy() { return createdBy; }
     public void setCreatedBy(String createdBy) { this.createdBy = createdBy; }
 }

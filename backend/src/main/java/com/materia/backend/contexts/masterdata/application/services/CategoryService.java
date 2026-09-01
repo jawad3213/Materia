@@ -26,13 +26,16 @@ public class CategoryService implements CategoryUseCase {
     private final CategoryRepository categoryRepository;
     private final MaterialRepository materialRepository;
     private final CategoryMapper mapper;
+    private final CategoryCodeGeneratorService codeGenerator;
 
     public CategoryService(CategoryRepository categoryRepository,
                            MaterialRepository materialRepository,
-                           CategoryMapper mapper) {
+                           CategoryMapper mapper,
+                           CategoryCodeGeneratorService codeGenerator) {
         this.categoryRepository = categoryRepository;
         this.materialRepository = materialRepository;
         this.mapper = mapper;
+        this.codeGenerator = codeGenerator;
     }
 
     // ============================================================
@@ -42,6 +45,7 @@ public class CategoryService implements CategoryUseCase {
     @Override
     @Transactional
     public CategoryOutput create(CreateCategoryInput request) {
+        request.setCode(codeGenerator.generateCode());
         Category category = mapper.toEntity(request);
         Category parent = resolveParentCategory(normalizeParentId(request.getParentId()), null);
         applyHierarchyMetadata(category, parent);

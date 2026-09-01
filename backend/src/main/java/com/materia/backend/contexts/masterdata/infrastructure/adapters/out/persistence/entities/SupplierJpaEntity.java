@@ -3,6 +3,8 @@ package com.materia.backend.contexts.masterData.infrastructure.adapters.out.pers
 import com.materia.backend.common.infrastructure.persistence.BaseJpaEntity;
 import com.materia.backend.contexts.masterData.domain.enums.CurrencyCode;
 
+import java.util.List;
+
 import jakarta.persistence.*;
 
 /**
@@ -52,8 +54,10 @@ public class SupplierJpaEntity extends BaseJpaEntity {
     private String postalCode;
 
     // ---- COMMERCIAL TERMS ----
-    @Column(name = "payment_terms", length = 100)
-    private String paymentTerms;
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "supplier_payment_terms", joinColumns = @JoinColumn(name = "supplier_id"))
+    @Column(name = "payment_term")
+    private List<String> paymentTerms;
 
     @Column(name = "payment_delay")
     private Integer paymentDelay;
@@ -107,8 +111,8 @@ public class SupplierJpaEntity extends BaseJpaEntity {
     public String getPostalCode() { return postalCode; }
     public void setPostalCode(String postalCode) { this.postalCode = postalCode; }
 
-    public String getPaymentTerms() { return paymentTerms; }
-    public void setPaymentTerms(String paymentTerms) { this.paymentTerms = paymentTerms; }
+    public List<String> getPaymentTerms() { return paymentTerms; }
+    public void setPaymentTerms(List<String> paymentTerms) { this.paymentTerms = paymentTerms; }
 
     public Integer getPaymentDelay() { return paymentDelay; }
     public void setPaymentDelay(Integer paymentDelay) { this.paymentDelay = paymentDelay; }

@@ -31,10 +31,17 @@ public interface MaterialUseCase extends BaseUseCase<CreateMaterialInput, Materi
 
     List<MaterialOutput> getMaterialsByStatus(String status);
 
-    List<MaterialOutput> searchByKeyword(String keyword);
+    List<MaterialOutput> getMaterialsByMaterialType(String materialType);
 
-    com.materia.backend.common.application.PageResponse<MaterialOutput> searchAdvanced(
+    com.materia.backend.common.application.PageResponse<com.materia.backend.contexts.masterData.application.dtos.material.MaterialListOutput> getAllList(int page, int size);
+
+    com.materia.backend.common.application.PageResponse<com.materia.backend.contexts.masterData.application.dtos.material.MaterialListOutput> searchAdvancedList(
             com.materia.backend.contexts.masterData.application.dtos.material.MaterialSearchCriteria criteria, 
+            int page, 
+            int size);
+
+    com.materia.backend.common.application.PageResponse<com.materia.backend.contexts.masterData.application.dtos.material.MaterialListOutput> filterList(
+            com.materia.backend.contexts.masterData.application.dtos.material.MaterialFilterCriteria criteria, 
             int page, 
             int size);
 }

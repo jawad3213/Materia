@@ -6,6 +6,8 @@ import com.materia.backend.common.domain.BaseEntity;
 import java.time.LocalDateTime;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.List;
+import java.util.ArrayList;
 
 /**
  * Supplier - Simplified Version (MVP)
@@ -44,7 +46,7 @@ public class Supplier extends BaseEntity {
     private String postalCode;      // Postal code
 
     // ---- COMMERCIAL TERMS ----
-    private String paymentTerms;    // Payment terms
+    private List<String> paymentTerms;    // Payment terms
     private Integer paymentDelay;   // Payment delay (days)
     private CurrencyCode currencyCode;
     private String status;          // ACTIVE / INACTIVE
@@ -76,7 +78,7 @@ public class Supplier extends BaseEntity {
         private String city;
         private String country;
         private String postalCode;
-        private String paymentTerms;
+        private List<String> paymentTerms = new ArrayList<>();
         private Integer paymentDelay = 30;
         private CurrencyCode currencyCode = CurrencyCode.MAD;
         private String status = STATUS_ACTIVE;
@@ -139,7 +141,7 @@ public class Supplier extends BaseEntity {
             return this;
         }
 
-        public Builder paymentTerms(String paymentTerms) {
+        public Builder paymentTerms(List<String> paymentTerms) {
             this.paymentTerms = paymentTerms;
             return this;
         }
@@ -370,11 +372,11 @@ public class Supplier extends BaseEntity {
     }
 
     // ---- COMMERCIAL TERMS ----
-    public String getPaymentTerms() {
+    public List<String> getPaymentTerms() {
         return paymentTerms;
     }
 
-    public void setPaymentTerms(String paymentTerms) {
+    public void setPaymentTerms(List<String> paymentTerms) {
         this.paymentTerms = paymentTerms;
         this.setUpdatedAt(LocalDateTime.now());
     }

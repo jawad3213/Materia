@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
 import jakarta.persistence.criteria.Predicate;
+import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -38,20 +39,25 @@ public class MaterialPersistenceAdapter implements MaterialRepository {
     // ============================================================
 
     @Override
+    @Transactional(readOnly = true)
     public Optional<Material> findById(UUID uuid) {
         return jpaRepository.findById(uuid).map(mapper::toDomainEntity);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<Material> findAll() {
         return jpaRepository.findAll().stream()
                 .map(mapper::toDomainEntity).collect(Collectors.toList());
     }
 
     @Override
+    @Transactional
     public Material save(Material entity) {
         MaterialJpaEntity jpa = mapper.toJpaEntity(entity);
-        return mapper.toDomainEntity(jpaRepository.save(jpa));
+        MaterialJpaEntity saved = jpaRepository.save(jpa);
+        jpaRepository.flush();
+        return mapper.toDomainEntity(jpaRepository.findById(saved.getId()).orElse(saved));
     }
 
     @Override
@@ -109,6 +115,12 @@ public class MaterialPersistenceAdapter implements MaterialRepository {
     }
 
     @Override
+    public List<Material> findByMaterialType(com.materia.backend.contexts.masterData.domain.enums.MaterialType materialType) {
+        return jpaRepository.findByMaterialType(materialType).stream()
+                .map(mapper::toDomainEntity).collect(Collectors.toList());
+    }
+
+    @Override
     public boolean existsByCode(String code) { return jpaRepository.existsByCode(code); }
 
     @Override
@@ -123,7 +135,16 @@ public class MaterialPersistenceAdapter implements MaterialRepository {
 
     @Override
     public List<Material> search(String keyword) {
-        return jpaRepository.findAll(buildSearchSpecification(keyword)).stream()
+        com.materia.backend.contexts.masterData.domain.valueObjects.MaterialSearchFilter filter =
+            com.materia.backend.contexts.masterData.domain.valueObjects.MaterialSearchFilter.builder()
+                .code(keyword)
+                .name(keyword)
+                .description(keyword)
+                .shortDescription(keyword)
+                .searchKeywords(keyword)
+                .alternativeName(keyword)
+                .build();
+        return jpaRepository.findAll(buildSearchSpecification(filter)).stream()
                 .map(mapper::toDomainEntity).collect(Collectors.toList());
     }
 
@@ -158,27 +179,18 @@ public class MaterialPersistenceAdapter implements MaterialRepository {
             int size) {
         org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size);
         
-        Specification<MaterialJpaEntity> spec = Specification.where(buildSearchSpecification(filter.getKeyword()))
+        Specification<MaterialJpaEntity> spec = Specification.where(buildSearchSpecification(filter))
                 .and((root, query, cb) -> {
                     List<Predicate> predicates = new ArrayList<>();
                     
                     if (StringUtils.hasText(filter.getCategoryId())) {
                         predicates.add(cb.equal(root.get("categoryId"), filter.getCategoryId()));
                     }
-                    if (StringUtils.hasText(filter.getSupplierId())) {
-                        predicates.add(cb.equal(root.get("supplierId"), filter.getSupplierId()));
+                    if (filter.getMaterialType() != null) {
+                        predicates.add(cb.equal(root.get("materialType"), filter.getMaterialType()));
                     }
                     if (filter.getStatus() != null) {
                         predicates.add(cb.equal(root.get("status"), filter.getStatus()));
-                    }
-                    if (filter.getMinPrice() != null) {
-                        predicates.add(cb.greaterThanOrEqualTo(root.get("standardPrice"), filter.getMinPrice()));
-                    }
-                    if (filter.getMaxPrice() != null) {
-                        predicates.add(cb.lessThanOrEqualTo(root.get("standardPrice"), filter.getMaxPrice()));
-                    }
-                    if (Boolean.TRUE.equals(filter.getLowStockOnly())) {
-                        predicates.add(cb.lessThan(root.get("currentStock"), root.get("minimumStock")));
                     }
                     
                     return cb.and(predicates.toArray(new Predicate[0]));
@@ -199,29 +211,42 @@ public class MaterialPersistenceAdapter implements MaterialRepository {
         );
     }
 
-    private Specification<MaterialJpaEntity> buildSearchSpecification(String keywordString) {
+    /**
+     * Builds a JPA Specification that searches individual fields using LIKE.
+     * Each provided field is matched independently and all matches are combined with OR,
+     * meaning a material will be returned if ANY of the provided search fields match.
+     */
+    private Specification<MaterialJpaEntity> buildSearchSpecification(
+            com.materia.backend.contexts.masterData.domain.valueObjects.MaterialSearchFilter filter) {
         return (root, query, cb) -> {
-            if (!StringUtils.hasText(keywordString)) {
+            List<Predicate> searchPredicates = new ArrayList<>();
+
+            if (StringUtils.hasText(filter.getCode())) {
+                searchPredicates.add(cb.like(cb.lower(root.get("code")), "%" + filter.getCode().trim().toLowerCase() + "%"));
+            }
+            if (StringUtils.hasText(filter.getName())) {
+                searchPredicates.add(cb.like(cb.lower(root.get("name")), "%" + filter.getName().trim().toLowerCase() + "%"));
+            }
+            if (StringUtils.hasText(filter.getDescription())) {
+                searchPredicates.add(cb.like(cb.lower(root.get("description")), "%" + filter.getDescription().trim().toLowerCase() + "%"));
+            }
+            if (StringUtils.hasText(filter.getShortDescription())) {
+                searchPredicates.add(cb.like(cb.lower(root.get("shortDescription")), "%" + filter.getShortDescription().trim().toLowerCase() + "%"));
+            }
+            if (StringUtils.hasText(filter.getSearchKeywords())) {
+                searchPredicates.add(cb.like(cb.lower(root.get("searchKeywords")), "%" + filter.getSearchKeywords().trim().toLowerCase() + "%"));
+            }
+            if (StringUtils.hasText(filter.getAlternativeName())) {
+                searchPredicates.add(cb.like(cb.lower(root.get("alternativeName")), "%" + filter.getAlternativeName().trim().toLowerCase() + "%"));
+            }
+
+            if (searchPredicates.isEmpty()) {
                 return cb.conjunction();
             }
 
-            String[] keywords = keywordString.split("[,\\s]+");
-            List<Predicate> keywordPredicates = new ArrayList<>();
-
-            for (String kw : keywords) {
-                if (!StringUtils.hasText(kw)) continue;
-                String searchPattern = "%" + kw.trim().toLowerCase() + "%";
-                Predicate nameMatch = cb.like(cb.lower(root.get("name")), searchPattern);
-                Predicate descMatch = cb.like(cb.lower(root.get("description")), searchPattern);
-                Predicate altNameMatch = cb.like(cb.lower(root.get("alternativeName")), searchPattern);
-                Predicate shortDescMatch = cb.like(cb.lower(root.get("shortDescription")), searchPattern);
-                Predicate searchKeywordMatch = cb.like(cb.lower(root.get("searchKeywords")), searchPattern);
-                
-                keywordPredicates.add(cb.or(nameMatch, descMatch, altNameMatch, shortDescMatch, searchKeywordMatch));
-            }
-
-            // Using AND across multiple keywords so that finding "acier 304L" implies finding both words in any of the fields
-            return cb.and(keywordPredicates.toArray(new Predicate[0]));
+            // OR logic: match if ANY of the provided fields match
+            return cb.or(searchPredicates.toArray(new Predicate[0]));
         };
     }
 }
+

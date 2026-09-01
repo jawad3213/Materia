@@ -25,7 +25,7 @@ public class CategoryMapper implements BaseMapper<Category, CreateCategoryInput,
         if (request == null) return null;
 
         Category.Builder builder = Category.builder()
-                .code(request.getCode())
+                .code(request.getCode() != null ? request.getCode() : "CAT-0000")
                 .name(request.getName())
                 .description(request.getDescription())
                 .shortDescription(request.getShortDescription())
@@ -33,6 +33,7 @@ public class CategoryMapper implements BaseMapper<Category, CreateCategoryInput,
 
         if (request.getParentId() != null) builder.parentId(request.getParentId());
         if (request.getCategoryType() != null) builder.categoryType(MaterialCategoryType.fromValue(request.getCategoryType()));
+        if (request.getStatus() != null) builder.status(request.getStatus());
 
         return builder.build();
     }

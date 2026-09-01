@@ -2,6 +2,7 @@ package com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.d
 
 import java.time.LocalDateTime;
 import java.util.UUID;
+import java.util.List;
 
 public class SupplierWebResponse {
     
@@ -17,7 +18,7 @@ public class SupplierWebResponse {
     private String country;
     private String postalCode;
     private String fullAddress;
-    private String paymentTerms;
+    private List<String> paymentTerms;
     private Integer paymentDelay;
     private String currencyCode;
     private String status;
@@ -51,8 +52,8 @@ public class SupplierWebResponse {
     public void setPostalCode(String postalCode) { this.postalCode = postalCode; }
     public String getFullAddress() { return fullAddress; }
     public void setFullAddress(String fullAddress) { this.fullAddress = fullAddress; }
-    public String getPaymentTerms() { return paymentTerms; }
-    public void setPaymentTerms(String paymentTerms) { this.paymentTerms = paymentTerms; }
+    public List<String> getPaymentTerms() { return paymentTerms; }
+    public void setPaymentTerms(List<String> paymentTerms) { this.paymentTerms = paymentTerms; }
     public Integer getPaymentDelay() { return paymentDelay; }
     public void setPaymentDelay(Integer paymentDelay) { this.paymentDelay = paymentDelay; }
     public String getCurrencyCode() { return currencyCode; }
