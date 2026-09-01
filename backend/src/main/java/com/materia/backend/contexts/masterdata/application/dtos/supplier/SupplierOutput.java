@@ -1,6 +1,6 @@
 package com.materia.backend.contexts.masterData.application.dtos.supplier;
 
-import com.materia.backend.common.application.BaseOutput;
+import com.materia.backend.common.application   .BaseOutput;
 import java.time.LocalDateTime;
 import java.util.UUID;
 import java.util.List;

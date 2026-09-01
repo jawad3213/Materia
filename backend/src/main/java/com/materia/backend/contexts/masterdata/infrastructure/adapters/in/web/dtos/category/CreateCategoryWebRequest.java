@@ -20,6 +20,7 @@ public class CreateCategoryWebRequest {
     @NotBlank(message = "Category Type is mandatory")
     private String categoryType;
     
+    @NotBlank(message = "Status is mandatory")
     private String status;
     
     @NotBlank(message = "Created by is mandatory")

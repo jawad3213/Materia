@@ -2,6 +2,8 @@ import axiosClient from '../../../shared/api/axiosClient';
 import type { CreateMaterialRequest } from '../types/CreateMaterialRequest';
 import type { UpdateMaterialRequest } from '../types/UpdateMaterialRequest';
 import type { MaterialListItem } from '../types/MaterialListItem';
+import type { MaterialSearchRequest } from '../types/MaterialSearchRequest';
+import type { MaterialFilterRequest } from '../types/MaterialFilterRequest';
 // Import Material related interfaces as they are built out
 // import { Material } from '../types/Material';
 
@@ -12,7 +14,7 @@ export const materialApi = {
   create: (data: CreateMaterialRequest) => axiosClient.post(BASE_URL, data),
   getById: (id: string) => axiosClient.get(`${BASE_URL}/${id}`),
   getByCode: (code: string) => axiosClient.get(`${BASE_URL}/code/${code}`),
-  getAll: () => axiosClient.get<MaterialListItem[]>(`${BASE_URL}/list`),
+  getAll: (page = 0, size = 10) => axiosClient.get(`${BASE_URL}/list`, { params: { page, size } }),
   update: (id: string, data: UpdateMaterialRequest) => axiosClient.put(`${BASE_URL}/${id}`, data),
   delete: (id: string) => axiosClient.delete(`${BASE_URL}/${id}`),
   
@@ -20,6 +22,7 @@ export const materialApi = {
   getByCategory: (categoryId: string) => axiosClient.get(`${BASE_URL}/category/${categoryId}`),
   getBySupplier: (supplierId: string) => axiosClient.get(`${BASE_URL}/supplier/${supplierId}`),
   getByStatus: (status: string) => axiosClient.get(`${BASE_URL}/status/${status}`),
+  getByMaterialType: (materialType: string) => axiosClient.get(`${BASE_URL}/type/${materialType}`),
   
   // ---- Stock Management ----
   getLowStock: () => axiosClient.get(`${BASE_URL}/stock/low`),
@@ -31,8 +34,8 @@ export const materialApi = {
     axiosClient.patch(`${BASE_URL}/${id}/stock/decrease`, null, { params: { quantity } }),
   
   // ---- Search ----
-  searchByKeyword: (keyword: string) => 
-    axiosClient.get(`${BASE_URL}/search/keyword`, { params: { keyword } }),
-  searchAdvanced: (criteria: any, page = 0, size = 10) => 
-    axiosClient.post(`${BASE_URL}/search`, criteria, { params: { page, size } }),
+  searchAdvancedList: (criteria: MaterialSearchRequest, page = 0, size = 10) => 
+    axiosClient.post(`${BASE_URL}/search/list`, criteria, { params: { page, size } }),
+  filterList: (criteria: MaterialFilterRequest, page = 0, size = 10) => 
+    axiosClient.post(`${BASE_URL}/filter/list`, criteria, { params: { page, size } }),
 };

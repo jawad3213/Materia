@@ -3,6 +3,7 @@ import axios from "axios";
 import { CategoryType } from "../enums/CategoryType";
 import { CategoryStatus } from "../enums/CategoryStatus";
 import CustomSelect from "../../materials/components/CustomSelect";
+import CategoryTreeSelect from "./CategoryTreeSelect";
 import { categoryApi } from "../services/categoryApi";
 import type { CreateCategoryRequest } from "../types/CreateCategoryRequest";
 import type { CategoryListItem } from "../types/CategoryListItem";
@@ -19,14 +20,6 @@ export default function CreateCategoryForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [parentCategories, setParentCategories] = useState<CategoryListItem[]>([]);
-
-  useEffect(() => {
-    // Fetch only root categories to be used as parents
-    categoryApi.getRoots()
-      .then(res => setParentCategories(res.data))
-      .catch(err => console.error("Failed to load root categories", err));
-  }, []);
 
   // Auto-dismiss the toast notification after 5 seconds
   useEffect(() => {
@@ -45,7 +38,7 @@ export default function CreateCategoryForm() {
     shortDescription: "",
     parentId: "",
     categoryType: "", // Default selected type
-    status: CategoryStatus.ACTIVE,
+    status: "" as any,
     createdBy: "",
   });
 
@@ -69,8 +62,19 @@ export default function CreateCategoryForm() {
     e.preventDefault();
     setIsSubmitting(true);
     setSubmitMessage(null);
-    setFieldErrors({});
-    
+    const newErrors: Record<string, string> = {};
+    if (!formData.name) newErrors.name = "Name is mandatory";
+    if (!formData.categoryType) newErrors.categoryType = "Category Type is mandatory";
+    if (!formData.status) newErrors.status = "Status is mandatory";
+    if (!formData.createdBy) newErrors.createdBy = "Created by is mandatory";
+
+    if (Object.keys(newErrors).length > 0) {
+      setFieldErrors(newErrors);
+      setSubmitMessage({ type: 'error', text: 'Validation failed. Please check the highlighted fields below.' });
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
       const requestPayload: CreateCategoryRequest = {
         name: formData.name,
@@ -196,16 +200,11 @@ export default function CreateCategoryForm() {
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
             <div>
               <Label>Parent Category</Label>
-              <CustomSelect
+              <CategoryTreeSelect
                 value={formData.parentId}
                 onChange={(val) => handleStringChange('parentId', val)}
                 placeholder="None (Root Category)"
                 maxHeightClass="max-h-[248px]"
-                showSearch
-                options={parentCategories.map((cat) => ({
-                  value: cat.id,
-                  label: cat.name
-                }))}
                 error={!!fieldErrors.parentId}
               />
               {fieldErrors.parentId && <p className="mt-1.5 text-xs text-error-500">{fieldErrors.parentId}</p>}
@@ -229,7 +228,7 @@ export default function CreateCategoryForm() {
             </div>
 
             <div>
-              <Label>Status</Label>
+              <Label>Status *</Label>
               <CustomSelect
                 value={formData.status}
                 onChange={(val) => handleStringChange('status', val)}
@@ -270,7 +269,7 @@ export default function CreateCategoryForm() {
                 shortDescription: "",
                 parentId: "",
                 categoryType: "",
-                status: CategoryStatus.ACTIVE,
+                status: "" as any,
                 createdBy: formData.createdBy,
               });
               setSubmitMessage(null);

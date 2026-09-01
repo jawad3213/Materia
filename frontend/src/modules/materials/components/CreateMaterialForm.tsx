@@ -2,8 +2,8 @@ import React, { useState } from "react";
 import axios from "axios";
 import { MaterialStatus, MaterialType, UnitOfMeasure, CurrencyCode } from "../enums";
 import CustomSelect from "./CustomSelect";
+import CategoryTreeSelect from "../../categories/components/CategoryTreeSelect";
 import { materialApi } from "../services/materialApi";
-import { categoryApi } from "../../categories/services/categoryApi";
 import { supplierApi } from "../../suppliers/services/supplierApi";
 import type { CreateMaterialRequest } from "../types/CreateMaterialRequest";
 import type { CategoryListItem } from "../../categories/types/CategoryListItem";
@@ -23,14 +23,10 @@ export default function CreateMaterialForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [categories, setCategories] = useState<CategoryListItem[]>([]);
+
   const [suppliers, setSuppliers] = useState<SupplierListItem[]>([]);
 
   React.useEffect(() => {
-    categoryApi.getAll()
-      .then(res => setCategories(res.data))
-      .catch(err => console.error("Failed to load categories", err));
-      
     supplierApi.getAll()
       .then(res => setSuppliers(res.data))
       .catch(err => console.error("Failed to load suppliers", err));
@@ -285,16 +281,11 @@ export default function CreateMaterialForm() {
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
             <div>
               <Label>Category ID *</Label>
-              <CustomSelect
+              <CategoryTreeSelect
                 value={formData.categoryId}
                 onChange={(val) => handleStringChange('categoryId', val)}
                 placeholder="Select Category"
                 maxHeightClass="max-h-[248px]"
-                showSearch
-                options={categories.map((cat) => ({
-                  value: cat.id,
-                  label: cat.name
-                }))}
                 error={!!fieldErrors.categoryId}
               />
               {fieldErrors.categoryId && <p className="mt-1.5 text-xs text-error-500">{fieldErrors.categoryId}</p>}

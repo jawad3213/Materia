@@ -1,58 +1,71 @@
 package com.materia.backend.contexts.masterData.domain.valueObjects;
 
 import com.materia.backend.contexts.masterData.domain.enums.MaterialStatus;
-import java.math.BigDecimal;
+import com.materia.backend.contexts.masterData.domain.enums.MaterialType;
 
 /**
- * Value object representing criteria for filtering materials.
+ * Value object representing criteria for searching/filtering materials.
  */
 public class MaterialSearchFilter {
-    private final String keyword;
+    // ---- Search fields ----
+    private final String code;
+    private final String name;
+    private final String description;
+    private final String shortDescription;
+    private final String searchKeywords;
+    private final String alternativeName;
+
+    // ---- Filter fields ----
     private final String categoryId;
-    private final String supplierId;
+    private final MaterialType materialType;
     private final MaterialStatus status;
-    private final BigDecimal minPrice;
-    private final BigDecimal maxPrice;
-    private final Boolean lowStockOnly;
 
     private MaterialSearchFilter(Builder builder) {
-        this.keyword = builder.keyword;
+        this.code = builder.code;
+        this.name = builder.name;
+        this.description = builder.description;
+        this.shortDescription = builder.shortDescription;
+        this.searchKeywords = builder.searchKeywords;
+        this.alternativeName = builder.alternativeName;
         this.categoryId = builder.categoryId;
-        this.supplierId = builder.supplierId;
+        this.materialType = builder.materialType;
         this.status = builder.status;
-        this.minPrice = builder.minPrice;
-        this.maxPrice = builder.maxPrice;
-        this.lowStockOnly = builder.lowStockOnly;
     }
 
-    public String getKeyword() { return keyword; }
+    public String getCode() { return code; }
+    public String getName() { return name; }
+    public String getDescription() { return description; }
+    public String getShortDescription() { return shortDescription; }
+    public String getSearchKeywords() { return searchKeywords; }
+    public String getAlternativeName() { return alternativeName; }
     public String getCategoryId() { return categoryId; }
-    public String getSupplierId() { return supplierId; }
+    public MaterialType getMaterialType() { return materialType; }
     public MaterialStatus getStatus() { return status; }
-    public BigDecimal getMinPrice() { return minPrice; }
-    public BigDecimal getMaxPrice() { return maxPrice; }
-    public Boolean getLowStockOnly() { return lowStockOnly; }
 
     public static Builder builder() {
         return new Builder();
     }
 
     public static class Builder {
-        private String keyword;
+        private String code;
+        private String name;
+        private String description;
+        private String shortDescription;
+        private String searchKeywords;
+        private String alternativeName;
         private String categoryId;
-        private String supplierId;
+        private MaterialType materialType;
         private MaterialStatus status;
-        private BigDecimal minPrice;
-        private BigDecimal maxPrice;
-        private Boolean lowStockOnly;
 
-        public Builder keyword(String keyword) { this.keyword = keyword; return this; }
+        public Builder code(String code) { this.code = code; return this; }
+        public Builder name(String name) { this.name = name; return this; }
+        public Builder description(String description) { this.description = description; return this; }
+        public Builder shortDescription(String shortDescription) { this.shortDescription = shortDescription; return this; }
+        public Builder searchKeywords(String searchKeywords) { this.searchKeywords = searchKeywords; return this; }
+        public Builder alternativeName(String alternativeName) { this.alternativeName = alternativeName; return this; }
         public Builder categoryId(String categoryId) { this.categoryId = categoryId; return this; }
-        public Builder supplierId(String supplierId) { this.supplierId = supplierId; return this; }
+        public Builder materialType(MaterialType materialType) { this.materialType = materialType; return this; }
         public Builder status(MaterialStatus status) { this.status = status; return this; }
-        public Builder minPrice(BigDecimal minPrice) { this.minPrice = minPrice; return this; }
-        public Builder maxPrice(BigDecimal maxPrice) { this.maxPrice = maxPrice; return this; }
-        public Builder lowStockOnly(Boolean lowStockOnly) { this.lowStockOnly = lowStockOnly; return this; }
 
         public MaterialSearchFilter build() {
             return new MaterialSearchFilter(this);

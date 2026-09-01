@@ -37,6 +37,11 @@ public interface MaterialRepository extends BaseRepository<Material> {
     List<Material> findByStatus(MaterialStatus status);
 
     /**
+     * Finds materials by material type
+     */
+    List<Material> findByMaterialType(com.materia.backend.contexts.masterData.domain.enums.MaterialType materialType);
+
+    /**
      * Checks if a material code already exists
      */
     boolean existsByCode(String code);

@@ -201,7 +201,11 @@ public class MaterialMapper implements BaseMapper<Material, CreateMaterialInput,
         response.setStandardPrice(entity.getStandardPrice() != null ? entity.getStandardPrice().getAmount() : null);
         response.setStandardPriceCurrency(entity.getStandardPrice() != null ? entity.getStandardPrice().getCurrency().getCode() : null);
         response.setCategoryId(entity.getCategoryId());
+        response.setCategoryName(entity.getCategoryName());
         response.setSupplierId(entity.getSupplierId());
+        response.setDescription(entity.getDescription());
+        response.setAlternativeName(entity.getAlternativeName());
+        response.setSearchKeywords(entity.getSearchKeywords());
         return response;
     }
 

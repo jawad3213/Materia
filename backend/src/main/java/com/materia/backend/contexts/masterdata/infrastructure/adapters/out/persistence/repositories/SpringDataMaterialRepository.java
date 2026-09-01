@@ -33,6 +33,8 @@ public interface SpringDataMaterialRepository extends JpaRepository<MaterialJpaE
 
     List<MaterialJpaEntity> findByStatus(MaterialStatus status);
 
+    List<MaterialJpaEntity> findByMaterialType(com.materia.backend.contexts.masterData.domain.enums.MaterialType materialType);
+
     boolean existsByCode(String code);
 
 

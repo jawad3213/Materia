@@ -1,9 +1,14 @@
 export interface MaterialSearchRequest {
-  keyword?: string;
+  // ---- Search fields ----
+  code?: string;
+  name?: string;
+  description?: string;
+  shortDescription?: string;
+  searchKeywords?: string;
+  alternativeName?: string;
+
+  // ---- Filter fields ----
   categoryId?: string;
-  supplierId?: string;
+  materialType?: string;
   status?: string;
-  minPrice?: number;
-  maxPrice?: number;
-  lowStockOnly?: boolean;
 }

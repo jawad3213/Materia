@@ -10,5 +10,9 @@ export interface MaterialListItem {
   standardPrice: number;
   standardPriceCurrency: string;
   categoryId: string;
+  categoryName?: string;
   supplierId: string;
+  description?: string;
+  alternativeName?: string;
+  searchKeywords?: string;
 }

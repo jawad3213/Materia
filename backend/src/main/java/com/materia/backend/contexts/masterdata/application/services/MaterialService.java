@@ -137,6 +137,7 @@ public class MaterialService implements MaterialUseCase {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public MaterialOutput getById(UUID id) {
         Material material = materialRepository.findById(id)
                 .orElseThrow(() -> new MaterialNotFoundException(id.toString()));
@@ -144,6 +145,7 @@ public class MaterialService implements MaterialUseCase {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public MaterialOutput getByCode(String code) {
         Material material = materialRepository.findByCode(code)
                 .orElseThrow(() -> new MaterialNotFoundException(code));
@@ -151,6 +153,7 @@ public class MaterialService implements MaterialUseCase {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<MaterialOutput> getAll() {
         return mapper.toResponseList(materialRepository.findAll());
     }
@@ -160,6 +163,7 @@ public class MaterialService implements MaterialUseCase {
     // ============================================================
 
     @Override
+    @Transactional(readOnly = true)
     public List<MaterialOutput> getMaterialsByCategory(UUID categoryId) {
         return mapper.toResponseList(materialRepository.findByCategoryId(categoryId.toString()));
     }
@@ -224,48 +228,32 @@ public class MaterialService implements MaterialUseCase {
     }
 
     @Override
-    public List<MaterialOutput> searchByKeyword(String keyword) {
-        return mapper.toResponseList(materialRepository.search(keyword));
+    @Transactional(readOnly = true)
+    public List<MaterialOutput> getMaterialsByMaterialType(String materialType) {
+        com.materia.backend.contexts.masterData.domain.enums.MaterialType type =
+                com.materia.backend.contexts.masterData.domain.enums.MaterialType.fromValue(materialType);
+        return mapper.toResponseList(materialRepository.findByMaterialType(type));
     }
 
-    @Override
-    public com.materia.backend.common.application.PageResponse<MaterialOutput> searchAdvanced(
-            com.materia.backend.contexts.masterData.application.dtos.material.MaterialSearchCriteria criteria,
-            int page, 
-            int size) {
-        
-        MaterialStatus statusEnum = null;
-        if (criteria.getStatus() != null && !criteria.getStatus().trim().isEmpty()) {
-            statusEnum = MaterialStatus.fromValue(criteria.getStatus());
-        }
 
-        com.materia.backend.contexts.masterData.domain.valueObjects.MaterialSearchFilter filter =
-            com.materia.backend.contexts.masterData.domain.valueObjects.MaterialSearchFilter.builder()
-                .keyword(criteria.getKeyword())
-                .categoryId(criteria.getCategoryId())
-                .supplierId(criteria.getSupplierId())
-                .status(statusEnum)
-                .minPrice(criteria.getMinPrice())
-                .maxPrice(criteria.getMaxPrice())
-                .lowStockOnly(criteria.getLowStockOnly())
-                .build();
-                
+
+    @Override
+    @Transactional(readOnly = true)
+    public com.materia.backend.common.application.PageResponse<com.materia.backend.contexts.masterData.application.dtos.material.MaterialListOutput> getAllList(int page, int size) {
+        com.materia.backend.contexts.masterData.domain.valueObjects.MaterialSearchFilter emptyFilter =
+            com.materia.backend.contexts.masterData.domain.valueObjects.MaterialSearchFilter.builder().build();
+            
         com.materia.backend.common.application.PageResponse<com.materia.backend.contexts.masterData.domain.entities.Material> domainPage =
-            materialRepository.searchAdvanced(filter, page, size);
+            materialRepository.searchAdvanced(emptyFilter, page, size);
             
         return new com.materia.backend.common.application.PageResponse<>(
-                mapper.toResponseList(domainPage.getContent()),
+                mapper.toListResponseList(domainPage.getContent()),
                 domainPage.getPageNumber(),
                 domainPage.getPageSize(),
                 domainPage.getTotalElements(),
                 domainPage.getTotalPages(),
                 domainPage.isLast()
         );
-    }
-
-    @Override
-    public List<com.materia.backend.contexts.masterData.application.dtos.material.MaterialListOutput> getAllList() {
-        return mapper.toListResponseList(materialRepository.findAll());
     }
 
     @Override
@@ -278,16 +266,60 @@ public class MaterialService implements MaterialUseCase {
         if (criteria.getStatus() != null && !criteria.getStatus().trim().isEmpty()) {
             statusEnum = MaterialStatus.fromValue(criteria.getStatus());
         }
+        
+        com.materia.backend.contexts.masterData.domain.enums.MaterialType typeEnum = null;
+        if (criteria.getMaterialType() != null && !criteria.getMaterialType().trim().isEmpty()) {
+            typeEnum = com.materia.backend.contexts.masterData.domain.enums.MaterialType.fromValue(criteria.getMaterialType());
+        }
 
         com.materia.backend.contexts.masterData.domain.valueObjects.MaterialSearchFilter filter =
             com.materia.backend.contexts.masterData.domain.valueObjects.MaterialSearchFilter.builder()
-                .keyword(criteria.getKeyword())
+                .code(criteria.getCode())
+                .name(criteria.getName())
+                .description(criteria.getDescription())
+                .shortDescription(criteria.getShortDescription())
+                .searchKeywords(criteria.getSearchKeywords())
+                .alternativeName(criteria.getAlternativeName())
                 .categoryId(criteria.getCategoryId())
-                .supplierId(criteria.getSupplierId())
+                .materialType(typeEnum)
                 .status(statusEnum)
-                .minPrice(criteria.getMinPrice())
-                .maxPrice(criteria.getMaxPrice())
-                .lowStockOnly(criteria.getLowStockOnly())
+                .build();
+                
+        com.materia.backend.common.application.PageResponse<com.materia.backend.contexts.masterData.domain.entities.Material> domainPage =
+            materialRepository.searchAdvanced(filter, page, size);
+            
+        return new com.materia.backend.common.application.PageResponse<>(
+                mapper.toListResponseList(domainPage.getContent()),
+                domainPage.getPageNumber(),
+                domainPage.getPageSize(),
+                domainPage.getTotalElements(),
+                domainPage.getTotalPages(),
+                domainPage.isLast()
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public com.materia.backend.common.application.PageResponse<com.materia.backend.contexts.masterData.application.dtos.material.MaterialListOutput> filterList(
+            com.materia.backend.contexts.masterData.application.dtos.material.MaterialFilterCriteria criteria, 
+            int page, 
+            int size) {
+        
+        MaterialStatus statusEnum = null;
+        if (criteria.getStatus() != null && !criteria.getStatus().trim().isEmpty()) {
+            statusEnum = MaterialStatus.fromValue(criteria.getStatus());
+        }
+        
+        com.materia.backend.contexts.masterData.domain.enums.MaterialType typeEnum = null;
+        if (criteria.getMaterialType() != null && !criteria.getMaterialType().trim().isEmpty()) {
+            typeEnum = com.materia.backend.contexts.masterData.domain.enums.MaterialType.fromValue(criteria.getMaterialType());
+        }
+
+        com.materia.backend.contexts.masterData.domain.valueObjects.MaterialSearchFilter filter =
+            com.materia.backend.contexts.masterData.domain.valueObjects.MaterialSearchFilter.builder()
+                .categoryId(criteria.getCategoryId())
+                .materialType(typeEnum)
+                .status(statusEnum)
                 .build();
                 
         com.materia.backend.common.application.PageResponse<com.materia.backend.contexts.masterData.domain.entities.Material> domainPage =

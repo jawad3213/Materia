@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { supplierApi } from "../services/supplierApi";
-import type { CreateSupplierRequest } from "../types/CreateSupplierRequest";
+import type { UpdateSupplierRequest } from "../types/UpdateSupplierRequest";
+import type { SupplierStatusValue } from "../enums/SupplierStatus";
 import type { ErrorResponse } from "../../../shared/types/ErrorResponse";
 
 import Input from "../../../shared/components/form/input/InputField";
@@ -12,7 +14,9 @@ import Toast from "../../../shared/components/ui/notifications/Toast";
 import PhoneInput from "../../../shared/components/form/group-input/PhoneInput";
 import { EnvelopeIcon } from "../../../shared/icons";
 
-export default function CreateSupplierForm() {
+export default function UpdateSupplierForm() {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -41,8 +45,39 @@ export default function CreateSupplierForm() {
     country: "",
     postalCode: "",
     currencyCode: "MAD",
-    createdBy: "System",
+    paymentDelay: "" as number | string,
+    status: "ACTIVE" as SupplierStatusValue,
+    updatedBy: "System",
   });
+
+  useEffect(() => {
+    if (id) {
+      supplierApi.getById(id)
+        .then(res => {
+          const s = res.data;
+          setFormData({
+            name: s.name || "",
+            description: s.description || "",
+            contactPerson: s.contactPerson || "",
+            contactEmail: s.contactEmail || "",
+            contactPhone: s.contactPhone || "",
+            address: s.address || "",
+            city: s.city || "",
+            country: s.country || "",
+            postalCode: s.postalCode || "",
+            currencyCode: s.currencyCode || "MAD",
+            paymentDelay: s.paymentDelay !== null && s.paymentDelay !== undefined ? s.paymentDelay : "",
+            status: s.status || "ACTIVE",
+            updatedBy: "System",
+          });
+          setPaymentTermsTags(s.paymentTerms || []);
+        })
+        .catch(err => {
+          console.error(err);
+          setSubmitMessage({ type: 'error', text: 'Failed to load supplier data.' });
+        });
+    }
+  }, [id]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
@@ -94,7 +129,7 @@ export default function CreateSupplierForm() {
     if (!formData.contactPhone) newErrors.contactPhone = "Phone Number is mandatory";
     if (paymentTermsTags.length === 0) newErrors.paymentTerms = "Payment Terms are mandatory";
     if (!formData.currencyCode) newErrors.currencyCode = "Default Currency is mandatory";
-    if (!formData.createdBy) newErrors.createdBy = "Created By is mandatory";
+    if (!formData.updatedBy) newErrors.updatedBy = "Updated By is mandatory";
 
     if (Object.keys(newErrors).length > 0) {
       setFieldErrors(newErrors);
@@ -104,23 +139,26 @@ export default function CreateSupplierForm() {
     }
     
     try {
-      const requestPayload: CreateSupplierRequest = {
+      const requestPayload: UpdateSupplierRequest = {
         ...formData,
+        paymentDelay: formData.paymentDelay === "" ? undefined : (formData.paymentDelay as number),
         paymentTerms: paymentTermsTags
       };
       
-      await supplierApi.create(requestPayload);
-      setSubmitMessage({ type: 'success', text: 'Supplier created successfully!' });
+      if (id) {
+        await supplierApi.update(id, requestPayload);
+        setSubmitMessage({ type: 'success', text: 'Supplier updated successfully!' });
+      }
       
     } catch (error) {
-      console.error("Error creating supplier:", error);
+      console.error("Error updating supplier:", error);
       if (axios.isAxiosError(error) && error.response?.data) {
         const errorData = error.response.data as ErrorResponse;
         if (errorData.validationErrors) {
           setFieldErrors(errorData.validationErrors);
           setSubmitMessage({ type: 'error', text: 'Validation failed. Please check the highlighted fields below.' });
         } else {
-          setSubmitMessage({ type: 'error', text: errorData.message || 'An error occurred while creating the supplier.' });
+          setSubmitMessage({ type: 'error', text: errorData.message || 'An error occurred while updating the supplier.' });
         }
       } else {
         setSubmitMessage({ type: 'error', text: 'Failed to connect to the server. Please check your network and try again.' });
@@ -147,7 +185,7 @@ export default function CreateSupplierForm() {
       <div className="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
         <div className="border-b border-gray-200 px-6 py-5 dark:border-gray-800">
           <h3 className="text-lg font-semibold text-gray-800 dark:text-white/90">
-            Create Supplier
+            Update Supplier
           </h3>
         </div>
         
@@ -351,15 +389,27 @@ export default function CreateSupplierForm() {
                 />
               </div>
               <div>
-                <Label>Created By *</Label>
+                <Label>Payment Delay (Days)</Label>
+                <Input
+                  type="number"
+                  name="paymentDelay"
+                  value={formData.paymentDelay}
+                  onChange={handleChange}
+                  placeholder="there is no data yet"
+                  error={!!fieldErrors.paymentDelay}
+                  hint={fieldErrors.paymentDelay}
+                />
+              </div>
+              <div>
+                <Label>Updated By *</Label>
                 <Input
                   type="text"
-                  name="createdBy"
-                  value={formData.createdBy}
+                  name="updatedBy"
+                  value={formData.updatedBy}
                   onChange={handleChange}
                   placeholder="System / User ID"
-                  error={!!fieldErrors.createdBy}
-                  hint={fieldErrors.createdBy}
+                  error={!!fieldErrors.updatedBy}
+                  hint={fieldErrors.updatedBy}
                 />
               </div>
             </div>

@@ -20,7 +20,11 @@ public class MaterialListOutput extends BaseOutput {
     private BigDecimal standardPrice;
     private String standardPriceCurrency;
     private String categoryId;
+    private String categoryName;
     private String supplierId;
+    private String description;
+    private String alternativeName;
+    private String searchKeywords;
 
     public MaterialListOutput() { super(); }
 
@@ -58,6 +62,18 @@ public class MaterialListOutput extends BaseOutput {
     public String getCategoryId() { return categoryId; }
     public void setCategoryId(String categoryId) { this.categoryId = categoryId; }
 
+    public String getCategoryName() { return categoryName; }
+    public void setCategoryName(String categoryName) { this.categoryName = categoryName; }
+
     public String getSupplierId() { return supplierId; }
     public void setSupplierId(String supplierId) { this.supplierId = supplierId; }
+
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
+
+    public String getAlternativeName() { return alternativeName; }
+    public void setAlternativeName(String alternativeName) { this.alternativeName = alternativeName; }
+
+    public String getSearchKeywords() { return searchKeywords; }
+    public void setSearchKeywords(String searchKeywords) { this.searchKeywords = searchKeywords; }
 }
