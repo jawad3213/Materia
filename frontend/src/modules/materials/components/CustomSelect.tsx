@@ -52,7 +52,7 @@ export default function CustomSelect({
         className={`w-full cursor-pointer appearance-none rounded-lg border bg-transparent px-4 py-3 pr-10 text-sm outline-none bg-no-repeat bg-[position:right_1rem_center] bg-[length:1.25rem_1.25rem] ${
           error 
             ? "border-error-500 focus:border-error-300 focus:ring-error-500/20 dark:border-error-500 dark:focus:border-error-800" 
-            : "border-gray-200 focus:border-brand-500 dark:border-gray-800 dark:focus:border-brand-500"
+            : "border-gray-300 focus:border-brand-500 dark:border-gray-700 dark:focus:border-brand-500"
         } ${
           value ? "text-gray-800 dark:text-white/90" : "text-gray-500 dark:text-gray-400"
         }`}

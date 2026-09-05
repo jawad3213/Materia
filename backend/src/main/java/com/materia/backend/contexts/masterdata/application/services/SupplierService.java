@@ -10,6 +10,12 @@ import com.materia.backend.contexts.masterData.domain.exceptions.SupplierNotFoun
 import com.materia.backend.contexts.masterData.domain.ports.in.SupplierUseCase;
 import com.materia.backend.contexts.masterData.domain.ports.out.MaterialRepository;
 import com.materia.backend.contexts.masterData.domain.ports.out.SupplierRepository;
+import com.materia.backend.common.application.PageResponse;
+import com.materia.backend.contexts.masterData.application.dtos.supplier.SupplierListOutput;
+import com.materia.backend.contexts.masterData.application.dtos.supplier.SupplierFilterCriteria;
+import com.materia.backend.contexts.masterData.application.dtos.supplier.SupplierSearchCriteria;
+import com.materia.backend.contexts.masterData.domain.valueObjects.SupplierSearchFilter;
+import com.materia.backend.contexts.masterData.domain.enums.CurrencyCode;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -127,6 +133,83 @@ public class SupplierService implements SupplierUseCase {
     @Override
     public List<SupplierOutput> searchSuppliers(String keyword) {
         return mapper.toResponseList(supplierRepository.search(keyword));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<SupplierListOutput> getAllList(int page, int size) {
+        SupplierSearchFilter emptyFilter = SupplierSearchFilter.builder().build();
+        PageResponse<Supplier> domainPage = supplierRepository.searchAdvanced(emptyFilter, page, size);
+        return new PageResponse<>(
+                mapper.toListResponseList(domainPage.getContent()),
+                domainPage.getPageNumber(),
+                domainPage.getPageSize(),
+                domainPage.getTotalElements(),
+                domainPage.getTotalPages(),
+                domainPage.isLast()
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<SupplierListOutput> filterList(SupplierFilterCriteria criteria, int page, int size) {
+        CurrencyCode currencyEnum = null;
+        if (criteria.getCurrencyCode() != null && !criteria.getCurrencyCode().trim().isEmpty()) {
+            if (CurrencyCode.isValidCode(criteria.getCurrencyCode().trim())) {
+                currencyEnum = CurrencyCode.fromCode(criteria.getCurrencyCode().trim());
+            }
+        }
+
+        SupplierSearchFilter filter = SupplierSearchFilter.builder()
+                .status(criteria.getStatus() != null && !criteria.getStatus().trim().isEmpty() ? criteria.getStatus().trim() : null)
+                .currencyCode(currencyEnum)
+                .country(criteria.getCountry() != null && !criteria.getCountry().trim().isEmpty() ? criteria.getCountry().trim() : null)
+                .build();
+
+        PageResponse<Supplier> domainPage = supplierRepository.searchAdvanced(filter, page, size);
+
+        return new PageResponse<>(
+                mapper.toListResponseList(domainPage.getContent()),
+                domainPage.getPageNumber(),
+                domainPage.getPageSize(),
+                domainPage.getTotalElements(),
+                domainPage.getTotalPages(),
+                domainPage.isLast()
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<SupplierOutput> searchAdvancedList(SupplierSearchCriteria criteria, int page, int size) {
+        CurrencyCode currencyEnum = null;
+        if (criteria.getCurrencyCode() != null && !criteria.getCurrencyCode().trim().isEmpty()) {
+            if (CurrencyCode.isValidCode(criteria.getCurrencyCode().trim())) {
+                currencyEnum = CurrencyCode.fromCode(criteria.getCurrencyCode().trim());
+            }
+        }
+
+        SupplierSearchFilter filter = SupplierSearchFilter.builder()
+                .code(criteria.getCode())
+                .name(criteria.getName())
+                .description(criteria.getDescription())
+                .contactPerson(criteria.getContactPerson())
+                .contactEmail(criteria.getContactEmail())
+                .fullAddress(criteria.getFullAddress())
+                .status(criteria.getStatus() != null && !criteria.getStatus().trim().isEmpty() ? criteria.getStatus().trim() : null)
+                .currencyCode(currencyEnum)
+                .country(criteria.getCountry() != null && !criteria.getCountry().trim().isEmpty() ? criteria.getCountry().trim() : null)
+                .build();
+
+        PageResponse<Supplier> domainPage = supplierRepository.searchAdvanced(filter, page, size);
+
+        return new PageResponse<>(
+                mapper.toResponseList(domainPage.getContent()),
+                domainPage.getPageNumber(),
+                domainPage.getPageSize(),
+                domainPage.getTotalElements(),
+                domainPage.getTotalPages(),
+                domainPage.isLast()
+        );
     }
 
     private void syncMaterialSupplierNames(Supplier supplier) {

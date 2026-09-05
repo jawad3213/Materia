@@ -37,5 +37,36 @@ public class SupplierWebMapper implements BaseWebMapper<CreateSupplierWebRequest
         return response;
     }
 
-    
+    public com.materia.backend.contexts.masterData.application.dtos.supplier.SupplierSearchCriteria toAppSearchCriteria(
+            com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.dtos.supplier.SupplierSearchWebRequest webRequest) {
+        if (webRequest == null) return null;
+        com.materia.backend.contexts.masterData.application.dtos.supplier.SupplierSearchCriteria criteria =
+                new com.materia.backend.contexts.masterData.application.dtos.supplier.SupplierSearchCriteria();
+        BeanUtils.copyProperties(webRequest, criteria);
+        return criteria;
+    }
+
+    public com.materia.backend.contexts.masterData.application.dtos.supplier.SupplierFilterCriteria toAppFilterCriteria(
+            com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.dtos.supplier.SupplierFilterWebRequest webRequest) {
+        if (webRequest == null) return null;
+        com.materia.backend.contexts.masterData.application.dtos.supplier.SupplierFilterCriteria criteria =
+                new com.materia.backend.contexts.masterData.application.dtos.supplier.SupplierFilterCriteria();
+        BeanUtils.copyProperties(webRequest, criteria);
+        return criteria;
+    }
+
+    public com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.dtos.supplier.SupplierListWebResponse toWebListResponse(
+            com.materia.backend.contexts.masterData.application.dtos.supplier.SupplierListOutput appResponse) {
+        if (appResponse == null) return null;
+        com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.dtos.supplier.SupplierListWebResponse response =
+                new com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.dtos.supplier.SupplierListWebResponse();
+        BeanUtils.copyProperties(appResponse, response);
+        return response;
+    }
+
+    public java.util.List<com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.dtos.supplier.SupplierListWebResponse> toWebListResponseList(
+            java.util.List<com.materia.backend.contexts.masterData.application.dtos.supplier.SupplierListOutput> appResponses) {
+        if (appResponses == null) return java.util.List.of();
+        return appResponses.stream().map(this::toWebListResponse).collect(java.util.stream.Collectors.toList());
+    }
 }

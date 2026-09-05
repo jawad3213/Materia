@@ -1,7 +1,8 @@
 package com.materia.backend.contexts.masterData.domain.ports.out;
 
 import com.materia.backend.contexts.masterData.domain.entities.Supplier;
-
+import com.materia.backend.contexts.masterData.domain.valueObjects.SupplierSearchFilter;
+import com.materia.backend.common.application.PageResponse;
 import com.materia.backend.common.domain.BaseRepository;
 
 import java.util.List;
@@ -31,11 +32,6 @@ public interface SupplierRepository extends BaseRepository<Supplier> {
     List<Supplier> findByCountry(String country);
 
     /**
-     * Finds suppliers by city
-     */
-    List<Supplier> findByCity(String city);
-
-    /**
      * Checks if a supplier code already exists
      */
     boolean existsByCode(String code);
@@ -44,4 +40,9 @@ public interface SupplierRepository extends BaseRepository<Supplier> {
      * Searches by keyword (name, description, contact)
      */
     List<Supplier> search(String keyword);
+
+    /**
+     * Advanced search and filtering with pagination
+     */
+    PageResponse<Supplier> searchAdvanced(SupplierSearchFilter filter, int page, int size);
 }

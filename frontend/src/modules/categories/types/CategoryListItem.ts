@@ -9,6 +9,7 @@ export interface CategoryListItem {
   status: CategoryStatusValue;        
   materialCount: number;   
   subCategoryCount: number;
+  totalItems?: number;
   level: number;           
   path: string;            
   parentCode?: string;     

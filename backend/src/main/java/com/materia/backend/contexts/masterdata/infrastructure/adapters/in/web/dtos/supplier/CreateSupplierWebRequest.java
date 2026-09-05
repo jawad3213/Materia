@@ -44,6 +44,9 @@ public class CreateSupplierWebRequest {
     @NotEmpty(message = "Payment terms are mandatory")
     private List<String> paymentTerms;
 
+    @PositiveOrZero(message = "Payment delay cannot be negative")
+    private Integer paymentDelay;
+
     @NotBlank(message = "Currency code is mandatory")
     @Size(min = 3, max = 3, message = "Currency code must be exactly 3 characters")
     private String currencyCode;
@@ -72,6 +75,8 @@ public class CreateSupplierWebRequest {
     public void setPostalCode(String postalCode) { this.postalCode = postalCode; }
     public List<String> getPaymentTerms() { return paymentTerms; }
     public void setPaymentTerms(List<String> paymentTerms) { this.paymentTerms = paymentTerms; }
+    public Integer getPaymentDelay() { return paymentDelay; }
+    public void setPaymentDelay(Integer paymentDelay) { this.paymentDelay = paymentDelay; }
     public String getCurrencyCode() { return currencyCode; }
     public void setCurrencyCode(String currencyCode) { this.currencyCode = currencyCode; }
     public String getCreatedBy() { return createdBy; }

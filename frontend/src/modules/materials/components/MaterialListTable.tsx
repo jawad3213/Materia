@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { Link } from "react-router-dom";
 import {
   Table,
@@ -12,13 +12,12 @@ import Checkbox from "../../../shared/components/form/input/Checkbox";
 import Button from "../../../shared/components/ui/button/Button";
 import DeleteConfirmModal from "../../../shared/components/ui/modal/DeleteConfirmModal";
 import { materialApi } from "../services/materialApi";
+import { categoryApi } from "../../categories/services/categoryApi";
 import type { MaterialListItem } from "../types/MaterialListItem";
-import { Dropdown } from "../../../shared/components/ui/dropdown/Dropdown";
-import CustomSelect from "./CustomSelect";
-import CategoryTreeSelect from "../../categories/components/CategoryTreeSelect";
-import { MaterialStatus, MaterialType } from "../enums";
 import Pagination from "../../../shared/components/ui/Pagination";
 import MaterialCard from "./MaterialCard";
+import MaterialFilters from "./MaterialFilters";
+import MaterialInfoModal from "./MaterialInfoModal";
 
 const colorClasses: Record<string, string> = {
   red: "bg-red-50 text-red-500 dark:bg-red-500/15 dark:text-red-500",
@@ -40,19 +39,53 @@ export default function MaterialListTable() {
   // Filter state
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [filterCategoryId, setFilterCategoryId] = useState("");
+  const [filterCategoryName, setFilterCategoryName] = useState("");
   const [filterMaterialType, setFilterMaterialType] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
   const [searchKeyword, setSearchKeyword] = useState("");
   
+  // Modal state
+  const [selectedMaterialForModal, setSelectedMaterialForModal] = useState<MaterialListItem | null>(null);
+  const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
+
   // Pagination state
   const [page, setPage] = useState(0);
   const [size, setSize] = useState(10);
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
+  
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const isFirstMount = useRef(true);
+  const activeFiltersCount = [filterCategoryId, filterMaterialType, filterStatus].filter(Boolean).length;
+
+  useEffect(() => {
+    if (filterCategoryId) {
+      categoryApi.getById(filterCategoryId)
+        .then(res => setFilterCategoryName(res.data.name))
+        .catch(() => setFilterCategoryName(filterCategoryId));
+    } else {
+      setFilterCategoryName("");
+    }
+  }, [filterCategoryId]);
+
+  useEffect(() => {
+    if (isFirstMount.current) {
+      isFirstMount.current = false;
+      return;
+    }
+    const timer = setTimeout(() => {
+      if (page === 0) {
+        setRefreshTrigger(prev => prev + 1);
+      } else {
+        setPage(0);
+      }
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [searchKeyword]);
 
   useEffect(() => {
     fetchMaterials();
-  }, [page, size]);
+  }, [page, size, refreshTrigger]);
 
   const fetchMaterials = async () => {
     try {
@@ -121,7 +154,7 @@ export default function MaterialListTable() {
   const handleApplyFilters = () => {
     setIsFilterOpen(false);
     if (page === 0) {
-      fetchMaterials();
+      setRefreshTrigger(prev => prev + 1);
     } else {
       setPage(0); // This will trigger useEffect to fetchMaterials
     }
@@ -129,12 +162,12 @@ export default function MaterialListTable() {
 
   const handleClearFilters = () => {
     setFilterCategoryId("");
+    setFilterCategoryName("");
     setFilterMaterialType("");
     setFilterStatus("");
     setIsFilterOpen(false);
     if (page === 0) {
-      // Need a timeout to ensure state is updated before fetching
-      setTimeout(fetchMaterials, 0);
+      setRefreshTrigger(prev => prev + 1);
     } else {
       setPage(0);
     }
@@ -176,95 +209,123 @@ export default function MaterialListTable() {
             Materials List
           </h3>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="relative hidden sm:block">
-            <svg
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-              width="20"
-              height="20"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-              />
-            </svg>
-            <input
-              type="text"
-              placeholder="Search materials..."
-              value={searchKeyword}
-              onChange={(e) => setSearchKeyword(e.target.value)}
-              onKeyDown={handleSearchKeyDown}
-              className="w-full rounded-lg border border-gray-200 bg-transparent py-2 pl-9 pr-4 text-sm text-gray-700 outline-none focus:border-brand-500 dark:border-gray-800 dark:text-gray-300 sm:w-80"
-            />
-          </div>
-          <div className="relative">
-            <Button variant="outline" size="sm" onClick={() => setIsFilterOpen(!isFilterOpen)}>
-              <span className="flex items-center gap-2">
-                <svg
-                  className="size-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
-                  />
+        <div className="flex items-center gap-3 flex-wrap justify-end">
+          {selectedMaterials.length > 0 && (
+            <div className="flex items-center gap-2 mr-2 border-r border-gray-200 pr-4 dark:border-white/[0.05]">
+              <button className="flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-1.5 hover:bg-gray-50 dark:border-white/[0.05] dark:bg-white/[0.03] dark:hover:bg-white/[0.05]">
+                <div className="flex h-5 w-5 items-center justify-center rounded-[4px] bg-[#2C2B35] text-white">
+                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <span className="text-sm font-semibold text-gray-900 dark:text-white">{selectedMaterials.length}</span>
+                <svg className="h-4 w-4 text-gray-600 dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
-                Filter
-              </span>
-            </Button>
-            
-            <Dropdown isOpen={isFilterOpen} onClose={() => setIsFilterOpen(false)} className="w-[600px] p-5 top-full right-0 mt-2">
-              <h4 className="mb-4 text-sm font-semibold text-gray-800 dark:text-white/90">Filter Materials</h4>
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <div>
-                  <label className="block mb-1.5 text-xs font-medium text-gray-700 dark:text-gray-300">Category</label>
-                  <CategoryTreeSelect
-                    value={filterCategoryId}
-                    onChange={setFilterCategoryId}
-                    placeholder="Select Category"
-                    maxHeightClass="max-h-[200px]"
-                  />
-                </div>
-                <div>
-                  <label className="block mb-1.5 text-xs font-medium text-gray-700 dark:text-gray-300">Material Type</label>
-                  <CustomSelect
-                    value={filterMaterialType}
-                    onChange={setFilterMaterialType}
-                    placeholder="Select Type"
-                    options={Object.entries(MaterialType).map(([key, val]) => ({ value: val, label: key.replace(/_/g, " ") }))}
-                  />
-                </div>
-                <div>
-                  <label className="block mb-1.5 text-xs font-medium text-gray-700 dark:text-gray-300">Status</label>
-                  <CustomSelect
-                    value={filterStatus}
-                    onChange={setFilterStatus}
-                    placeholder="Select Status"
-                    options={Object.entries(MaterialStatus).map(([key, val]) => ({ value: val, label: key }))}
-                  />
-                </div>
-              </div>
-              <div className="flex justify-end gap-2 pt-4 border-t border-gray-100 dark:border-white/[0.05]">
-                <Button variant="outline" size="sm" onClick={handleClearFilters}>
-                  Clear
-                </Button>
-                <Button variant="primary" size="sm" onClick={handleApplyFilters}>
-                  Apply Filters
-                </Button>
-              </div>
-            </Dropdown>
-          </div>
+              </button>
+              
+              <button className="rounded-full border border-gray-200 bg-white px-4 py-1.5 text-sm font-semibold text-[#183B7E] hover:bg-gray-50 dark:border-white/[0.05] dark:bg-white/[0.03] dark:text-blue-400 dark:hover:bg-white/[0.05]">
+                Renew
+              </button>
+              <button className="rounded-full border border-gray-200 bg-white px-4 py-1.5 text-sm font-semibold text-[#183B7E] hover:bg-gray-50 dark:border-white/[0.05] dark:bg-white/[0.03] dark:text-blue-400 dark:hover:bg-white/[0.05]">
+                Deactivate
+              </button>
+              <button className="rounded-full border border-gray-200 bg-white px-4 py-1.5 text-sm font-semibold text-[#183B7E] hover:bg-gray-50 dark:border-white/[0.05] dark:bg-white/[0.03] dark:text-blue-400 dark:hover:bg-white/[0.05]">
+                Delete
+              </button>
+            </div>
+          )}
+            <div className="relative hidden sm:block">
+              <svg
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 size-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                />
+              </svg>
+              <input
+                type="text"
+                placeholder="Search materials..."
+                value={searchKeyword}
+                onChange={(e) => {
+                  setSearchKeyword(e.target.value);
+                  if (e.target.value === '') {
+                    if (page === 0) {
+                      setRefreshTrigger(prev => prev + 1);
+                    } else {
+                      setPage(0);
+                    }
+                  }
+                }}
+                onKeyDown={handleSearchKeyDown}
+                className="w-full rounded-lg border border-gray-200 bg-transparent py-2 pl-9 pr-8 text-sm text-gray-700 outline-none focus:border-brand-500 dark:border-gray-800 dark:text-gray-300 sm:w-64"
+              />
+              {searchKeyword && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchKeyword("");
+                    if (page === 0) {
+                      setRefreshTrigger(prev => prev + 1);
+                    } else {
+                      setPage(0);
+                    }
+                  }}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                >
+                  <svg className="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              )}
+            </div>
+
+            {/* Filter Dropdown Toggle Button */}
+            <div className="relative">
+              <Button variant="outline" size="sm" onClick={() => setIsFilterOpen(!isFilterOpen)}>
+                <span className="flex items-center gap-2">
+                  <svg
+                    className="size-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
+                    />
+                  </svg>
+                  Filter
+                </span>
+              </Button>
+              {activeFiltersCount > 0 && (
+                <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-brand-500 text-[10px] font-bold text-white shadow-sm">
+                  {activeFiltersCount}
+                </span>
+              )}
+              
+              <MaterialFilters
+                isOpen={isFilterOpen}
+                onClose={() => setIsFilterOpen(false)}
+                filterCategoryId={filterCategoryId}
+                setFilterCategoryId={setFilterCategoryId}
+                filterMaterialType={filterMaterialType}
+                setFilterMaterialType={setFilterMaterialType}
+                filterStatus={filterStatus}
+                setFilterStatus={setFilterStatus}
+                onApply={handleApplyFilters}
+                onClear={handleClearFilters}
+              />
+            </div>
           <Link to="/materials/create-material">
             <Button size="sm">
               <span className="flex items-center gap-2">
@@ -277,6 +338,77 @@ export default function MaterialListTable() {
           </Link>
         </div>
       </div>
+
+      {/* Active Filter Pills Bar (matching SupplierListTable view) */}
+      {activeFiltersCount > 0 && (
+        <div className="flex flex-wrap items-center gap-2 px-5 py-2.5 bg-gray-50/75 border-b border-gray-100 dark:bg-gray-900/40 dark:border-white/[0.05]">
+          <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+            Active filters:
+          </span>
+          {filterCategoryId && (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-brand-50 text-brand-700 dark:bg-brand-500/15 dark:text-brand-300">
+              Category: {filterCategoryName || filterCategoryId}
+              <button
+                type="button"
+                onClick={() => {
+                  setFilterCategoryId("");
+                  setFilterCategoryName("");
+                  if (page === 0) setRefreshTrigger(prev => prev + 1);
+                  else setPage(0);
+                }}
+                className="hover:text-brand-900 dark:hover:text-white"
+              >
+                <svg className="size-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </span>
+          )}
+          {filterMaterialType && (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-brand-50 text-brand-700 dark:bg-brand-500/15 dark:text-brand-300">
+              Type: {filterMaterialType.replace(/_/g, " ")}
+              <button
+                type="button"
+                onClick={() => {
+                  setFilterMaterialType("");
+                  if (page === 0) setRefreshTrigger(prev => prev + 1);
+                  else setPage(0);
+                }}
+                className="hover:text-brand-900 dark:hover:text-white"
+              >
+                <svg className="size-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </span>
+          )}
+          {filterStatus && (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-brand-50 text-brand-700 dark:bg-brand-500/15 dark:text-brand-300">
+              Status: {filterStatus}
+              <button
+                type="button"
+                onClick={() => {
+                  setFilterStatus("");
+                  if (page === 0) setRefreshTrigger(prev => prev + 1);
+                  else setPage(0);
+                }}
+                className="hover:text-brand-900 dark:hover:text-white"
+              >
+                <svg className="size-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={handleClearFilters}
+            className="text-xs font-semibold text-gray-500 hover:text-error-500 ml-2 transition-colors"
+          >
+            Clear all
+          </button>
+        </div>
+      )}
 
       {/* Search mode: Card grid view */}
       {searchKeyword.trim() ? (
@@ -315,15 +447,15 @@ export default function MaterialListTable() {
               </div>
               <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
                 {materials.map((material) => (
-                  <div
+                  <MaterialCard
                     key={material.id}
-                    className="rounded-xl transition-all duration-200 hover:ring-2 hover:ring-yellow-400 hover:shadow-[0_0_16px_rgba(250,204,21,0.15)] dark:hover:ring-yellow-500/60 dark:hover:shadow-[0_0_16px_rgba(234,179,8,0.1)]"
-                  >
-                    <MaterialCard
-                      material={material}
-                      highlightKeyword={searchKeyword}
-                    />
-                  </div>
+                    material={material}
+                    highlightKeyword={searchKeyword}
+                    onCardClick={(m) => {
+                      setSelectedMaterialForModal(m as MaterialListItem);
+                      setIsInfoModalOpen(true);
+                    }}
+                  />
                 ))}
               </div>
             </>
@@ -469,6 +601,17 @@ export default function MaterialListTable() {
                     </TableCell>
                     <TableCell className="px-4 py-4">
                       <div className="flex items-center gap-2">
+                        <Link to={`/materials/view/${material.id}`}>
+                          <button 
+                            className="flex items-center justify-center p-2 rounded-lg text-gray-400 hover:text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-500/10 dark:hover:text-brand-500 transition-colors"
+                            title="View Material"
+                          >
+                            <svg className="size-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                          </button>
+                        </Link>
                         <Link to={`/materials/edit/${material.id}`}>
                           <button 
                             className="flex items-center justify-center p-2 rounded-lg text-gray-400 hover:text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-500/10 dark:hover:text-brand-500 transition-colors"
@@ -518,6 +661,13 @@ export default function MaterialListTable() {
         title="Danger Alert!"
         message={`Are you sure you want to delete the material "${materialToDelete?.name}"?`}
         isDeleting={isDeleting}
+      />
+
+      {/* Quick Info Modal for tapping card */}
+      <MaterialInfoModal
+        isOpen={isInfoModalOpen}
+        onClose={() => setIsInfoModalOpen(false)}
+        material={selectedMaterialForModal}
       />
     </div>
   );

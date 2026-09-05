@@ -3,6 +3,7 @@ import CreateMaterialPage from './pages/CreateMaterialPage';
 import MaterialListPage from './pages/MaterialListPage';
 import UpdateMaterialPage from './pages/UpdateMaterialPage';
 import MaterialCardViewPage from './pages/MaterialCardViewPage';
+import MaterialDetailPage from './pages/MaterialDetailPage';
 
 export default function MaterialsRoutes() {
   return (
@@ -10,6 +11,7 @@ export default function MaterialsRoutes() {
       <Route path="" element={<MaterialListPage />} />
       <Route path="create-material" element={<CreateMaterialPage />} />
       <Route path="edit/:id" element={<UpdateMaterialPage />} />
+      <Route path="view/:id" element={<MaterialDetailPage />} />
       <Route path="cards" element={<MaterialCardViewPage />} />
     </Routes>
   );

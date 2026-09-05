@@ -3,6 +3,7 @@ package com.materia.backend.contexts.masterData.application.mappers;
 import com.materia.backend.contexts.masterData.application.dtos.supplier.CreateSupplierInput;
 import com.materia.backend.contexts.masterData.application.dtos.supplier.UpdateSupplierInput;
 import com.materia.backend.contexts.masterData.application.dtos.supplier.SupplierOutput;
+import com.materia.backend.contexts.masterData.application.dtos.supplier.SupplierListOutput;
 import com.materia.backend.contexts.masterData.domain.entities.Supplier;
 import com.materia.backend.contexts.masterData.domain.enums.CurrencyCode;
 import org.springframework.stereotype.Component;
@@ -36,6 +37,7 @@ public class SupplierMapper implements BaseMapper<Supplier, CreateSupplierInput,
                 .country(request.getCountry())
                 .postalCode(request.getPostalCode())
                 .paymentTerms(request.getPaymentTerms())
+                .paymentDelay(request.getPaymentDelay())
                 .currencyCode(request.getCurrencyCode() != null
                         ? CurrencyCode.fromCode(request.getCurrencyCode())
                         : CurrencyCode.MAD)
@@ -96,5 +98,31 @@ public class SupplierMapper implements BaseMapper<Supplier, CreateSupplierInput,
     public List<SupplierOutput> toResponseList(List<Supplier> entities) {
         if (entities == null) return List.of();
         return entities.stream().map(this::toResponse).collect(Collectors.toList());
+    }
+
+    // ============================================================
+    // ENTITY -> LIST RESPONSE DTO
+    // ============================================================
+
+    public SupplierListOutput toListResponse(Supplier entity) {
+        if (entity == null) return null;
+
+        SupplierListOutput response = new SupplierListOutput();
+        response.setId(entity.getId());
+        response.setCode(entity.getCode());
+        response.setName(entity.getName());
+        response.setContactPerson(entity.getContactPerson());
+        response.setContactEmail(entity.getContactEmail());
+        response.setContactPhone(entity.getContactPhone());
+        response.setCity(entity.getCity());
+        response.setCountry(entity.getCountry());
+        response.setCurrencyCode(entity.getCurrencyCode() != null ? entity.getCurrencyCode().getCode() : null);
+        response.setStatus(entity.getStatus());
+        return response;
+    }
+
+    public List<SupplierListOutput> toListResponseList(List<Supplier> entities) {
+        if (entities == null) return List.of();
+        return entities.stream().map(this::toListResponse).collect(Collectors.toList());
     }
 }
