@@ -1,4 +1,6 @@
-target/
+target/*
+!target/*.jar
+target/*.original
 .mvn/
 mvnw
 mvnw.cmd
