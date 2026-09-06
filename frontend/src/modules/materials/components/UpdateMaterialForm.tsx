@@ -57,8 +57,13 @@ export default function UpdateMaterialForm({ id }: Props) {
   // Load suppliers
   useEffect(() => {
     supplierApi
-      .getAll()
-      .then((res) => setSuppliers(res.data))
+      .getAllUnpaginated()
+      .then((res) => {
+        const data = Array.isArray(res.data)
+          ? res.data
+          : (res.data as any)?.content || [];
+        setSuppliers(data);
+      })
       .catch((err) => console.error("Failed to load suppliers", err));
   }, []);
 

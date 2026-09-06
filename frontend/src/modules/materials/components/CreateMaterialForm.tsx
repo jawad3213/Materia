@@ -29,9 +29,14 @@ export default function CreateMaterialForm() {
   const [suppliers, setSuppliers] = useState<SupplierListItem[]>([]);
 
   React.useEffect(() => {
-    supplierApi.getAll()
-      .then(res => setSuppliers(res.data))
-      .catch(err => console.error("Failed to load suppliers", err));
+    supplierApi.getAllUnpaginated()
+      .then((res) => {
+        const data = Array.isArray(res.data)
+          ? res.data
+          : (res.data as any)?.content || [];
+        setSuppliers(data);
+      })
+      .catch((err) => console.error("Failed to load suppliers", err));
   }, []);
 
   // Auto-dismiss the toast notification after 5 seconds
@@ -299,7 +304,7 @@ export default function CreateMaterialForm() {
                 onChange={(val) => handleStringChange('supplierId', val)}
                 placeholder="Select Supplier"
                 showSearch
-                options={suppliers.map((sup) => ({
+                options={(Array.isArray(suppliers) ? suppliers : []).map((sup) => ({
                   value: sup.id,
                   label: sup.name
                 }))}
