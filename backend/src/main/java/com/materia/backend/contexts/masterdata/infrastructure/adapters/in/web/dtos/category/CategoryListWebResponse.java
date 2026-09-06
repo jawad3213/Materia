@@ -12,6 +12,7 @@ public class CategoryListWebResponse {
     private String status;
     private Integer materialCount;
     private Integer subCategoryCount;
+    private Integer totalItems;
     private Integer level;
     private String path;
     private String parentCode;

@@ -5,7 +5,11 @@ import UpdateSupplierForm from '../components/UpdateSupplierForm';
 export default function UpdateSupplierPage() {
   return (
     <div>
-      <PageBreadcrumb pageTitle="Update Supplier" />
+      <PageBreadcrumb 
+        pageTitle="Update Supplier" 
+        parentName="Suppliers" 
+        parentUrl="/suppliers" 
+      />
       <div className="mt-6 flex flex-col gap-6">
         <UpdateSupplierForm />
       </div>

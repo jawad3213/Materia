@@ -21,7 +21,7 @@ export default function UpdateSupplierForm() {
   const [submitMessage, setSubmitMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   
-  const [paymentTermsTags, setPaymentTermsTags] = useState<string[]>(["Net 30"]);
+  const [paymentTermsTags, setPaymentTermsTags] = useState<string[]>([]);
   const [paymentTermInput, setPaymentTermInput] = useState("");
 
   // Auto-dismiss the toast notification after 5 seconds
@@ -395,7 +395,7 @@ export default function UpdateSupplierForm() {
                   name="paymentDelay"
                   value={formData.paymentDelay}
                   onChange={handleChange}
-                  placeholder="there is no data yet"
+                  placeholder="Optional (e.g. 30)"
                   error={!!fieldErrors.paymentDelay}
                   hint={fieldErrors.paymentDelay}
                 />

@@ -2,6 +2,7 @@ package com.materia.backend.contexts.masterData.infrastructure.adapters.out.pers
 
 import com.materia.backend.contexts.masterData.infrastructure.adapters.out.persistence.entities.SupplierJpaEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -14,7 +15,7 @@ import java.util.UUID;
  * Spring Data JPA Repository for SupplierJpaEntity
  */
 @Repository
-public interface SpringDataSupplierRepository extends JpaRepository<SupplierJpaEntity, UUID> {
+public interface SpringDataSupplierRepository extends JpaRepository<SupplierJpaEntity, UUID>, JpaSpecificationExecutor<SupplierJpaEntity> {
 
     Optional<SupplierJpaEntity> findByCode(String code);
 
@@ -22,8 +23,6 @@ public interface SpringDataSupplierRepository extends JpaRepository<SupplierJpaE
     List<SupplierJpaEntity> findByStatus(String status);
 
     List<SupplierJpaEntity> findByCountry(String country);
-
-    List<SupplierJpaEntity> findByCity(String city);
 
     boolean existsByCode(String code);
 

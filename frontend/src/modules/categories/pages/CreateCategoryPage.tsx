@@ -10,7 +10,11 @@ export default function CreateCategoryPage() {
         title="Create Category | Materia Admin"
         description="This is the Create Category page for Materia Admin"
       />
-      <PageBreadcrumb pageTitle="Create Category" />
+      <PageBreadcrumb 
+        pageTitle="Create Category" 
+        parentName="Categories" 
+        parentUrl="/categories" 
+      />
 
       <CreateCategoryForm />
     </>

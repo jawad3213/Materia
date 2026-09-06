@@ -9,6 +9,7 @@ import java.util.UUID;
 public class SupplierListOutput extends BaseOutput {
 
     private UUID id;
+    private String code;
     private String name;
     private String contactPerson;
     private String contactEmail;
@@ -16,6 +17,7 @@ public class SupplierListOutput extends BaseOutput {
     private String city;
     private String country;
     private String currencyCode;
+    private String status;
 
     public SupplierListOutput() { super(); }
 
@@ -41,6 +43,12 @@ public class SupplierListOutput extends BaseOutput {
     public String getCountry() { return country; }
     public void setCountry(String country) { this.country = country; }
 
+    public String getCode() { return code; }
+    public void setCode(String code) { this.code = code; }
+
     public String getCurrencyCode() { return currencyCode; }
     public void setCurrencyCode(String currencyCode) { this.currencyCode = currencyCode; }
+
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
 }

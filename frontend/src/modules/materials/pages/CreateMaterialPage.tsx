@@ -10,7 +10,11 @@ export default function CreateMaterialPage() {
         title="Create Material | Materia Admin"
         description="This is the Create Material page for Materia Admin"
       />
-      <PageBreadcrumb pageTitle="Create Material" />
+      <PageBreadcrumb 
+        pageTitle="Create Material" 
+        parentName="Materials" 
+        parentUrl="/materials" 
+      />
 
       <CreateMaterialForm />
     </>

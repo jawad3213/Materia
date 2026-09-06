@@ -1,0 +1,60 @@
+# ===================================================================
+# Materia Development Override Compose (docker-compose.dev.yml)
+# Usage: docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+# ===================================================================
+services:
+
+  # -----------------------------------------------------------------
+  # PostgreSQL (Dev: exposed to host for DBeaver/pgAdmin)
+  # -----------------------------------------------------------------
+  postgres:
+    restart: unless-stopped
+    ports:
+      - "${POSTGRES_PORT}:5432"
+
+  # -----------------------------------------------------------------
+  # Kafka (Dev: exposed to host for local dev tools/CLI)
+  # -----------------------------------------------------------------
+  kafka:
+    restart: unless-stopped
+    ports:
+      - "${KAFKA_PORT}:9092"
+
+  # -----------------------------------------------------------------
+  # Kafka UI (Dev only: developer inspection web UI)
+  # -----------------------------------------------------------------
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: materia-kafka-ui
+    restart: unless-stopped
+    ports:
+      - "${KAFKA_UI_PORT}:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: ${KAFKA_CLUSTER_NAME}
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: ${KAFKA_BOOTSTRAP_SERVERS}
+    depends_on:
+      - kafka
+    networks:
+      - materia-net
+
+  # -----------------------------------------------------------------
+  # Backend (Dev: dev profile, CORS for localhost, exposed port 8080)
+  # -----------------------------------------------------------------
+  backend:
+    restart: unless-stopped
+    ports:
+      - "${BACKEND_PORT}:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE}
+      APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS}
+
+  # -----------------------------------------------------------------
+  # Frontend (Dev: exposed frontend port, pointing to API)
+  # -----------------------------------------------------------------
+  frontend:
+    restart: unless-stopped
+    build:
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL}
+    ports:
+      - "${FRONTEND_PORT}:80"

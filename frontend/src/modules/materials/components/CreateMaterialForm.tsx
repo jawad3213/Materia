@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { MaterialStatus, MaterialType, UnitOfMeasure, CurrencyCode } from "../enums";
 import CustomSelect from "./CustomSelect";
@@ -18,6 +19,7 @@ import Button from "../../../shared/components/ui/button/Button";
 import Toast from "../../../shared/components/ui/notifications/Toast";
 
 export default function CreateMaterialForm() {
+  const navigate = useNavigate();
   const [keywords, setKeywords] = useState<string[]>([]);
   const [keywordInput, setKeywordInput] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -513,7 +515,7 @@ export default function CreateMaterialForm() {
             variant="outline" 
             onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
               e.preventDefault();
-              // Add cancel logic here if needed, like history.back() or resetting form
+              navigate("/materials");
             }}
           >
             Cancel

@@ -11,7 +11,7 @@ export const categoryApi = {
   create: (data: CreateCategoryRequest) => axiosClient.post<Category>(BASE_URL, data),
   getById: (id: string) => axiosClient.get<Category>(`${BASE_URL}/${id}`),
   getByCode: (code: string) => axiosClient.get<Category>(`${BASE_URL}/code/${code}`),
-  getAll: () => axiosClient.get<CategoryListItem[]>(BASE_URL),
+  getAll: (page = 0, size = 10) => axiosClient.get<CategoryListItem[]>(BASE_URL, { params: { page, size } }),
   update: (id: string, data: UpdateCategoryRequest) => axiosClient.put<Category>(`${BASE_URL}/${id}`, data),
   delete: (id: string) => axiosClient.delete(`${BASE_URL}/${id}`),
   

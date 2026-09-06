@@ -48,9 +48,32 @@ public class SupplierController {
     }
 
     @GetMapping
-    public ResponseEntity<List<SupplierWebResponse>> getAllSuppliers() {
-        List<SupplierOutput> responses = supplierUseCase.getAll();
-        return ResponseEntity.ok(webMapper.toWebResponseList(responses));
+    public ResponseEntity<List<SupplierWebResponse>> getAllSuppliers(
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String country,
+            @RequestParam(required = false) String currencyCode) {
+        if (status == null && country == null && currencyCode == null) {
+            List<SupplierOutput> responses = supplierUseCase.getAll();
+            return ResponseEntity.ok(webMapper.toWebResponseList(responses));
+        }
+
+        com.materia.backend.contexts.masterData.application.dtos.supplier.SupplierFilterCriteria criteria =
+                new com.materia.backend.contexts.masterData.application.dtos.supplier.SupplierFilterCriteria();
+        criteria.setStatus(status);
+        criteria.setCountry(country);
+        criteria.setCurrencyCode(currencyCode);
+
+        // Fetch filtered results
+        com.materia.backend.common.application.PageResponse<com.materia.backend.contexts.masterData.application.dtos.supplier.SupplierListOutput> pageResult =
+                supplierUseCase.filterList(criteria, 0, Integer.MAX_VALUE);
+
+        // Map each item back to SupplierWebResponse for backward compatibility
+        List<SupplierWebResponse> responses = pageResult.getContent().stream().map(item -> {
+            SupplierOutput output = supplierUseCase.getById(item.getId());
+            return webMapper.toWebResponse(output);
+        }).toList();
+
+        return ResponseEntity.ok(responses);
     }
 
     @PutMapping("/{id}")
@@ -74,5 +97,64 @@ public class SupplierController {
     public ResponseEntity<List<SupplierWebResponse>> searchSuppliers(@RequestParam String keyword) {
         List<SupplierOutput> responses = supplierUseCase.searchSuppliers(keyword);
         return ResponseEntity.ok(webMapper.toWebResponseList(responses));
+    }
+
+    @GetMapping("/list")
+    public ResponseEntity<com.materia.backend.common.application.PageResponse<com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.dtos.supplier.SupplierListWebResponse>> getAllSuppliersList(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        com.materia.backend.common.application.PageResponse<com.materia.backend.contexts.masterData.application.dtos.supplier.SupplierListOutput> appPage = supplierUseCase.getAllList(page, size);
+
+        com.materia.backend.common.application.PageResponse<com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.dtos.supplier.SupplierListWebResponse> webPage = new com.materia.backend.common.application.PageResponse<>(
+                webMapper.toWebListResponseList(appPage.getContent()),
+                appPage.getPageNumber(),
+                appPage.getPageSize(),
+                appPage.getTotalElements(),
+                appPage.getTotalPages(),
+                appPage.isLast()
+        );
+        return ResponseEntity.ok(webPage);
+    }
+
+    @PostMapping("/filter/list")
+    public ResponseEntity<com.materia.backend.common.application.PageResponse<com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.dtos.supplier.SupplierListWebResponse>> filterList(
+            @RequestBody com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.dtos.supplier.SupplierFilterWebRequest webRequest,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+
+        com.materia.backend.contexts.masterData.application.dtos.supplier.SupplierFilterCriteria criteria = webMapper.toAppFilterCriteria(webRequest);
+        com.materia.backend.common.application.PageResponse<com.materia.backend.contexts.masterData.application.dtos.supplier.SupplierListOutput> appPage = supplierUseCase.filterList(criteria, page, size);
+
+        com.materia.backend.common.application.PageResponse<com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.dtos.supplier.SupplierListWebResponse> webPage = new com.materia.backend.common.application.PageResponse<>(
+                webMapper.toWebListResponseList(appPage.getContent()),
+                appPage.getPageNumber(),
+                appPage.getPageSize(),
+                appPage.getTotalElements(),
+                appPage.getTotalPages(),
+                appPage.isLast()
+        );
+
+        return ResponseEntity.ok(webPage);
+    }
+
+    @PostMapping("/search/list")
+    public ResponseEntity<com.materia.backend.common.application.PageResponse<com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.dtos.supplier.SupplierWebResponse>> searchAdvancedList(
+            @RequestBody com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.dtos.supplier.SupplierSearchWebRequest webRequest,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+
+        com.materia.backend.contexts.masterData.application.dtos.supplier.SupplierSearchCriteria criteria = webMapper.toAppSearchCriteria(webRequest);
+        com.materia.backend.common.application.PageResponse<com.materia.backend.contexts.masterData.application.dtos.supplier.SupplierOutput> appPage = supplierUseCase.searchAdvancedList(criteria, page, size);
+
+        com.materia.backend.common.application.PageResponse<com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.dtos.supplier.SupplierWebResponse> webPage = new com.materia.backend.common.application.PageResponse<>(
+                webMapper.toWebResponseList(appPage.getContent()),
+                appPage.getPageNumber(),
+                appPage.getPageSize(),
+                appPage.getTotalElements(),
+                appPage.getTotalPages(),
+                appPage.isLast()
+        );
+
+        return ResponseEntity.ok(webPage);
     }
 }

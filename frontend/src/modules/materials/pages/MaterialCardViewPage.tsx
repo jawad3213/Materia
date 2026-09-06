@@ -29,7 +29,11 @@ export default function MaterialCardViewPage() {
         title="Material Cards | Materia Admin"
         description="View materials as cards"
       />
-      <PageBreadcrumb pageTitle="Material Cards" />
+      <PageBreadcrumb 
+        pageTitle="Material Cards" 
+        parentName="Materials" 
+        parentUrl="/materials" 
+      />
 
       <div className="mt-6">
         {loading ? (

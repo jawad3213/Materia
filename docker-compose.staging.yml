@@ -1,0 +1,39 @@
+# ===================================================================
+# Materia Staging Override Compose (docker-compose.staging.yml)
+# Usage: docker compose -f docker-compose.yml -f docker-compose.staging.yml up -d
+# ===================================================================
+services:
+
+  # -----------------------------------------------------------------
+  # PostgreSQL (Staging: internal network only, restart always)
+  # -----------------------------------------------------------------
+  postgres:
+    restart: always
+
+  # -----------------------------------------------------------------
+  # Kafka (Staging: internal network only, restart always)
+  # -----------------------------------------------------------------
+  kafka:
+    restart: always
+
+  # -----------------------------------------------------------------
+  # Backend (Staging: staging profile, staging origins, port 8080)
+  # -----------------------------------------------------------------
+  backend:
+    restart: always
+    ports:
+      - "${BACKEND_PORT}:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE}
+      APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS}
+
+  # -----------------------------------------------------------------
+  # Frontend (Staging: port 80, points to staging API)
+  # -----------------------------------------------------------------
+  frontend:
+    restart: always
+    build:
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL}
+    ports:
+      - "${FRONTEND_PORT}:80"

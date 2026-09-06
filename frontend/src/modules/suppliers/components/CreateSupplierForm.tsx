@@ -17,7 +17,7 @@ export default function CreateSupplierForm() {
   const [submitMessage, setSubmitMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   
-  const [paymentTermsTags, setPaymentTermsTags] = useState<string[]>(["Net 30"]);
+  const [paymentTermsTags, setPaymentTermsTags] = useState<string[]>([]);
   const [paymentTermInput, setPaymentTermInput] = useState("");
 
   // Auto-dismiss the toast notification after 5 seconds
@@ -40,6 +40,7 @@ export default function CreateSupplierForm() {
     city: "",
     country: "",
     postalCode: "",
+    paymentDelay: "" as number | string,
     currencyCode: "MAD",
     createdBy: "System",
   });
@@ -106,6 +107,7 @@ export default function CreateSupplierForm() {
     try {
       const requestPayload: CreateSupplierRequest = {
         ...formData,
+        paymentDelay: formData.paymentDelay === "" ? undefined : Number(formData.paymentDelay),
         paymentTerms: paymentTermsTags
       };
       
@@ -348,6 +350,18 @@ export default function CreateSupplierForm() {
                   placeholder="MAD, USD, EUR"
                   error={!!fieldErrors.currencyCode}
                   hint={fieldErrors.currencyCode}
+                />
+              </div>
+              <div>
+                <Label>Payment Delay (Days)</Label>
+                <Input
+                  type="number"
+                  name="paymentDelay"
+                  value={formData.paymentDelay}
+                  onChange={handleChange}
+                  placeholder="Optional (e.g. 30)"
+                  error={!!fieldErrors.paymentDelay}
+                  hint={fieldErrors.paymentDelay}
                 />
               </div>
               <div>

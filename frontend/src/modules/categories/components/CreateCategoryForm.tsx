@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import axios from "axios";
 import { CategoryType } from "../enums/CategoryType";
 import { CategoryStatus } from "../enums/CategoryStatus";
@@ -17,6 +18,7 @@ import Button from "../../../shared/components/ui/button/Button";
 import Toast from "../../../shared/components/ui/notifications/Toast";
 
 export default function CreateCategoryForm() {
+  const [searchParams] = useSearchParams();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -36,7 +38,7 @@ export default function CreateCategoryForm() {
     name: "",
     description: "",
     shortDescription: "",
-    parentId: "",
+    parentId: searchParams.get("parentId") || "",
     categoryType: "", // Default selected type
     status: "" as any,
     createdBy: "",

@@ -9,6 +9,7 @@ export interface CreateSupplierRequest {
   country: string;
   postalCode?: string;
   paymentTerms: string[];
+  paymentDelay?: number;
   currencyCode: string;
   createdBy: string;
 }

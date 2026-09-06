@@ -367,7 +367,7 @@ export default function UpdateMaterialForm({ id }: Props) {
                   onChange={(val) => handleStringChange("supplierId", val)}
                   placeholder="Select Supplier"
                   showSearch
-                  options={suppliers.map((sup) => ({ value: sup.id, label: sup.name }))}
+                  options={(Array.isArray(suppliers) ? suppliers : []).map((sup) => ({ value: sup.id, label: sup.name }))}
                   error={!!fieldErrors.supplierId}
                 />
                 {fieldErrors.supplierId && <p className="mt-1.5 text-xs text-error-500">{fieldErrors.supplierId}</p>}

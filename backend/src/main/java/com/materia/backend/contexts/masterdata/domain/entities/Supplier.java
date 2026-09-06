@@ -58,7 +58,6 @@ public class Supplier extends BaseEntity {
     public Supplier() {
         super();
         this.status = STATUS_ACTIVE;
-        this.paymentDelay = 30;
         this.currencyCode = CurrencyCode.MAD;
     }
 
@@ -79,7 +78,7 @@ public class Supplier extends BaseEntity {
         private String country;
         private String postalCode;
         private List<String> paymentTerms = new ArrayList<>();
-        private Integer paymentDelay = 30;
+        private Integer paymentDelay;
         private CurrencyCode currencyCode = CurrencyCode.MAD;
         private String status = STATUS_ACTIVE;
         private String createdBy;
@@ -184,7 +183,6 @@ public class Supplier extends BaseEntity {
 
             // Default values
             if (this.currencyCode == null) this.currencyCode = CurrencyCode.MAD;
-            if (this.paymentDelay == null) this.paymentDelay = 30;
             if (this.status == null) this.status = STATUS_ACTIVE;
 
             // Validation
@@ -386,7 +384,7 @@ public class Supplier extends BaseEntity {
     }
 
     public void setPaymentDelay(Integer paymentDelay) {
-        this.paymentDelay = paymentDelay != null ? paymentDelay : 30;
+        this.paymentDelay = paymentDelay;
         this.setUpdatedAt(LocalDateTime.now());
     }
 

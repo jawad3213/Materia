@@ -17,7 +17,11 @@ export default function UpdateMaterialPage() {
         title="Update Material | Materia Admin"
         description="Edit and update an existing material"
       />
-      <PageBreadcrumb pageTitle="Update Material" />
+      <PageBreadcrumb 
+        pageTitle="Update Material" 
+        parentName="Materials" 
+        parentUrl="/materials" 
+      />
 
       <div className="mt-6">
         <UpdateMaterialForm id={id} />
