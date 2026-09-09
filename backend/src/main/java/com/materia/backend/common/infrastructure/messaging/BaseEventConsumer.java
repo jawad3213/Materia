@@ -15,11 +15,15 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+
 /**
  * Base Event Consumer for consuming domain events from Kafka
- * Provides a registry for event handlers
+ * Provides a registry for event handlers.
+ * Active only when app.messaging.type=kafka
  */
 @Component
+@ConditionalOnProperty(name = "app.messaging.type", havingValue = "kafka")
 public class BaseEventConsumer {
 
     private static final Logger log = LoggerFactory.getLogger(BaseEventConsumer.class);

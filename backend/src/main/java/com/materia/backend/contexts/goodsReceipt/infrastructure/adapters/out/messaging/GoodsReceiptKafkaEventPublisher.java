@@ -6,10 +6,12 @@ import com.materia.backend.contexts.goodsReceipt.domain.events.GoodsReceiptCreat
 import com.materia.backend.contexts.goodsReceipt.domain.events.GoodsReceiptPartialEvent;
 import com.materia.backend.contexts.goodsReceipt.domain.events.GoodsReceiptRejectedEvent;
 import com.materia.backend.contexts.goodsReceipt.domain.ports.out.GoodsReceiptEventPublisher;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
-/** Kafka adapter for the goods receipt event publishing port. */
+/** Kafka adapter for the goods receipt event publishing port. Active when app.messaging.type=kafka. */
 @Component
+@ConditionalOnProperty(name = "app.messaging.type", havingValue = "kafka")
 public class GoodsReceiptKafkaEventPublisher implements GoodsReceiptEventPublisher {
 
     private final BaseEventPublisher eventPublisher;

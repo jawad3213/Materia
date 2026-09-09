@@ -9,11 +9,15 @@ import org.springframework.stereotype.Component;
 
 import java.util.concurrent.CompletableFuture;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+
 /**
  * Base Event Publisher for publishing domain events to Kafka
- * Implements event publishing with retry and error handling
+ * Implements event publishing with retry and error handling.
+ * Active only when app.messaging.type=kafka
  */
 @Component
+@ConditionalOnProperty(name = "app.messaging.type", havingValue = "kafka")
 public class BaseEventPublisher {
 
     private static final Logger log = LoggerFactory.getLogger(BaseEventPublisher.class);

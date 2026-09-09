@@ -2,9 +2,11 @@ package com.materia.backend.infrastructure.messaging;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 @Service
+@ConditionalOnProperty(name = "app.messaging.type", havingValue = "kafka")
 public class KafkaProducerService {
 
     @Autowired

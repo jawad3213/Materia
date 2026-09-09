@@ -16,16 +16,16 @@ import org.springframework.kafka.support.serializer.JsonSerializer;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.Configuration;
+
 /**
- * 🔹 CONFIGURATION KAFKA (Producer & Consumer)
- *
- * Gère:
- * - Connection aux courtiers Kafka (Bootstrap Servers)
- * - Configuration Producer (KafkaTemplate) avec Serialisation JSON
- * - Configuration Consumer (@KafkaListener) avec Désérialisation JSON
+ * CONFIGURATION KAFKA (Producer & Consumer)
+ * Active only when app.messaging.type=kafka
  */
 @Configuration
 @EnableKafka
+@ConditionalOnProperty(name = "app.messaging.type", havingValue = "kafka")
 public class KafkaConfig {
 
     @Value("${spring.kafka.bootstrap-servers:localhost:9092}")
