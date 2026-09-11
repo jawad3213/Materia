@@ -33,8 +33,8 @@ public class JwtTokenProvider {
     private final Map<TokenType, TokenConfig> tokenConfigs = new EnumMap<>(TokenType.class);
 
     public JwtTokenProvider(
-            @Value("${jwt.access-secret}") String accessSecret,
-            @Value("${jwt.refresh-secret}") String refreshSecret,
+            @Value("${jwt.access-secret:bWF0ZXJpYS1hY2Nlc3MtdG9rZW4tc2VjcmV0LWtleS0yMDI2LXN1cGVyLXNlY3JldC1rZXktZm9yLWFjY2Vzcw==}") String accessSecret,
+            @Value("${jwt.refresh-secret:bWF0ZXJpYS1yZWZyZXNoLXRva2VuLXNlY3VyaXR5LWtleS0yMDI2LXN1cGVyLXNlY3JldC1rZXktZm9yLXJlZnJlc2g=}") String refreshSecret,
             @Value("${jwt.expiration-ms:86400000}") long accessExpirationMs,
             @Value("${jwt.refresh-expiration-ms:604800000}") long refreshExpirationMs) {
 

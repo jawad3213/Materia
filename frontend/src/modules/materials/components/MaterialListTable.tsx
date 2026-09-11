@@ -18,6 +18,8 @@ import Pagination from "../../../shared/components/ui/Pagination";
 import MaterialCard from "./MaterialCard";
 import MaterialFilters from "./MaterialFilters";
 import MaterialInfoModal from "./MaterialInfoModal";
+import StockStatCards, { type StockFilterType } from "./StockStatCards";
+import ReorderRecommendationModal from "./ReorderRecommendationModal";
 
 const colorClasses: Record<string, string> = {
   red: "bg-red-50 text-red-500 dark:bg-red-500/15 dark:text-red-500",
@@ -43,6 +45,19 @@ export default function MaterialListTable() {
   const [filterMaterialType, setFilterMaterialType] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
   const [searchKeyword, setSearchKeyword] = useState("");
+
+  // Stock filter tab state
+  const [activeStockFilter, setActiveStockFilter] = useState<StockFilterType>("ALL");
+  const [stockCounts, setStockCounts] = useState({
+    total: 0,
+    reorderNeeded: 0,
+    critical: 0,
+    outOfStock: 0,
+  });
+
+  // Reorder modal state
+  const [reorderMaterialId, setReorderMaterialId] = useState<string | null>(null);
+  const [isReorderModalOpen, setIsReorderModalOpen] = useState(false);
   
   // Modal state
   const [selectedMaterialForModal, setSelectedMaterialForModal] = useState<MaterialListItem | null>(null);
@@ -50,13 +65,42 @@ export default function MaterialListTable() {
 
   // Pagination state
   const [page, setPage] = useState(0);
-  const [size, setSize] = useState(10);
+  const [size] = useState(10);
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
   
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const isFirstMount = useRef(true);
   const activeFiltersCount = [filterCategoryId, filterMaterialType, filterStatus].filter(Boolean).length;
+
+  useEffect(() => {
+    fetchStockCounts();
+  }, [refreshTrigger]);
+
+  const fetchStockCounts = async () => {
+    try {
+      const [reorderRes, criticalRes, outRes] = await Promise.all([
+        materialApi.getReorderNeeded(),
+        materialApi.getCriticalStock(),
+        materialApi.getOutOfStock(),
+      ]);
+
+      setStockCounts((prev) => ({
+        ...prev,
+        reorderNeeded: reorderRes.data?.length || 0,
+        critical: criticalRes.data?.length || 0,
+        outOfStock: outRes.data?.length || 0,
+      }));
+    } catch (err) {
+      console.error("Failed to load stock counts:", err);
+    }
+  };
+
+  const handleSelectStockFilter = (filter: StockFilterType) => {
+    setActiveStockFilter(filter);
+    setPage(0);
+    setRefreshTrigger((prev) => prev + 1);
+  };
 
   useEffect(() => {
     if (filterCategoryId) {
@@ -85,12 +129,64 @@ export default function MaterialListTable() {
 
   useEffect(() => {
     fetchMaterials();
-  }, [page, size, refreshTrigger]);
+  }, [page, size, refreshTrigger, activeStockFilter]);
 
   const fetchMaterials = async () => {
     try {
       setLoading(true);
-      
+
+      // 1. If a stock filter tab is active (Reorder, Critical, or Out of Stock)
+      if (activeStockFilter === "REORDER_NEEDED") {
+        const res = await materialApi.getReorderNeeded();
+        let items: MaterialListItem[] = res.data || [];
+        if (searchKeyword.trim()) {
+          const kw = searchKeyword.toLowerCase();
+          items = items.filter(m => 
+            m.name?.toLowerCase().includes(kw) || 
+            m.code?.toLowerCase().includes(kw) ||
+            m.description?.toLowerCase().includes(kw)
+          );
+        }
+        setTotalElements(items.length);
+        setTotalPages(Math.ceil(items.length / size) || 1);
+        setMaterials(items.slice(page * size, (page + 1) * size));
+        setLoading(false);
+        return;
+      } else if (activeStockFilter === "CRITICAL") {
+        const res = await materialApi.getCriticalStock();
+        let items: MaterialListItem[] = res.data || [];
+        if (searchKeyword.trim()) {
+          const kw = searchKeyword.toLowerCase();
+          items = items.filter(m => 
+            m.name?.toLowerCase().includes(kw) || 
+            m.code?.toLowerCase().includes(kw) ||
+            m.description?.toLowerCase().includes(kw)
+          );
+        }
+        setTotalElements(items.length);
+        setTotalPages(Math.ceil(items.length / size) || 1);
+        setMaterials(items.slice(page * size, (page + 1) * size));
+        setLoading(false);
+        return;
+      } else if (activeStockFilter === "OUT_OF_STOCK") {
+        const res = await materialApi.getOutOfStock();
+        let items: MaterialListItem[] = res.data || [];
+        if (searchKeyword.trim()) {
+          const kw = searchKeyword.toLowerCase();
+          items = items.filter(m => 
+            m.name?.toLowerCase().includes(kw) || 
+            m.code?.toLowerCase().includes(kw) ||
+            m.description?.toLowerCase().includes(kw)
+          );
+        }
+        setTotalElements(items.length);
+        setTotalPages(Math.ceil(items.length / size) || 1);
+        setMaterials(items.slice(page * size, (page + 1) * size));
+        setLoading(false);
+        return;
+      }
+
+      // 2. Default: ALL
       let res;
       if (searchKeyword) {
         // If there's a search keyword, search across all fields
@@ -120,6 +216,11 @@ export default function MaterialListTable() {
       setMaterials(res.data.content || []);
       setTotalPages(res.data.totalPages || 0);
       setTotalElements(res.data.totalElements || 0);
+
+      // Update total catalog items count
+      if (!searchKeyword && !filterCategoryId && !filterMaterialType && !filterStatus) {
+        setStockCounts(prev => ({ ...prev, total: res.data.totalElements || 0 }));
+      }
     } catch (err) {
       console.error("Failed to load materials:", err);
     } finally {
@@ -201,7 +302,15 @@ export default function MaterialListTable() {
   };
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
+    <>
+      {/* 4 Stock Filter Stat Cards (Global database counts & quick filter) */}
+      <StockStatCards
+        activeFilter={activeStockFilter}
+        onSelectFilter={handleSelectStockFilter}
+        counts={stockCounts}
+      />
+
+      <div className="rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
       {/* Header */}
       <div className="flex flex-col gap-4 border-b border-gray-100 px-5 py-4 dark:border-white/[0.05] sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -551,56 +660,110 @@ export default function MaterialListTable() {
                   </td>
                 </TableRow>
               ) : (
-                materials.map((material) => (
-                  <TableRow key={material.id} className={selectedMaterials.includes(material.id) ? "bg-gray-50 dark:bg-white/[0.02]" : ""}>
-                    <TableCell className="px-5 py-4">
-                      <Checkbox 
-                        checked={selectedMaterials.includes(material.id)} 
-                        onChange={() => handleSelectOne(material.id)} 
-                      />
-                    </TableCell>
-                    <TableCell className="px-4 py-4 text-start">
-                      <div className="flex items-center gap-3">
-                        <div
-                          className={`flex h-10 w-10 items-center justify-center rounded-full font-medium ${
-                            colorClasses[getColorForMaterial(material.name)]
-                          }`}
-                        >
-                          {getInitials(material.name)}
+                materials.map((material) => {
+                  const isOutOfStock = material.currentStock === 0 || material.stockStatus === "OUT_OF_STOCK";
+                  const isCritical = material.stockStatus === "CRITICAL";
+                  const isReorderNeeded = material.stockStatus === "REORDER_NEEDED";
+                  const isInStock = !isOutOfStock && !isCritical && !isReorderNeeded;
+
+                  return (
+                    <TableRow key={material.id} className={selectedMaterials.includes(material.id) ? "bg-gray-50 dark:bg-white/[0.02]" : ""}>
+                      <TableCell className="px-5 py-4">
+                        <Checkbox 
+                          checked={selectedMaterials.includes(material.id)} 
+                          onChange={() => handleSelectOne(material.id)} 
+                        />
+                      </TableCell>
+                      <TableCell className="px-4 py-4 text-start">
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={`flex h-10 w-10 items-center justify-center rounded-full font-medium ${
+                              colorClasses[getColorForMaterial(material.name)]
+                            }`}
+                          >
+                            {getInitials(material.name)}
+                          </div>
+                          <div>
+                            <span className="block font-medium text-gray-800 text-theme-sm dark:text-white/90">
+                              {material.name}
+                            </span>
+                            <span className="block text-gray-500 text-theme-xs dark:text-gray-400">
+                              {material.code}
+                            </span>
+                          </div>
                         </div>
-                        <div>
-                          <span className="block font-medium text-gray-800 text-theme-sm dark:text-white/90">
-                            {material.name}
+                      </TableCell>
+                      <TableCell className="px-4 py-4 text-start">
+                        <div className="flex items-center gap-2">
+                          <span className="block font-semibold text-gray-800 text-theme-sm dark:text-white/90">
+                            {material.currentStock} {material.unitOfMeasure}
                           </span>
-                          <span className="block text-gray-500 text-theme-xs dark:text-gray-400">
-                            {material.code}
-                          </span>
+                          {isOutOfStock ? (
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400">
+                              Out of Stock
+                            </span>
+                          ) : isCritical ? (
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-orange-100 text-orange-700 dark:bg-orange-500/20 dark:text-orange-400">
+                              Critical
+                            </span>
+                          ) : isReorderNeeded ? (
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400">
+                              Reorder
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400">
+                              In Stock
+                            </span>
+                          )}
                         </div>
-                      </div>
-                    </TableCell>
-                    <TableCell className="px-4 py-4 text-start">
-                      <span className="block font-medium text-gray-800 text-theme-sm dark:text-white/90">
-                        {material.currentStock} {material.unitOfMeasure}
-                      </span>
-                      <span className="block text-gray-500 text-theme-xs dark:text-gray-400">
-                        {material.materialType}
-                      </span>
-                    </TableCell>
-                    <TableCell className="px-4 py-4 text-start">
-                      <span className="block font-medium text-gray-800 text-theme-sm dark:text-white/90">
-                        {material.standardPrice}
-                      </span>
-                      <span className="block text-gray-500 text-theme-xs dark:text-gray-400">
-                        {material.standardPriceCurrency}
-                      </span>
-                    </TableCell>
-                    <TableCell className="px-4 py-4 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                      <Badge size="sm" variant="light" color={material.status === 'ACTIVE' ? 'success' : 'error'}>
-                        {material.status || 'ACTIVE'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="px-4 py-4">
-                      <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1.5 text-theme-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                          <span>{material.materialType}</span>
+                          {material.stockOnOrder != null && material.stockOnOrder > 0 && (
+                            <span className="text-brand-600 dark:text-brand-400 font-medium">
+                              • {material.stockOnOrder} on order
+                            </span>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="px-4 py-4 text-start">
+                        <span className="block font-medium text-gray-800 text-theme-sm dark:text-white/90">
+                          {material.standardPrice}
+                        </span>
+                        <span className="block text-gray-500 text-theme-xs dark:text-gray-400">
+                          {material.standardPriceCurrency}
+                        </span>
+                      </TableCell>
+                      <TableCell className="px-4 py-4 text-gray-500 text-start text-theme-sm dark:text-gray-400">
+                        <Badge size="sm" variant="light" color={material.status === 'ACTIVE' ? 'success' : 'error'}>
+                          {material.status || 'ACTIVE'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="px-4 py-4">
+                        <div className="flex items-center gap-2">
+                          {/* 1-Click Reorder Action (Disabled if In Stock) */}
+                          <button 
+                            disabled={isInStock}
+                            onClick={() => {
+                              if (isInStock) return;
+                              setReorderMaterialId(material.id);
+                              setIsReorderModalOpen(true);
+                            }}
+                            className={`flex items-center justify-center p-2 rounded-lg transition-colors ${
+                              isInStock
+                                ? "text-gray-300 dark:text-gray-600 opacity-40"
+                                : "text-amber-500 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-500/10 dark:hover:text-amber-400"
+                            }`}
+                            title={
+                              isInStock
+                                ? "Stock is optimal (no reorder needed)"
+                                : "1-Click Reorder (Recommendation & Purchase Requisition)"
+                            }
+                          >
+                            <svg className="size-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                            </svg>
+                          </button>
+
                         <Link to={`/materials/view/${material.id}`}>
                           <button 
                             className="flex items-center justify-center p-2 rounded-lg text-gray-400 hover:text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-500/10 dark:hover:text-brand-500 transition-colors"
@@ -634,7 +797,8 @@ export default function MaterialListTable() {
                       </div>
                     </TableCell>
                   </TableRow>
-                ))
+                  );
+                })
               )}
             </TableBody>
           </Table>
@@ -669,6 +833,21 @@ export default function MaterialListTable() {
         onClose={() => setIsInfoModalOpen(false)}
         material={selectedMaterialForModal}
       />
+
+      {/* 1-Click Reorder Recommendation & PR Trigger Modal */}
+      <ReorderRecommendationModal
+        materialId={reorderMaterialId}
+        isOpen={isReorderModalOpen}
+        onClose={() => {
+          setIsReorderModalOpen(false);
+          setReorderMaterialId(null);
+        }}
+        onReorderSuccess={() => {
+          fetchMaterials();
+          fetchStockCounts();
+        }}
+      />
     </div>
+    </>
   );
 }

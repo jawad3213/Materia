@@ -70,34 +70,40 @@ public class MaterialController {
 
     // ---- Custom Endpoints ----
 
-    @GetMapping("/category/{categoryId}")
-    public ResponseEntity<List<MaterialWebResponse>> getMaterialsByCategory(@PathVariable UUID categoryId) {
-        List<MaterialOutput> responses = materialUseCase.getMaterialsByCategory(categoryId);
+
+    @GetMapping("/stock/reorder-needed")
+    public ResponseEntity<List<MaterialWebResponse>> getMaterialsNeedingReorder() {
+        List<MaterialOutput> responses = materialUseCase.getMaterialsNeedingReorder();
         return ResponseEntity.ok(webMapper.toWebResponseList(responses));
     }
 
-    @GetMapping("/supplier/{supplierId}")
-    public ResponseEntity<List<MaterialWebResponse>> getMaterialsBySupplier(@PathVariable UUID supplierId) {
-        List<MaterialOutput> responses = materialUseCase.getMaterialsBySupplier(supplierId);
+    @GetMapping("/stock/critical")
+    public ResponseEntity<List<MaterialWebResponse>> getCriticalMaterials() {
+        List<MaterialOutput> responses = materialUseCase.getCriticalMaterials();
         return ResponseEntity.ok(webMapper.toWebResponseList(responses));
     }
 
-    @GetMapping("/stock/low")
-    public ResponseEntity<List<MaterialWebResponse>> getMaterialsBelowMinimumStock() {
-        List<MaterialOutput> responses = materialUseCase.getMaterialsBelowMinimumStock();
-        return ResponseEntity.ok(webMapper.toWebResponseList(responses));
-    }
-
-    @GetMapping("/stock/available")
-    public ResponseEntity<List<MaterialWebResponse>> getAvailableStockMaterials() {
-        List<MaterialOutput> responses = materialUseCase.getAvailableStockMaterials();
-        return ResponseEntity.ok(webMapper.toWebResponseList(responses));
-    }
-
-    @GetMapping("/stock/out")
+    @GetMapping({"/stock/out", "/stock/out-of-stock"})
     public ResponseEntity<List<MaterialWebResponse>> getOutOfStockMaterials() {
         List<MaterialOutput> responses = materialUseCase.getOutOfStockMaterials();
         return ResponseEntity.ok(webMapper.toWebResponseList(responses));
+    }
+
+    @GetMapping("/{id}/reorder-recommendation")
+    public ResponseEntity<com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.dtos.material.ReorderRecommendationWebResponse> getReorderRecommendation(
+            @PathVariable UUID id) {
+        var response = materialUseCase.getReorderRecommendation(id);
+        return ResponseEntity.ok(webMapper.toReorderRecommendationWebResponse(response));
+    }
+
+    @PostMapping("/{id}/reorder")
+    public ResponseEntity<com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.dtos.material.ManualReorderWebResponse> triggerReorder(
+            @PathVariable UUID id,
+            @RequestBody(required = false) com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.dtos.material.ManualReorderWebRequest request) {
+        Integer qty = request != null ? request.getQuantity() : null;
+        String reason = request != null ? request.getReason() : null;
+        var response = materialUseCase.triggerReorder(id, qty, reason);
+        return ResponseEntity.ok(webMapper.toManualReorderWebResponse(response));
     }
 
     @PatchMapping("/{id}/stock/increase")
@@ -114,18 +120,6 @@ public class MaterialController {
             @RequestParam int quantity) {
         MaterialOutput response = materialUseCase.decreaseStock(id, quantity);
         return ResponseEntity.ok(webMapper.toWebResponse(response));
-    }
-
-    @GetMapping("/status/{status}")
-    public ResponseEntity<List<MaterialWebResponse>> getMaterialsByStatus(@PathVariable String status) {
-        List<MaterialOutput> responses = materialUseCase.getMaterialsByStatus(status);
-        return ResponseEntity.ok(webMapper.toWebResponseList(responses));
-    }
-
-    @GetMapping("/type/{materialType}")
-    public ResponseEntity<List<MaterialWebResponse>> getMaterialsByMaterialType(@PathVariable String materialType) {
-        List<MaterialOutput> responses = materialUseCase.getMaterialsByMaterialType(materialType);
-        return ResponseEntity.ok(webMapper.toWebResponseList(responses));
     }
 
 

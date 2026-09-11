@@ -59,6 +59,12 @@ public class RequisitionLine {
         calculateLineTotal();
     }
 
+    public RequisitionLine(String materialCode, Integer quantity) {
+        this();
+        this.materialCode = materialCode;
+        this.quantity = quantity;
+    }
+
     public UUID getId() {
         return id;
     }

@@ -34,6 +34,9 @@ public class MaterialWebResponse {
     private Boolean isBelowMinimumStock;
     private Boolean isReorderNeeded;
     private Boolean isOutOfStock;
+    private String stockStatus;
+    private Integer stockOnOrder;
+    private Integer virtualStock;
     private LocalDateTime obsoletedAt;
     private String obsoletedBy;
     private String obsoletedReason;
@@ -101,6 +104,12 @@ public class MaterialWebResponse {
     public void setIsReorderNeeded(Boolean isReorderNeeded) { this.isReorderNeeded = isReorderNeeded; }
     public Boolean getIsOutOfStock() { return isOutOfStock; }
     public void setIsOutOfStock(Boolean isOutOfStock) { this.isOutOfStock = isOutOfStock; }
+    public String getStockStatus() { return stockStatus; }
+    public void setStockStatus(String stockStatus) { this.stockStatus = stockStatus; }
+    public Integer getStockOnOrder() { return stockOnOrder; }
+    public void setStockOnOrder(Integer stockOnOrder) { this.stockOnOrder = stockOnOrder; }
+    public Integer getVirtualStock() { return virtualStock; }
+    public void setVirtualStock(Integer virtualStock) { this.virtualStock = virtualStock; }
     public LocalDateTime getObsoletedAt() { return obsoletedAt; }
     public void setObsoletedAt(LocalDateTime obsoletedAt) { this.obsoletedAt = obsoletedAt; }
     public String getObsoletedBy() { return obsoletedBy; }

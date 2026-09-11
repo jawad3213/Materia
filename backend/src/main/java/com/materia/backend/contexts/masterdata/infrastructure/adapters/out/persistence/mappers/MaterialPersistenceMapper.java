@@ -124,9 +124,9 @@ public class MaterialPersistenceMapper {
 
         domain.setObsoletedAt(jpa.getObsoletedAt());
         domain.setObsoletedBy(jpa.getObsoletedBy());
-        domain.setObsoletedReason(jpa.getObsoletedReason());
-        domain.setStockMovements(toDomainMovements(jpa.getStockMovements()));
-
+        if (org.hibernate.Hibernate.isInitialized(jpa.getStockMovements()) && jpa.getStockMovements() != null) {
+            domain.setStockMovements(toDomainMovements(jpa.getStockMovements()));
+        }
         // Audit fields
         domain.setCreatedAt(jpa.getCreatedAt());
         domain.setUpdatedAt(jpa.getUpdatedAt());

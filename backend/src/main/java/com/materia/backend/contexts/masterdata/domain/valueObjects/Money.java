@@ -185,6 +185,13 @@ public class Money {
     }
 
     /**
+     * Multiplies by an integer factor
+     */
+    public Money multiply(int factor) {
+        return multiply(BigDecimal.valueOf(factor));
+    }
+
+    /**
      * Divides by a divisor
      */
     public Money divide(BigDecimal divisor) {

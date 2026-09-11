@@ -161,6 +161,9 @@ public class MaterialMapper implements BaseMapper<Material, CreateMaterialInput,
         response.setIsBelowMinimumStock(entity.isBelowMinimumStock());
         response.setIsReorderNeeded(entity.isBelowReorderPoint());
         response.setIsOutOfStock(entity.isOutOfStock());
+        response.setStockStatus(entity.getStockStatus() != null ? entity.getStockStatus().getCode() : null);
+        response.setStockOnOrder(entity.getStockOnOrder());
+        response.setVirtualStock(entity.getVirtualStock());
         response.setObsoletedAt(entity.getObsoletedAt());
         response.setObsoletedBy(entity.getObsoletedBy());
         response.setObsoletedReason(entity.getObsoletedReason());

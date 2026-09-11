@@ -270,4 +270,45 @@ public class RequisitionService implements RequisitionUseCase {
     private com.materia.backend.contexts.purchaseRequisition.domain.valueObjects.RequisitionCode generateNextCode() {
         return codeGenerator.generateCode();
     }
+
+    @Transactional
+    public String createRequisitionFromReorder(Material material, int quantity, String reason, boolean isUrgent) {
+        Requisition requisition = new Requisition();
+        requisition.setTitle((isUrgent ? "[URGENT] " : "") + "Reorder for " + material.getName());
+        requisition.setDescription("Auto-generated reorder requisition: " + reason);
+        requisition.setJustification(reason != null && !reason.isBlank() ? reason : "Automated stock reorder");
+        requisition.setRequiredDate(java.time.LocalDate.now().plusDays(isUrgent ? 2 : 7));
+        requisition.setCurrencyCode(material.getStandardPrice() != null && material.getStandardPrice().getCurrency() != null 
+                ? material.getStandardPrice().getCurrency().getCode() : "MAD");
+        requisition.setRequisitionCode(generateNextCode());
+        requisition.setStatus(com.materia.backend.contexts.purchaseRequisition.domain.enums.RequisitionStatus.DRAFT);
+        
+        RequisitionLine line = new RequisitionLine(material, quantity, requisition.getRequiredDate());
+        requisition.addLine(line);
+        requisition.recalculateTotal();
+        
+        Requisition saved = requisitionRepository.save(requisition);
+        return saved.getRequisitionCode() != null ? saved.getRequisitionCode().getValue() : saved.getId().toString();
+    }
+
+    @Transactional
+    public String createGroupedRequisition(String supplierId, List<RequisitionLine> lines) {
+        Requisition requisition = new Requisition();
+        requisition.setTitle("Grouped replenishment for supplier " + supplierId);
+        requisition.setDescription("Auto-generated grouped replenishment requisition for supplier: " + supplierId);
+        requisition.setJustification("Nightly automated stock replenishment");
+        requisition.setRequiredDate(java.time.LocalDate.now().plusDays(7));
+        requisition.setCurrencyCode("MAD");
+        requisition.setRequisitionCode(generateNextCode());
+        requisition.setStatus(com.materia.backend.contexts.purchaseRequisition.domain.enums.RequisitionStatus.DRAFT);
+        
+        hydrateAndValidateLines(lines);
+        for (RequisitionLine line : lines) {
+            requisition.addLine(line);
+        }
+        requisition.recalculateTotal();
+        
+        Requisition saved = requisitionRepository.save(requisition);
+        return saved.getRequisitionCode() != null ? saved.getRequisitionCode().getValue() : saved.getId().toString();
+    }
 }
