@@ -28,13 +28,13 @@ import java.util.Map;
 @EnableKafka
 public class KafkaConfig {
 
-    @Value("${spring.kafka.bootstrap-servers:localhost:9092}")
+    @Value("${spring.kafka.bootstrap-servers}")
     private String bootstrapServers;
 
-    @Value("${spring.kafka.consumer.group-id:materia-group}")
+    @Value("${spring.kafka.consumer.group-id}")
     private String groupId;
 
-    @Value("${spring.kafka.consumer.auto-offset-reset:earliest}")
+    @Value("${spring.kafka.consumer.auto-offset-reset}")
     private String autoOffsetReset;
 
     // ============================================
@@ -80,7 +80,7 @@ public class KafkaConfig {
         );
     }
 
-    @Value("${spring.kafka.listener.auto-startup:true}")
+    @Value("${spring.kafka.listener.auto-startup}")
     private boolean autoStartup;
 
     @Bean

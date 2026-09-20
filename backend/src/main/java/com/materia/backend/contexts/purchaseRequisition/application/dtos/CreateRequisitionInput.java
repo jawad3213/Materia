@@ -19,6 +19,7 @@ public class CreateRequisitionInput extends BaseInput {
     private String requesterName;
     private LocalDate requiredDate;
     private String currencyCode;
+    private String status;
     private List<RequisitionLine> lines = new ArrayList<>();
 
     public String getTitle() {
@@ -83,5 +84,13 @@ public class CreateRequisitionInput extends BaseInput {
 
     public void setLines(List<RequisitionLine> lines) {
         this.lines = lines != null ? new ArrayList<>(lines) : new ArrayList<>();
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
     }
 }

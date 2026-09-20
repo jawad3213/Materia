@@ -5,6 +5,8 @@ import com.materia.backend.contexts.payement.domain.valueObjects.PaymentCode;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Year;
+
 /**
  * Generates stable payment business codes.
  */
@@ -21,7 +23,9 @@ public class PaymentCodeGeneratorService {
     }
 
     public PaymentCode generateCode() {
-        int nextNumber = sequenceRepository.getNextValueAndIncrement(PREFIX);
-        return PaymentCode.fromPrefixAndNumber(PREFIX, nextNumber);
+        int currentYear = Year.now().getValue();
+        String sequenceKey = PREFIX + "-" + currentYear;
+        int nextNumber = sequenceRepository.getNextValueAndIncrement(sequenceKey);
+        return PaymentCode.fromPrefixYearAndNumber(PREFIX, currentYear, nextNumber);
     }
 }

@@ -4,6 +4,8 @@ import com.materia.backend.contexts.masterData.domain.ports.out.CodeSequenceRepo
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Year;
+
 @Service
 @Transactional
 public class CategoryCodeGeneratorService {
@@ -16,10 +18,12 @@ public class CategoryCodeGeneratorService {
     }
 
     /**
-     * Generates a code automatically for category
+     * Generates a code automatically for category including generation year
      */
     public String generateCode() {
-        int nextNumber = sequenceRepository.getNextValueAndIncrement(PREFIX_CATEGORY);
-        return String.format("%s-%04d", PREFIX_CATEGORY, nextNumber);
+        int currentYear = Year.now().getValue();
+        String sequenceKey = PREFIX_CATEGORY + "-" + currentYear;
+        int nextNumber = sequenceRepository.getNextValueAndIncrement(sequenceKey);
+        return String.format("%s-%d-%04d", PREFIX_CATEGORY, currentYear, nextNumber);
     }
 }

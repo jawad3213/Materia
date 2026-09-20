@@ -1,8 +1,6 @@
-package com.materia.backend.contexts.purchaseRequisition.infrastructure.adapters.in.web.dtos.requisition;
+package com.materia.backend.contexts.purchaseRequisition.infrastructure.adapters.in.web.dtos.request;
 
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Size;
 
 import java.time.LocalDate;
@@ -10,12 +8,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Web request DTO for creating a purchase requisition.
+ * Web request DTO for updating a purchase requisition.
  */
-public class CreateRequisitionWebRequest {
+public class UpdateRequisitionWebRequest {
 
-    @NotBlank(message = "Title is mandatory")
-    @Size(max = 255, message = "Title must not exceed 255 characters")
+    @Size(min = 1, max = 255, message = "Title must be between 1 and 255 characters if provided")
     private String title;
 
     @Size(max = 1000, message = "Description must not exceed 1000 characters")
@@ -24,24 +21,15 @@ public class CreateRequisitionWebRequest {
     @Size(max = 500, message = "Justification must not exceed 500 characters")
     private String justification;
 
-    @NotBlank(message = "Requester ID is mandatory")
-    private String requesterId;
-
-    @NotBlank(message = "Requester name is mandatory")
-    @Size(max = 255, message = "Requester name must not exceed 255 characters")
-    private String requesterName;
-
     private LocalDate requiredDate;
 
-    @Size(min = 3, max = 3, message = "Currency code must be exactly 3 characters")
+    @Size(min = 3, max = 3, message = "Currency code must be exactly 3 characters if provided")
     private String currencyCode;
 
-    @NotEmpty(message = "At least one requisition line is required")
     @Valid
     private List<RequisitionLineWebRequest> lines = new ArrayList<>();
 
-    @NotBlank(message = "Created by is mandatory")
-    private String createdBy;
+    private String updatedBy;
 
     public String getTitle() {
         return title;
@@ -65,22 +53,6 @@ public class CreateRequisitionWebRequest {
 
     public void setJustification(String justification) {
         this.justification = justification;
-    }
-
-    public String getRequesterId() {
-        return requesterId;
-    }
-
-    public void setRequesterId(String requesterId) {
-        this.requesterId = requesterId;
-    }
-
-    public String getRequesterName() {
-        return requesterName;
-    }
-
-    public void setRequesterName(String requesterName) {
-        this.requesterName = requesterName;
     }
 
     public LocalDate getRequiredDate() {
@@ -107,11 +79,11 @@ public class CreateRequisitionWebRequest {
         this.lines = lines != null ? new ArrayList<>(lines) : new ArrayList<>();
     }
 
-    public String getCreatedBy() {
-        return createdBy;
+    public String getUpdatedBy() {
+        return updatedBy;
     }
 
-    public void setCreatedBy(String createdBy) {
-        this.createdBy = createdBy;
+    public void setUpdatedBy(String updatedBy) {
+        this.updatedBy = updatedBy;
     }
 }

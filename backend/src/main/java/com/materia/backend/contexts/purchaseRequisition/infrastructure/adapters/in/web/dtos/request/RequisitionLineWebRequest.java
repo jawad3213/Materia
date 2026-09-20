@@ -1,4 +1,4 @@
-package com.materia.backend.contexts.purchaseRequisition.infrastructure.adapters.in.web.dtos.requisition;
+package com.materia.backend.contexts.purchaseRequisition.infrastructure.adapters.in.web.dtos.request;
 
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
@@ -18,6 +18,9 @@ public class RequisitionLineWebRequest {
 
     @Size(max = 50, message = "Material code must not exceed 50 characters")
     private String materialCode;
+
+    @Size(max = 255, message = "Material name must not exceed 255 characters")
+    private String materialName;
 
     @NotNull(message = "Quantity is mandatory")
     @Positive(message = "Quantity must be greater than zero")
@@ -138,5 +141,13 @@ public class RequisitionLineWebRequest {
 
     public void setExpiryDate(LocalDate expiryDate) {
         this.expiryDate = expiryDate;
+    }
+
+    public String getMaterialName() {
+        return materialName;
+    }
+
+    public void setMaterialName(String materialName) {
+        this.materialName = materialName;
     }
 }

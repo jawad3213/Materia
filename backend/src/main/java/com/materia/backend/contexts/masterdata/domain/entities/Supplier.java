@@ -1,6 +1,6 @@
 package com.materia.backend.contexts.masterData.domain.entities;
 
-import com.materia.backend.contexts.masterData.domain.enums.CurrencyCode;
+import com.materia.backend.common.domain.enums.CurrencyCode;
 
 import com.materia.backend.common.domain.BaseEntity;
 import java.time.LocalDateTime;

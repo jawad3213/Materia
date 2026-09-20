@@ -21,6 +21,13 @@ public class MaterialListWebResponse {
     private String description;
     private String alternativeName;
     private String searchKeywords;
+    private String stockStatus;
+    private Integer stockOnOrder;
+    private Integer reorderPoint;
+    private Integer safetyStock;
+    private Boolean isBelowMinimumStock;
+    private Boolean isReorderNeeded;
+    private Boolean isOutOfStock;
 
     // Getters and Setters
     public UUID getId() { return id; }
@@ -70,4 +77,25 @@ public class MaterialListWebResponse {
 
     public String getSearchKeywords() { return searchKeywords; }
     public void setSearchKeywords(String searchKeywords) { this.searchKeywords = searchKeywords; }
+
+    public String getStockStatus() { return stockStatus; }
+    public void setStockStatus(String stockStatus) { this.stockStatus = stockStatus; }
+
+    public Integer getStockOnOrder() { return stockOnOrder; }
+    public void setStockOnOrder(Integer stockOnOrder) { this.stockOnOrder = stockOnOrder; }
+
+    public Integer getReorderPoint() { return reorderPoint; }
+    public void setReorderPoint(Integer reorderPoint) { this.reorderPoint = reorderPoint; }
+
+    public Integer getSafetyStock() { return safetyStock; }
+    public void setSafetyStock(Integer safetyStock) { this.safetyStock = safetyStock; }
+
+    public Boolean getIsBelowMinimumStock() { return isBelowMinimumStock; }
+    public void setIsBelowMinimumStock(Boolean isBelowMinimumStock) { this.isBelowMinimumStock = isBelowMinimumStock; }
+
+    public Boolean getIsReorderNeeded() { return isReorderNeeded; }
+    public void setIsReorderNeeded(Boolean isReorderNeeded) { this.isReorderNeeded = isReorderNeeded; }
+
+    public Boolean getIsOutOfStock() { return isOutOfStock; }
+    public void setIsOutOfStock(Boolean isOutOfStock) { this.isOutOfStock = isOutOfStock; }
 }

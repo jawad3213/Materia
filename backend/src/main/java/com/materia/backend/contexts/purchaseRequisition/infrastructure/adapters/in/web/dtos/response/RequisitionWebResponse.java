@@ -1,4 +1,4 @@
-package com.materia.backend.contexts.purchaseRequisition.infrastructure.adapters.in.web.dtos.requisition;
+package com.materia.backend.contexts.purchaseRequisition.infrastructure.adapters.in.web.dtos.response;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -23,12 +23,14 @@ public class RequisitionWebResponse {
     private LocalDate submittedDate;
     private LocalDate approvedDate;
     private LocalDate convertedDate;
+    private LocalDate cancelledDate;
     private String totalAmount;
     private String currencyCode;
     private String approverId;
     private String approverName;
     private String rejectionReason;
     private String approvalNotes;
+    private String cancellationReason;
     private String purchaseOrderId;
     private String purchaseOrderCode;
     private List<RequisitionLineWebResponse> lines = new ArrayList<>();
@@ -133,6 +135,14 @@ public class RequisitionWebResponse {
         this.convertedDate = convertedDate;
     }
 
+    public LocalDate getCancelledDate() {
+        return cancelledDate;
+    }
+
+    public void setCancelledDate(LocalDate cancelledDate) {
+        this.cancelledDate = cancelledDate;
+    }
+
     public String getTotalAmount() {
         return totalAmount;
     }
@@ -179,6 +189,14 @@ public class RequisitionWebResponse {
 
     public void setApprovalNotes(String approvalNotes) {
         this.approvalNotes = approvalNotes;
+    }
+
+    public String getCancellationReason() {
+        return cancellationReason;
+    }
+
+    public void setCancellationReason(String cancellationReason) {
+        this.cancellationReason = cancellationReason;
     }
 
     public String getPurchaseOrderId() {

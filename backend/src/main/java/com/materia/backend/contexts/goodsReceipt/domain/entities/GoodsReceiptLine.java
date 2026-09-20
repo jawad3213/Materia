@@ -4,7 +4,7 @@ package com.materia.backend.contexts.goodsReceipt.domain.entities;
 import com.materia.backend.contexts.goodsReceipt.domain.enums.QualityStatus;
 import com.materia.backend.contexts.goodsReceipt.domain.exceptions.GoodsReceiptInvalidLineException;
 import com.materia.backend.contexts.goodsReceipt.domain.exceptions.GoodsReceiptInvalidQuantityException;
-import com.materia.backend.contexts.masterData.domain.valueObjects.Money;
+import com.materia.backend.common.domain.valueObjects.Money;
 
 import java.time.LocalDate;
 import java.util.UUID;

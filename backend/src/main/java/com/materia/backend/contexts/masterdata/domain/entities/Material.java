@@ -2,7 +2,7 @@ package com.materia.backend.contexts.masterData.domain.entities;
 
 import com.materia.backend.common.domain.BaseEntity;
 import com.materia.backend.common.domain.DomainEvent;
-import com.materia.backend.contexts.masterData.domain.enums.CurrencyCode;
+import com.materia.backend.common.domain.enums.CurrencyCode;
 import com.materia.backend.contexts.masterData.domain.enums.MaterialStatus;
 import com.materia.backend.contexts.masterData.domain.enums.MaterialType;
 import com.materia.backend.contexts.masterData.domain.enums.StockMovementType;
@@ -10,7 +10,7 @@ import com.materia.backend.contexts.masterData.domain.enums.StockStatus;
 import com.materia.backend.contexts.masterData.domain.enums.UnitOfMeasure;
 import com.materia.backend.contexts.masterData.domain.events.MaterialBelowReorderPointEvent;
 import com.materia.backend.contexts.masterData.domain.valueObjects.MaterialCode;
-import com.materia.backend.contexts.masterData.domain.valueObjects.Money;
+import com.materia.backend.common.domain.valueObjects.Money;
 import lombok.Getter;
 import lombok.Setter;
 

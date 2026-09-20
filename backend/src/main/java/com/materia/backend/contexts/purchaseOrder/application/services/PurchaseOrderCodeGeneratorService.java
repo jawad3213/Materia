@@ -5,6 +5,8 @@ import com.materia.backend.contexts.purchaseOrder.domain.valueObjects.OrderCode;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Year;
+
 /**
  * Generates stable purchase order business codes.
  */
@@ -21,7 +23,9 @@ public class PurchaseOrderCodeGeneratorService {
     }
 
     public OrderCode generateCode() {
-        int nextNumber = sequenceRepository.getNextValueAndIncrement(PREFIX);
-        return OrderCode.fromPrefixAndNumber(PREFIX, nextNumber);
+        int currentYear = Year.now().getValue();
+        String sequenceKey = PREFIX + "-" + currentYear;
+        int nextNumber = sequenceRepository.getNextValueAndIncrement(sequenceKey);
+        return OrderCode.fromPrefixYearAndNumber(PREFIX, currentYear, nextNumber);
     }
 }

@@ -5,8 +5,8 @@ import com.materia.backend.contexts.goodsReceipt.domain.entities.GoodsReceiptLin
 import com.materia.backend.contexts.goodsReceipt.domain.valueObjects.ReceiptCode;
 import com.materia.backend.contexts.goodsReceipt.infrastructure.adapters.out.persistence.entities.GoodsReceiptJpaEntity;
 import com.materia.backend.contexts.goodsReceipt.infrastructure.adapters.out.persistence.entities.GoodsReceiptLineJpaEntity;
-import com.materia.backend.contexts.masterData.domain.enums.CurrencyCode;
-import com.materia.backend.contexts.masterData.domain.valueObjects.Money;
+import com.materia.backend.common.domain.enums.CurrencyCode;
+import com.materia.backend.common.domain.valueObjects.Money;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;

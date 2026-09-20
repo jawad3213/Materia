@@ -1,6 +1,6 @@
-package com.materia.backend.contexts.masterData.domain.valueObjects;
+package com.materia.backend.common.domain.valueObjects;
 
-import com.materia.backend.contexts.masterData.domain.enums.CurrencyCode;
+import com.materia.backend.common.domain.enums.CurrencyCode;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;

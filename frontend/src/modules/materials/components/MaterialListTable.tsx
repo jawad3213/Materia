@@ -97,9 +97,40 @@ export default function MaterialListTable() {
   };
 
   const handleSelectStockFilter = (filter: StockFilterType) => {
-    setActiveStockFilter(filter);
+    setActiveStockFilter((prev) => (prev === filter ? "ALL" : filter));
     setPage(0);
     setRefreshTrigger((prev) => prev + 1);
+  };
+
+  const normalizeMaterial = (item: any): MaterialListItem => {
+    let price = item.standardPrice;
+    if (typeof price === "string") {
+      const match = price.match(/[\d,.]+/);
+      if (match) price = match[0];
+    }
+    const currency = item.standardPriceCurrency || item.currencyCode || "USD";
+
+    const isOut = item.currentStock === 0 || item.stockStatus === "OUT_OF_STOCK" || item.isOutOfStock;
+    const isCrit = item.stockStatus === "CRITICAL" || (!isOut && item.safetyStock != null && item.safetyStock > 0 && item.currentStock <= item.safetyStock);
+    const isReorder = item.stockStatus === "REORDER_NEEDED" || item.isReorderNeeded || (!isOut && !isCrit && item.reorderPoint != null && item.reorderPoint > 0 && item.currentStock <= item.reorderPoint);
+
+    const derivedStockStatus = isOut
+      ? "OUT_OF_STOCK"
+      : isCrit
+      ? "CRITICAL"
+      : isReorder
+      ? "REORDER_NEEDED"
+      : "IN_STOCK";
+
+    return {
+      ...item,
+      standardPrice: price,
+      standardPriceCurrency: currency,
+      stockStatus: item.stockStatus || derivedStockStatus,
+      stockOnOrder: item.stockOnOrder ?? 0,
+      isOutOfStock: isOut,
+      isReorderNeeded: isReorder,
+    };
   };
 
   useEffect(() => {
@@ -138,7 +169,7 @@ export default function MaterialListTable() {
       // 1. If a stock filter tab is active (Reorder, Critical, or Out of Stock)
       if (activeStockFilter === "REORDER_NEEDED") {
         const res = await materialApi.getReorderNeeded();
-        let items: MaterialListItem[] = res.data || [];
+        let items: MaterialListItem[] = (res.data || []).map(normalizeMaterial);
         if (searchKeyword.trim()) {
           const kw = searchKeyword.toLowerCase();
           items = items.filter(m => 
@@ -154,7 +185,7 @@ export default function MaterialListTable() {
         return;
       } else if (activeStockFilter === "CRITICAL") {
         const res = await materialApi.getCriticalStock();
-        let items: MaterialListItem[] = res.data || [];
+        let items: MaterialListItem[] = (res.data || []).map(normalizeMaterial);
         if (searchKeyword.trim()) {
           const kw = searchKeyword.toLowerCase();
           items = items.filter(m => 
@@ -170,7 +201,7 @@ export default function MaterialListTable() {
         return;
       } else if (activeStockFilter === "OUT_OF_STOCK") {
         const res = await materialApi.getOutOfStock();
-        let items: MaterialListItem[] = res.data || [];
+        let items: MaterialListItem[] = (res.data || []).map(normalizeMaterial);
         if (searchKeyword.trim()) {
           const kw = searchKeyword.toLowerCase();
           items = items.filter(m => 
@@ -213,7 +244,8 @@ export default function MaterialListTable() {
         }, page, size);
       }
       
-      setMaterials(res.data.content || []);
+      const rawContent: any[] = res.data.content || [];
+      setMaterials(rawContent.map(normalizeMaterial));
       setTotalPages(res.data.totalPages || 0);
       setTotalElements(res.data.totalElements || 0);
 

@@ -2,7 +2,7 @@ package com.materia.backend.contexts.masterData.application.services;
 
 import com.materia.backend.contexts.masterData.domain.entities.Material;
 import com.materia.backend.contexts.masterData.domain.enums.StockStatus;
-import com.materia.backend.contexts.masterData.domain.valueObjects.Money;
+import com.materia.backend.common.domain.valueObjects.Money;
 import com.materia.backend.contexts.masterData.domain.valueObjects.ReorderQuantity;
 import org.springframework.stereotype.Service;
 

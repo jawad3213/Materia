@@ -2,9 +2,9 @@ package com.materia.backend.contexts.masterData.infrastructure.adapters.out.pers
 
 import com.materia.backend.contexts.masterData.domain.entities.Material;
 import com.materia.backend.contexts.masterData.domain.entities.StockMovement;
-import com.materia.backend.contexts.masterData.domain.enums.CurrencyCode;
+import com.materia.backend.common.domain.enums.CurrencyCode;
 import com.materia.backend.contexts.masterData.domain.valueObjects.MaterialCode;
-import com.materia.backend.contexts.masterData.domain.valueObjects.Money;
+import com.materia.backend.common.domain.valueObjects.Money;
 import com.materia.backend.contexts.masterData.infrastructure.adapters.out.persistence.entities.MaterialJpaEntity;
 import com.materia.backend.contexts.masterData.infrastructure.adapters.out.persistence.entities.MaterialStockMovementJpaEntity;
 import org.springframework.stereotype.Component;

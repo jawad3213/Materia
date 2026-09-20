@@ -1,5 +1,7 @@
 package com.materia.backend.contexts.masterData.domain.valueObjects;
 
+import com.materia.backend.common.domain.valueObjects.Money;
+
 import java.util.Objects;
 
 /**

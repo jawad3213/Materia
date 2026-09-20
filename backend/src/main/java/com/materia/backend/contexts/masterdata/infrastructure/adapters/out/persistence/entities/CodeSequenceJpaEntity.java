@@ -10,7 +10,7 @@ import jakarta.persistence.Table;
 public class CodeSequenceJpaEntity {
 
     @Id
-    @Column(name = "prefix", length = 10, nullable = false)
+    @Column(name = "prefix", length = 30, nullable = false)
     private String prefix;
 
     @Column(name = "next_val", nullable = false)

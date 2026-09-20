@@ -26,7 +26,7 @@ import java.util.UUID;
 
 import com.materia.backend.contexts.masterData.application.dtos.material.ManualReorderOutput;
 import com.materia.backend.contexts.masterData.application.dtos.material.ReorderRecommendationOutput;
-import com.materia.backend.contexts.masterData.domain.valueObjects.Money;
+import com.materia.backend.common.domain.valueObjects.Money;
 import com.materia.backend.contexts.masterData.domain.valueObjects.ReorderQuantity;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;

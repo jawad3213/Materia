@@ -21,6 +21,9 @@ export interface MaterialListItem {
   categoryName?: string;
   supplierId: string;
   description?: string;
-  alternativeName?: string;
+  currencyCode?: string;
+  isBelowMinimumStock?: boolean;
+  isReorderNeeded?: boolean;
+  isOutOfStock?: boolean;
   searchKeywords?: string;
 }

@@ -3,7 +3,7 @@ package com.materia.backend.contexts.invoice.application.dtos;
 import com.materia.backend.common.application.BaseOutput;
 import com.materia.backend.contexts.invoice.domain.enums.InvoiceStatus;
 import com.materia.backend.contexts.invoice.domain.enums.InvoiceType;
-import com.materia.backend.contexts.masterData.domain.valueObjects.Money;
+import com.materia.backend.common.domain.valueObjects.Money;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
