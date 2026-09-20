@@ -23,8 +23,10 @@ Navigate to your GitHub repository: **Settings → Secrets and variables → Act
 | `AWS_ROLE_TO_ASSUME` | ARN of the IAM Role created by `modules/iam_github_actions` | Terraform output: `github_actions_role_arn` |
 | `STAGING_FRONTEND_S3_BUCKET` | *(Optional)* Name of the staging S3 bucket | Default: `materia-staging-frontend` |
 | `STAGING_CLOUDFRONT_DISTRIBUTION_ID` | CloudFront Distribution ID for staging | AWS CloudFront Console |
+| `STAGING_VITE_API_BASE_URL` | *(Optional)* Staging backend API URL for Vite build | Default: `https://api-staging.yourdomain.com/api/v1` |
 | `PROD_FRONTEND_S3_BUCKET` | *(Optional)* Name of the production S3 bucket | Default: `materia-prod-frontend` |
 | `PROD_CLOUDFRONT_DISTRIBUTION_ID` | CloudFront Distribution ID for production | AWS CloudFront Console |
+| `PROD_VITE_API_BASE_URL` | *(Optional)* Production backend API URL for Vite build | Default: `https://api.yourdomain.com/api/v1` |
 
 > [!TIP]
 > **No AWS Access Keys Needed**: Because we use AWS IAM OpenID Connect (OIDC), you do **not** need to store permanent `AWS_ACCESS_KEY_ID` or `AWS_SECRET_ACCESS_KEY` credentials in GitHub. The workflow requests a short-lived token from AWS Security Token Service (STS) securely.
