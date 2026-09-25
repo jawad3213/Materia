@@ -28,6 +28,9 @@ export interface Material {
   isBelowMinimumStock: boolean;
   isReorderNeeded: boolean;
   isOutOfStock: boolean;
+  stockStatus?: "IN_STOCK" | "REORDER_NEEDED" | "CRITICAL" | "OUT_OF_STOCK" | string;
+  stockOnOrder?: number;
+  virtualStock?: number;
   obsoletedAt?: string;
   obsoletedBy?: string;
   obsoletedReason?: string;
@@ -35,4 +38,29 @@ export interface Material {
   createdAt: string;
   updatedBy?: string;
   updatedAt?: string;
+}
+
+export interface ReorderRecommendation {
+  materialId: string;
+  materialCode: string;
+  materialName: string;
+  currentStock: number;
+  stockOnOrder: number;
+  virtualStock: number;
+  reorderPoint: number;
+  safetyStock: number;
+  recommendedQuantity: number;
+  estimatedCost: number;
+  currency: string;
+  reason: string;
+  isUrgent: boolean;
+  stockStatus: string;
+}
+
+export interface ManualReorderResponse {
+  materialId: string;
+  materialCode: string;
+  purchaseRequisitionId: string;
+  quantityReordered: number;
+  message: string;
 }

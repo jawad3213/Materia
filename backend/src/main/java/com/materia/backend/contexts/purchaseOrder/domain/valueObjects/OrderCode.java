@@ -8,7 +8,7 @@ import java.util.regex.Pattern;
  */
 public final class OrderCode {
 
-    private static final Pattern PATTERN = Pattern.compile("^PO-[0-9]{4}$");
+    private static final Pattern PATTERN = Pattern.compile("^(?i)PO-(?:[0-9]{4}-)?[0-9]{4}$");
     private static final String DEFAULT_PREFIX = "PO";
 
     private final String value;
@@ -23,13 +23,17 @@ public final class OrderCode {
     }
 
     public static OrderCode fromPrefixAndNumber(String prefix, int number) {
+        return fromPrefixYearAndNumber(prefix, java.time.Year.now().getValue(), number);
+    }
+
+    public static OrderCode fromPrefixYearAndNumber(String prefix, int year, int number) {
         if (prefix == null || prefix.trim().isEmpty()) {
             throw new IllegalArgumentException("Prefix is required");
         }
         if (number < 0 || number > 9999) {
             throw new IllegalArgumentException("Number must be between 0 and 9999");
         }
-        return new OrderCode(prefix.trim().toUpperCase() + "-" + String.format("%04d", number));
+        return new OrderCode(prefix.trim().toUpperCase() + "-" + year + "-" + String.format("%04d", number));
     }
 
     public static OrderCode createDefault() {
@@ -46,7 +50,7 @@ public final class OrderCode {
         }
         if (!PATTERN.matcher(value.trim()).matches()) {
             throw new IllegalArgumentException(
-                    "Invalid order code format: '" + value + "'. Expected format: PO-0001"
+                    "Invalid order code format: '" + value + "'. Expected format: PO-YYYY-0001 (e.g. PO-2026-0001) or legacy PO-0001"
             );
         }
     }
@@ -56,18 +60,36 @@ public final class OrderCode {
     }
 
     public String getPrefix() {
-        return value.substring(0, 2);
+        int hyphenIndex = value.indexOf('-');
+        return hyphenIndex != -1 ? value.substring(0, hyphenIndex) : value;
     }
 
     public String getNumber() {
-        return value.substring(3);
+        int hyphenIndex = value.lastIndexOf('-');
+        return hyphenIndex != -1 ? value.substring(hyphenIndex + 1) : value;
     }
 
     public int getNumberAsInt() {
         return Integer.parseInt(getNumber());
     }
 
+    public int getYear() {
+        String[] parts = value.split("-");
+        if (parts.length == 3) {
+            try {
+                return Integer.parseInt(parts[1]);
+            } catch (NumberFormatException e) {
+                return -1;
+            }
+        }
+        return -1;
+    }
+
     public OrderCode increment() {
+        int year = getYear();
+        if (year != -1) {
+            return fromPrefixYearAndNumber(getPrefix(), year, getNumberAsInt() + 1);
+        }
         return fromPrefixAndNumber(getPrefix(), getNumberAsInt() + 1);
     }
 

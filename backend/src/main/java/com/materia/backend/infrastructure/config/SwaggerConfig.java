@@ -21,19 +21,19 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class SwaggerConfig {
 
-    @Value("${springdoc.info.title:Materia Backend API}")
+    @Value("${springdoc.info.title}")
     private String title;
 
-    @Value("${springdoc.info.description:RESTful API documentation for Materia Backend application}")
+    @Value("${springdoc.info.description}")
     private String description;
 
-    @Value("${springdoc.info.version:1.0.0}")
+    @Value("${springdoc.info.version}")
     private String version;
 
-    @Value("${springdoc.info.contact.name:Materia Team}")
+    @Value("${springdoc.info.contact.name}")
     private String contactName;
 
-    @Value("${springdoc.info.contact.email:support@materia.com}")
+    @Value("${springdoc.info.contact.email}")
     private String contactEmail;
 
     @Bean

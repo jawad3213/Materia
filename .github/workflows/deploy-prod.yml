@@ -65,6 +65,7 @@ jobs:
         uses: aws-actions/amazon-ecr-login@v2
 
       - name: Build, Tag, and Push Docker Image to ECR
+        id: build-image
         env:
           REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
@@ -75,21 +76,29 @@ jobs:
             backend/
           docker push $REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
           docker push $REGISTRY/$ECR_REPOSITORY:latest
+          echo "image=$REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
 
-      - name: Trigger ECS Fargate Deployment
+      - name: Download Current ECS Task Definition
         run: |
-          echo "Updating Production ECS service $ECS_SERVICE in cluster $ECS_CLUSTER..."
-          aws ecs update-service \
-            --cluster $ECS_CLUSTER \
-            --service $ECS_SERVICE \
-            --force-new-deployment
+          echo "Fetching active task definition for Production service $ECS_SERVICE..."
+          TASK_DEF_ARN=$(aws ecs describe-services --cluster $ECS_CLUSTER --services $ECS_SERVICE --query 'services[0].taskDefinition' --output text)
+          aws ecs describe-task-definition --task-definition "$TASK_DEF_ARN" --query taskDefinition > task-definition.json
 
-      - name: Await ECS Deployment Stability
-        run: |
-          echo "Waiting for Production ECS Fargate tasks to reach steady state..."
-          aws ecs wait services-stable \
-            --cluster $ECS_CLUSTER \
-            --services $ECS_SERVICE
+      - name: Render New Task Definition with Pushed Image
+        id: render-task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-definition.json
+          container-name: backend
+          image: ${{ steps.build-image.outputs.image }}
+
+      - name: Deploy Amazon ECS Task Definition
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.render-task-def.outputs.task-definition }}
+          service: ${{ env.ECS_SERVICE }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          wait-for-service-stability: true
 
   # ===================================================================
   # Job 2: Build & Deploy Frontend (React SPA -> S3 + CloudFront CDN)
@@ -116,9 +125,11 @@ jobs:
           npm ci
 
       - name: Build React Production Bundle
+        env:
+          VITE_API_BASE_URL: ${{ secrets.PROD_VITE_API_BASE_URL || secrets.VITE_API_BASE_URL }}
         run: |
           cd frontend
-          npx vite build
+          npx vite build --mode production
 
       - name: Authenticate with AWS via OIDC (Keyless)
         uses: aws-actions/configure-aws-credentials@v4

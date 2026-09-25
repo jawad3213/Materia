@@ -14,8 +14,8 @@ import com.materia.backend.contexts.invoice.domain.exceptions.InvoiceNotModifiab
 import com.materia.backend.contexts.invoice.domain.exceptions.InvoiceValidationException;
 import com.materia.backend.contexts.invoice.domain.ports.in.InvoiceUseCase;
 import com.materia.backend.contexts.invoice.domain.ports.out.InvoiceRepository;
-import com.materia.backend.contexts.masterData.domain.enums.CurrencyCode;
-import com.materia.backend.contexts.masterData.domain.valueObjects.Money;
+import com.materia.backend.common.domain.enums.CurrencyCode;
+import com.materia.backend.common.domain.valueObjects.Money;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Retryable;

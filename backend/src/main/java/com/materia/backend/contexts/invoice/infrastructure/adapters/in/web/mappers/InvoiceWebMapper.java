@@ -1,8 +1,8 @@
 package com.materia.backend.contexts.invoice.infrastructure.adapters.in.web.mappers;
 
 import com.materia.backend.common.infrastructure.web.BaseWebMapper;
-import com.materia.backend.contexts.masterData.domain.enums.CurrencyCode;
-import com.materia.backend.contexts.masterData.domain.valueObjects.Money;
+import com.materia.backend.common.domain.enums.CurrencyCode;
+import com.materia.backend.common.domain.valueObjects.Money;
 import com.materia.backend.contexts.invoice.application.dtos.CreateInvoiceInput;
 import com.materia.backend.contexts.invoice.application.dtos.InvoiceLineInput;
 import com.materia.backend.contexts.invoice.application.dtos.InvoiceLineOutput;

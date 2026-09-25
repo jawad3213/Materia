@@ -6,10 +6,10 @@ import com.materia.backend.contexts.purchaseRequisition.application.dtos.Requisi
 import com.materia.backend.contexts.purchaseRequisition.application.dtos.RequisitionSearchCriteria;
 import com.materia.backend.contexts.purchaseRequisition.application.dtos.UpdateRequisitionInput;
 import com.materia.backend.contexts.purchaseRequisition.domain.ports.in.RequisitionUseCase;
-import com.materia.backend.contexts.purchaseRequisition.infrastructure.adapters.in.web.dtos.requisition.CreateRequisitionWebRequest;
-import com.materia.backend.contexts.purchaseRequisition.infrastructure.adapters.in.web.dtos.requisition.RequisitionSearchWebRequest;
-import com.materia.backend.contexts.purchaseRequisition.infrastructure.adapters.in.web.dtos.requisition.RequisitionWebResponse;
-import com.materia.backend.contexts.purchaseRequisition.infrastructure.adapters.in.web.dtos.requisition.UpdateRequisitionWebRequest;
+import com.materia.backend.contexts.purchaseRequisition.infrastructure.adapters.in.web.dtos.request.CreateRequisitionWebRequest;
+import com.materia.backend.contexts.purchaseRequisition.infrastructure.adapters.in.web.dtos.request.RequisitionSearchWebRequest;
+import com.materia.backend.contexts.purchaseRequisition.infrastructure.adapters.in.web.dtos.request.UpdateRequisitionWebRequest;
+import com.materia.backend.contexts.purchaseRequisition.infrastructure.adapters.in.web.dtos.response.RequisitionWebResponse;
 import com.materia.backend.contexts.purchaseRequisition.infrastructure.adapters.in.web.mappers.RequisitionWebMapper;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -148,15 +148,6 @@ public class RequisitionController {
         return ResponseEntity.ok(webMapper.toWebResponse(response));
     }
 
-    @PatchMapping("/{id}/cancel")
-    public ResponseEntity<RequisitionWebResponse> cancelRequisition(
-            @PathVariable UUID id,
-            @RequestParam String userId,
-            @RequestParam(required = false) String reason) {
-        RequisitionOutput response = requisitionUseCase.cancel(id, userId, reason);
-        return ResponseEntity.ok(webMapper.toWebResponse(response));
-    }
-
     @PatchMapping("/{id}/convert")
     public ResponseEntity<RequisitionWebResponse> convertRequisition(
             @PathVariable UUID id,
@@ -164,6 +155,15 @@ public class RequisitionController {
             @RequestParam String purchaseOrderCode,
             @RequestParam String userId) {
         RequisitionOutput response = requisitionUseCase.convert(id, purchaseOrderId, purchaseOrderCode, userId);
+        return ResponseEntity.ok(webMapper.toWebResponse(response));
+    }
+
+    @PatchMapping("/{id}/cancel")
+    public ResponseEntity<RequisitionWebResponse> cancelRequisition(
+            @PathVariable UUID id,
+            @RequestParam(defaultValue = "current-user") String userId,
+            @RequestParam(required = false) String reason) {
+        RequisitionOutput response = requisitionUseCase.cancel(id, userId, reason);
         return ResponseEntity.ok(webMapper.toWebResponse(response));
     }
 }

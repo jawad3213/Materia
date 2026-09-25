@@ -9,7 +9,10 @@
  * Usage: node scripts/seed-data.mjs
  */
 
-const BASE_URL = process.env.API_BASE_URL || 'http://localhost:8080/api/v1/masterdata';
+const ROOT_API_URL = process.env.ROOT_API_URL || 'http://localhost:8080/api/v1';
+const BASE_URL = `${ROOT_API_URL}/masterdata`;
+const REQUISITIONS_URL = `${ROOT_API_URL}/purchase-requisitions`;
+const PURCHASE_ORDERS_URL = `${ROOT_API_URL}/purchase-orders`;
 const CREATED_BY = 'TEST_DATA_SEEDER';
 
 // ============================================================
@@ -1363,6 +1366,139 @@ const MATERIALS = [
     costPrice: 5.80,
     costPriceCurrency: 'EUR',
   },
+  // --- 2026-Series Materials across Key Categories ---
+  {
+    categoryName: 'Steel & Structural Metals',
+    supplierName: 'Atlas Steel Maroc SARL',
+    name: 'Aluminum Structural Extrusion 40x40 (2026 Edition)',
+    description: 'Precision T-slot 40x40 anodized aluminum architectural profile, alloy 6063-T5',
+    shortDescription: '40x40 T-slot profile 2026',
+    searchKeywords: 'aluminum extrusion profile t-slot 40x40 structural 2026',
+    alternativeName: 'AL Profile 4040 Silver',
+    materialType: 'RMT',
+    status: 'ACTIVE',
+    unitOfMeasure: 'M',
+    currentStock: 1200,
+    minimumStock: 300,
+    maximumStock: 3000,
+    reorderPoint: 250,
+    safetyStock: 100,
+    economicOrderQuantity: 500,
+    standardPrice: 42.50,
+    standardPriceCurrency: 'MAD',
+    costPrice: 35.00,
+    costPriceCurrency: 'MAD',
+  },
+  {
+    categoryName: 'Steel & Structural Metals',
+    supplierName: 'Nordic Fasteners & Hardware AB',
+    name: 'Precision High-Speed Deep Groove Ball Bearing 608-2RS (2026)',
+    description: 'Chrome steel miniature ball bearing, rubber sealed, ABEC-5 tolerance class for high RPMs',
+    shortDescription: 'Ball bearing 608-2RS 2026',
+    searchKeywords: 'bearing ball miniature 608 2RS chrome steel 2026',
+    alternativeName: 'Bearing 608-2RS Pro',
+    materialType: 'CMP',
+    status: 'ACTIVE',
+    unitOfMeasure: 'PCE',
+    currentStock: 3500,
+    minimumStock: 800,
+    maximumStock: 10000,
+    reorderPoint: 600,
+    safetyStock: 300,
+    economicOrderQuantity: 2000,
+    standardPrice: 1.45,
+    standardPriceCurrency: 'EUR',
+    costPrice: 0.95,
+    costPriceCurrency: 'EUR',
+  },
+  {
+    categoryName: 'Semiconductors & ICs',
+    supplierName: 'Maghreb Electronics Distribution',
+    name: 'Optocoupler Phototransistor 4-Pin DIP-4 (2026 Edition)',
+    description: 'High isolation voltage optical isolator for power supply feedback and circuit protection',
+    shortDescription: 'Optocoupler DIP-4 2026',
+    searchKeywords: 'optocoupler phototransistor isolation IC DIP-4 2026',
+    alternativeName: 'PC817 Optocoupler 2026',
+    materialType: 'ELC',
+    status: 'ACTIVE',
+    unitOfMeasure: 'PCE',
+    currentStock: 6000,
+    minimumStock: 1500,
+    maximumStock: 15000,
+    reorderPoint: 1200,
+    safetyStock: 500,
+    economicOrderQuantity: 4000,
+    standardPrice: 0.35,
+    standardPriceCurrency: 'MAD',
+    costPrice: 0.22,
+    costPriceCurrency: 'MAD',
+  },
+  {
+    categoryName: 'Cardboard Boxes & Cartons',
+    supplierName: 'EuroPack Solutions SAS',
+    name: 'Heavy Duty Euro-Stacking Pallet Box 1200x800mm (2026)',
+    description: 'Triple-wall heavy duty corrugated pallet shipping container with integrated timber base feet',
+    shortDescription: 'Euro pallet container 2026',
+    searchKeywords: 'pallet box heavy duty corrugated packaging shipping 2026',
+    alternativeName: 'HeavyPack 1200x800',
+    materialType: 'PKG',
+    status: 'ACTIVE',
+    unitOfMeasure: 'PCE',
+    currentStock: 450,
+    minimumStock: 100,
+    maximumStock: 1200,
+    reorderPoint: 80,
+    safetyStock: 40,
+    economicOrderQuantity: 300,
+    standardPrice: 18.20,
+    standardPriceCurrency: 'EUR',
+    costPrice: 14.50,
+    costPriceCurrency: 'EUR',
+  },
+  {
+    categoryName: 'Measuring & Inspection Instruments',
+    supplierName: 'Apex Industrial Tools Inc',
+    name: 'Precision Digital Laser Tachometer 100,000 RPM (2026 Pro)',
+    description: 'Non-contact optical and contact surface speed laser tachometer with digital LCD and USB export',
+    shortDescription: 'Digital laser tachometer 2026',
+    searchKeywords: 'tachometer laser optical RPM measurement tool 2026',
+    alternativeName: 'TachoScan Pro 2026',
+    materialType: 'TOL',
+    status: 'ACTIVE',
+    unitOfMeasure: 'PCE',
+    currentStock: 45,
+    minimumStock: 10,
+    maximumStock: 100,
+    reorderPoint: 8,
+    safetyStock: 4,
+    economicOrderQuantity: 25,
+    standardPrice: 85.00,
+    standardPriceCurrency: 'USD',
+    costPrice: 62.00,
+    costPriceCurrency: 'USD',
+  },
+  {
+    categoryName: 'Industrial Adhesives & Sealants',
+    supplierName: 'Rhine Specialty Chemicals GmbH',
+    name: 'High-Temperature Silicone Gasket Maker 300ml (2026 Red)',
+    description: 'RTV silicone flexible gasket sealant resistant to -60°C to +350°C and industrial gear oils',
+    shortDescription: 'RTV silicone gasket 2026',
+    searchKeywords: 'silicone gasket sealant high-temperature RTV chemical 2026',
+    alternativeName: 'Silicone HighTemp Red',
+    materialType: 'CHM',
+    status: 'ACTIVE',
+    unitOfMeasure: 'PCE',
+    currentStock: 320,
+    minimumStock: 80,
+    maximumStock: 800,
+    reorderPoint: 60,
+    safetyStock: 30,
+    economicOrderQuantity: 200,
+    standardPrice: 9.80,
+    standardPriceCurrency: 'EUR',
+    costPrice: 6.90,
+    costPriceCurrency: 'EUR',
+  },
 ];
 
 // ============================================================
@@ -1656,6 +1792,235 @@ async function seedMaterials(categoryMap, supplierMap) {
   }
 
   console.log(`\n📦 Materials summary: ${created} created, ${skipped} skipped.`);
+
+  // Return all active materials in the system for procurement seeding
+  try {
+    const rawAll = await fetchJson(`${BASE_URL}/materials?size=100`);
+    return Array.isArray(rawAll) ? rawAll : (rawAll?.content || []);
+  } catch (e) {
+    return [];
+  }
+}
+
+async function seedProcurement(allMaterials, supplierMap) {
+  console.log('\n📋 ========================================');
+  console.log('📋 4. SEEDING REQUISITIONS & PURCHASE ORDERS (2026 Format)');
+  console.log('📋 ========================================');
+
+  if (!allMaterials || allMaterials.length === 0) {
+    console.warn('⚠️ No materials available for procurement seeding.');
+    return;
+  }
+
+  // 4.1 Seed Requisitions
+  let existingReqs = [];
+  try {
+    existingReqs = await fetchJson(REQUISITIONS_URL);
+  } catch (err) {
+    console.warn('⚠️ Could not fetch existing requisitions:', err.message);
+  }
+
+  const reqCount = Array.isArray(existingReqs) ? existingReqs.length : (existingReqs?.content?.length || 0);
+  console.log(`ℹ️ Existing requisitions in system: ${reqCount}`);
+
+  if (reqCount === 0) {
+    // Find sample materials
+    const steelMat = allMaterials.find(m => m.code?.startsWith('RMT')) || allMaterials[0];
+    const compMat = allMaterials.find(m => m.code?.startsWith('CMP') || m.code?.startsWith('ELC')) || allMaterials[1] || allMaterials[0];
+    const pkgMat = allMaterials.find(m => m.code?.startsWith('PKG')) || allMaterials[2] || allMaterials[0];
+
+    const REQS_TO_SEED = [
+      {
+        title: 'Q1 Structural Metal & Fasteners Replenishment',
+        description: 'Periodic replenishment of raw metal materials and structural sheets for industrial production line',
+        justification: 'Safety stock replenishment for upcoming production schedule 2026',
+        requesterId: 'usr-eng-001',
+        requesterName: 'Karim Bennani',
+        requiredDate: '2026-10-30',
+        currencyCode: 'MAD',
+        createdBy: CREATED_BY,
+        lines: [
+          {
+            materialCode: steelMat.code,
+            materialId: steelMat.id,
+            materialName: steelMat.name,
+            quantity: 50,
+            requiredDate: '2026-10-30',
+            notes: 'High priority sheet requirement',
+            deliveryTerms: 'DAP Casablanca',
+            storageLocation: 'WH-METALS-01',
+          },
+          {
+            materialCode: (allMaterials.find(m => m.code === 'RMT-2026-0002') || steelMat).code,
+            materialId: (allMaterials.find(m => m.code === 'RMT-2026-0002') || steelMat).id,
+            materialName: (allMaterials.find(m => m.code === 'RMT-2026-0002') || steelMat).name,
+            quantity: 100,
+            requiredDate: '2026-10-30',
+            notes: 'Batch inspection required upon delivery',
+            deliveryTerms: 'DAP Casablanca',
+            storageLocation: 'WH-MAIN-A2',
+          },
+        ].filter(Boolean),
+      },
+      {
+        title: 'Semiconductors & Sensor Units for IoT Controller',
+        description: 'Electronic modules and passive components for next-generation hardware manufacturing',
+        justification: 'New client automated hardware batch delivery Q2 2026',
+        requesterId: 'usr-rd-002',
+        requesterName: 'Sanaa Idrissi',
+        requiredDate: '2026-11-15',
+        currencyCode: 'MAD',
+        createdBy: CREATED_BY,
+        lines: [
+          {
+            materialCode: compMat.code,
+            materialId: compMat.id,
+            materialName: compMat.name,
+            quantity: 300,
+            requiredDate: '2026-11-15',
+            notes: 'Anti-static ESD packaging strictly required',
+            deliveryTerms: 'FOB Rabat Technopolis',
+            storageLocation: 'WH-ELEC-ZONE-B',
+          }
+        ],
+      },
+      {
+        title: 'Logistics Packaging & Protective Shipping Consumables',
+        description: 'Heavy duty boxes, shrink wrap, and pallet protection containers for export shipping hub',
+        justification: 'Warehouse monthly operations stock run-out prevention',
+        requesterId: 'usr-log-003',
+        requesterName: 'Tariq Mansoor',
+        requiredDate: '2026-11-20',
+        currencyCode: 'MAD',
+        createdBy: CREATED_BY,
+        lines: [
+          {
+            materialCode: pkgMat.code,
+            materialId: pkgMat.id,
+            materialName: pkgMat.name,
+            quantity: 200,
+            requiredDate: '2026-11-20',
+            notes: 'Direct unload at Loading Dock 3',
+            deliveryTerms: 'Delivered At Terminal',
+            storageLocation: 'WH-LOG-01',
+          }
+        ],
+      },
+    ];
+
+    for (const reqPayload of REQS_TO_SEED) {
+      try {
+        const res = await fetchJson(REQUISITIONS_URL, {
+          method: 'POST',
+          body: JSON.stringify(reqPayload),
+        });
+        console.log(`  ✅ [REQUISITION CREATED] ${res.requisitionCode || res.code} - "${res.title}" (Lines: ${res.lines?.length || 1})`);
+      } catch (err) {
+        console.error(`  ❌ [FAILED] Requisition '${reqPayload.title}':`, err.message);
+      }
+    }
+  } else {
+    console.log(`  ⏭️  Requisitions already exist (${reqCount}), skipping creation.`);
+  }
+
+  // 4.2 Seed Purchase Orders
+  let existingPOs = [];
+  try {
+    existingPOs = await fetchJson(PURCHASE_ORDERS_URL);
+  } catch (err) {
+    console.warn('⚠️ Could not fetch existing purchase orders:', err.message);
+  }
+
+  const poCount = Array.isArray(existingPOs) ? existingPOs.length : (existingPOs?.content?.length || 0);
+  console.log(`ℹ️ Existing purchase orders in system: ${poCount}`);
+
+  if (poCount <= 2) {
+    const atlasId = supplierMap.get('atlas steel maroc sarl');
+    const maghrebId = supplierMap.get('maghreb electronics distribution');
+
+    const firstSupplierId = atlasId || [...supplierMap.values()][0];
+    const secondSupplierId = maghrebId || [...supplierMap.values()][1] || firstSupplierId;
+
+    const steelMat = allMaterials.find(m => m.code?.startsWith('RMT')) || allMaterials[0];
+    const elecMat = allMaterials.find(m => m.code?.startsWith('ELC') || m.code?.startsWith('CMP')) || allMaterials[1] || allMaterials[0];
+
+    const POS_TO_SEED = [
+      {
+        supplierId: firstSupplierId,
+        supplierName: atlasId ? 'Atlas Steel Maroc SARL' : 'Atlas Steel Maroc',
+        currencyCode: 'MAD',
+        orderDate: '2026-09-11',
+        expectedDeliveryDate: '2026-10-15',
+        paymentTerms: 'NET_30',
+        paymentDelayDays: 30,
+        deliveryTerms: 'DAP Casablanca Warehouse',
+        incoterm: 'DAP',
+        taxAmount: 150.00,
+        shippingCost: 300.00,
+        orderedBy: 'usr-buyer-001',
+        orderedByName: 'Youssef El Alami',
+        createdBy: CREATED_BY,
+        notes: 'Priority industrial procurement contract 2026-C1',
+        lines: [
+          {
+            lineNumber: 1,
+            materialCode: steelMat.code,
+            materialId: steelMat.id,
+            materialName: steelMat.name,
+            quantity: 35,
+            unitPrice: 12.80,
+            currencyCode: 'MAD',
+            expectedDeliveryDate: '2026-10-15',
+            notes: 'Conform to mill test certificate EN 10204 3.1',
+          }
+        ],
+      },
+      {
+        supplierId: secondSupplierId,
+        supplierName: maghrebId ? 'Maghreb Electronics Distribution' : 'Components Supplier',
+        currencyCode: 'MAD',
+        orderDate: '2026-09-11',
+        expectedDeliveryDate: '2026-11-05',
+        paymentTerms: 'NET_60',
+        paymentDelayDays: 60,
+        deliveryTerms: 'FOB Rabat Technopolis',
+        incoterm: 'FOB',
+        taxAmount: 280.00,
+        shippingCost: 75.00,
+        orderedBy: 'usr-buyer-002',
+        orderedByName: 'Leila Amrani',
+        createdBy: CREATED_BY,
+        notes: 'Semiconductors procurement for Q2 assembly',
+        lines: [
+          {
+            lineNumber: 1,
+            materialCode: elecMat.code,
+            materialId: elecMat.id,
+            materialName: elecMat.name,
+            quantity: 120,
+            unitPrice: 45.00,
+            currencyCode: 'MAD',
+            expectedDeliveryDate: '2026-11-05',
+            notes: 'Tape & Reel packaging preferred',
+          }
+        ],
+      },
+    ];
+
+    for (const poPayload of POS_TO_SEED) {
+      try {
+        const res = await fetchJson(PURCHASE_ORDERS_URL, {
+          method: 'POST',
+          body: JSON.stringify(poPayload),
+        });
+        console.log(`  ✅ [PURCHASE ORDER CREATED] ${res.orderCode || res.code} - Supplier: "${res.supplierName}" (Status: ${res.status})`);
+      } catch (err) {
+        console.error(`  ❌ [FAILED] Purchase Order for '${poPayload.supplierName}':`, err.message);
+      }
+    }
+  } else {
+    console.log(`  ⏭️  Purchase orders already exist (${poCount}), skipping creation.`);
+  }
 }
 
 // ============================================================
@@ -1677,7 +2042,10 @@ async function main() {
     const supplierMap = await seedSuppliers();
 
     // Step 3: Materials
-    await seedMaterials(categoryMap, supplierMap);
+    const allMaterials = await seedMaterials(categoryMap, supplierMap);
+
+    // Step 4: Requisitions & Purchase Orders
+    await seedProcurement(allMaterials, supplierMap);
 
     const elapsed = ((Date.now() - startTime) / 1000).toFixed(2);
     console.log('\n====================================================');

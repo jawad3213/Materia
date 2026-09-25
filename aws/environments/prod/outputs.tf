@@ -13,6 +13,11 @@ output "frontend_s3_bucket" {
   value       = module.frontend_s3_cloudfront.s3_bucket_id
 }
 
+output "cloudfront_distribution_id" {
+  description = "CloudFront Distribution ID (for PROD_CLOUDFRONT_DISTRIBUTION_ID GitHub secret)"
+  value       = module.frontend_s3_cloudfront.cloudfront_distribution_id
+}
+
 # Routing & Load Balancer Layer
 output "alb_dns_name" {
   description = "Application Load Balancer DNS name (point Hostinger API CNAME here)"

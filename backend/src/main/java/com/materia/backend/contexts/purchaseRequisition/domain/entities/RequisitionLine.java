@@ -1,7 +1,7 @@
 package com.materia.backend.contexts.purchaseRequisition.domain.entities;
 
 import com.materia.backend.contexts.masterData.domain.entities.Material;
-import com.materia.backend.contexts.masterData.domain.valueObjects.Money;
+import com.materia.backend.common.domain.valueObjects.Money;
 
 import java.time.LocalDate;
 import java.util.UUID;
@@ -57,6 +57,12 @@ public class RequisitionLine {
         this.requiredDate = requiredDate;
         this.currencyCodeLine = resolveCurrencyCode(material);
         calculateLineTotal();
+    }
+
+    public RequisitionLine(String materialCode, Integer quantity) {
+        this();
+        this.materialCode = materialCode;
+        this.quantity = quantity;
     }
 
     public UUID getId() {

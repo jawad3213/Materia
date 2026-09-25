@@ -1,4 +1,5 @@
 package com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.dtos.supplier;
+import com.materia.backend.common.domain.enums.CurrencyCode;
 
 /**
  * Dedicated request payload for UI filtering (Status, Currency, Country).

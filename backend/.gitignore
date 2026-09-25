@@ -32,3 +32,7 @@ build/
 !**/src/main/**/build/
 !**/src/test/**/build/
 
+# Ignored resources
+src/main/resources/db/
+src/main/resources/META-INF/spring/
+

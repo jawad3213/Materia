@@ -1,6 +1,6 @@
 package com.materia.backend.contexts.masterData.domain.valueObjects;
 
-import com.materia.backend.contexts.masterData.domain.enums.CurrencyCode;
+import com.materia.backend.common.domain.enums.CurrencyCode;
 
 /**
  * Value object representing criteria for searching/filtering suppliers.

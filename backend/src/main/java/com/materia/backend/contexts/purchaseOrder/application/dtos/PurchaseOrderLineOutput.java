@@ -1,7 +1,7 @@
 package com.materia.backend.contexts.purchaseOrder.application.dtos;
 
 import com.materia.backend.common.application.BaseOutput;
-import com.materia.backend.contexts.masterData.domain.valueObjects.Money;
+import com.materia.backend.common.domain.valueObjects.Money;
 
 import java.time.LocalDate;
 import java.util.UUID;

@@ -25,13 +25,23 @@ public class RequisitionMapper implements BaseMapper<Requisition, CreateRequisit
             return null;
         }
 
+        RequisitionStatus initialStatus = RequisitionStatus.DRAFT;
+        if (request.getStatus() != null && !request.getStatus().isBlank()) {
+            try {
+                initialStatus = RequisitionStatus.valueOf(request.getStatus().trim().toUpperCase());
+            } catch (IllegalArgumentException ignored) {
+            }
+        }
+
         return Requisition.builder()
                 .title(request.getTitle())
                 .description(request.getDescription())
                 .justification(request.getJustification())
+                .status(initialStatus)
                 .requesterId(request.getRequesterId())
                 .requesterName(request.getRequesterName())
                 .requiredDate(request.getRequiredDate())
+                .submittedDate(initialStatus == RequisitionStatus.SUBMITTED ? java.time.LocalDate.now() : null)
                 .currencyCode(request.getCurrencyCode())
                 .lines(copyLines(request.getLines()))
                 .createdBy(request.getUserId())
@@ -83,12 +93,14 @@ public class RequisitionMapper implements BaseMapper<Requisition, CreateRequisit
         response.setSubmittedDate(entity.getSubmittedDate());
         response.setApprovedDate(entity.getApprovedDate());
         response.setConvertedDate(entity.getConvertedDate());
+        response.setCancelledDate(entity.getCancelledDate());
         response.setTotalAmount(entity.getTotalAmount());
         response.setCurrencyCode(entity.getCurrencyCode());
         response.setApproverId(entity.getApproverId());
         response.setApproverName(entity.getApproverName());
         response.setRejectionReason(entity.getRejectionReason());
         response.setApprovalNotes(entity.getApprovalNotes());
+        response.setCancellationReason(entity.getCancellationReason());
         response.setPurchaseOrderId(entity.getPurchaseOrderId());
         response.setPurchaseOrderCode(entity.getPurchaseOrderCode());
         response.setLines(copyLines(entity.getLines()));
