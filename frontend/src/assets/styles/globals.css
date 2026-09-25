@@ -791,3 +791,31 @@ span.flatpickr-weekday,
   @apply opacity-100;
 }
 
+/* Custom sleek scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(156, 163, 175, 0.35);
+  border-radius: 9999px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(156, 163, 175, 0.6);
+}
+.dark .custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(107, 114, 128, 0.35);
+}
+.dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(107, 114, 128, 0.6);
+}
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(156, 163, 175, 0.35) transparent;
+}
+.dark .custom-scrollbar {
+  scrollbar-color: rgba(107, 114, 128, 0.35) transparent;
+}
+

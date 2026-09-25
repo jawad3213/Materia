@@ -1,10 +1,13 @@
 import { useState } from "react";
 import { DropdownItem } from "../ui/dropdown/DropdownItem";
 import { Dropdown } from "../ui/dropdown/Dropdown";
-import { Link } from "react-router";
+import { useNavigate } from "react-router-dom";
+import useAuth from "../../../modules/auth/hooks/useAuth";
 
 export default function UserDropdown() {
   const [isOpen, setIsOpen] = useState(false);
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
 
   function toggleDropdown() {
     setIsOpen(!isOpen);
@@ -13,17 +16,54 @@ export default function UserDropdown() {
   function closeDropdown() {
     setIsOpen(false);
   }
+
+  const handleLogout = async () => {
+    closeDropdown();
+    await logout();
+    navigate('/login');
+  };
+
+  const displayName = user?.name
+    ? user.name.charAt(0).toUpperCase() + user.name.slice(1)
+    : "User";
+  const userInitials = user?.name
+    ? user.name.slice(0, 2).toUpperCase()
+    : (user?.role ? user.role.slice(0, 2) : "US");
+
   return (
     <div className="relative">
       <button
         onClick={toggleDropdown}
-        className="flex items-center text-gray-700 dropdown-toggle dark:text-gray-400"
+        className="flex items-center text-gray-700 dropdown-toggle dark:text-gray-400 group"
       >
-        <span className="mr-3 overflow-hidden rounded-full h-11 w-11">
-          <img src="/images/user/owner.jpg" alt="User" />
+        <span
+          className={`mr-2.5 flex items-center justify-center rounded-full h-10 w-10 font-bold text-xs shrink-0 shadow-xs border transition-transform group-hover:scale-105 ${
+            user?.role === 'ADMIN'
+              ? 'bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/40 dark:text-purple-300 dark:border-purple-800'
+              : user?.role === 'PURCHASER'
+              ? 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-800'
+              : 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-300 dark:border-emerald-800'
+          }`}
+        >
+          {userInitials}
         </span>
 
-        <span className="block mr-1 font-medium text-theme-sm">Musharof</span>
+        <div className="flex items-center gap-2 mr-1">
+          <span className="block font-medium text-theme-sm">{displayName.split(' ')[0]}</span>
+          {user?.role && (
+            <span
+              className={`px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded border ${
+                user.role === 'ADMIN'
+                  ? 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800'
+                  : user.role === 'PURCHASER'
+                  ? 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800'
+                  : 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800'
+              }`}
+            >
+              {user.role}
+            </span>
+          )}
+        </div>
         <svg
           className={`stroke-gray-500 dark:stroke-gray-400 transition-transform duration-200 ${
             isOpen ? "rotate-180" : ""
@@ -49,12 +89,27 @@ export default function UserDropdown() {
         onClose={closeDropdown}
         className="absolute right-0 mt-[17px] flex w-[260px] flex-col rounded-2xl border border-gray-200 bg-white p-3 shadow-theme-lg dark:border-gray-800 dark:bg-gray-dark"
       >
-        <div>
-          <span className="block font-medium text-gray-700 text-theme-sm dark:text-gray-400">
-            Musharof Chowdhury
-          </span>
+        <div className="pb-3 border-b border-gray-100 dark:border-gray-800">
+          <div className="flex items-center justify-between">
+            <span className="block font-medium text-gray-800 text-theme-sm dark:text-white">
+              {displayName}
+            </span>
+            {user?.role && (
+              <span
+                className={`px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-full border ${
+                  user.role === 'ADMIN'
+                    ? 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800'
+                    : user.role === 'PURCHASER'
+                    ? 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800'
+                    : 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800'
+                }`}
+              >
+                {user.role}
+              </span>
+            )}
+          </div>
           <span className="mt-0.5 block text-theme-xs text-gray-500 dark:text-gray-400">
-            randomuser@pimjo.com
+            {user?.email || "user@materia.com"}
           </span>
         </div>
 
@@ -135,9 +190,10 @@ export default function UserDropdown() {
             </DropdownItem>
           </li>
         </ul>
-        <Link
-          to="/signin"
-          className="flex items-center gap-3 px-3 py-2 mt-3 font-medium text-gray-700 rounded-lg group text-theme-sm hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-300"
+        <button
+          type="button"
+          onClick={handleLogout}
+          className="flex items-center w-full gap-3 px-3 py-2 mt-3 font-medium text-gray-700 rounded-lg group text-theme-sm hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-300"
         >
           <svg
             className="fill-gray-500 group-hover:fill-gray-700 dark:group-hover:fill-gray-300"
@@ -155,7 +211,7 @@ export default function UserDropdown() {
             />
           </svg>
           Sign out
-        </Link>
+        </button>
       </Dropdown>
     </div>
   );

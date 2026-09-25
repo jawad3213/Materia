@@ -69,4 +69,22 @@ public class MaterialWebMapper implements BaseWebMapper<CreateMaterialWebRequest
         if (appResponses == null) return java.util.List.of();
         return appResponses.stream().map(this::toWebListResponse).collect(java.util.stream.Collectors.toList());
     }
+
+    public com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.dtos.material.ReorderRecommendationWebResponse toReorderRecommendationWebResponse(
+            com.materia.backend.contexts.masterData.application.dtos.material.ReorderRecommendationOutput appResponse) {
+        if (appResponse == null) return null;
+        com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.dtos.material.ReorderRecommendationWebResponse webResponse =
+                new com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.dtos.material.ReorderRecommendationWebResponse();
+        BeanUtils.copyProperties(appResponse, webResponse);
+        return webResponse;
+    }
+
+    public com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.dtos.material.ManualReorderWebResponse toManualReorderWebResponse(
+            com.materia.backend.contexts.masterData.application.dtos.material.ManualReorderOutput appResponse) {
+        if (appResponse == null) return null;
+        com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.dtos.material.ManualReorderWebResponse webResponse =
+                new com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.dtos.material.ManualReorderWebResponse();
+        BeanUtils.copyProperties(appResponse, webResponse);
+        return webResponse;
+    }
 }

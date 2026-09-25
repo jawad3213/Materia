@@ -5,7 +5,7 @@ import com.materia.backend.contexts.masterData.application.dtos.supplier.UpdateS
 import com.materia.backend.contexts.masterData.application.dtos.supplier.SupplierOutput;
 import com.materia.backend.contexts.masterData.application.dtos.supplier.SupplierListOutput;
 import com.materia.backend.contexts.masterData.domain.entities.Supplier;
-import com.materia.backend.contexts.masterData.domain.enums.CurrencyCode;
+import com.materia.backend.common.domain.enums.CurrencyCode;
 import org.springframework.stereotype.Component;
 
 import java.util.List;

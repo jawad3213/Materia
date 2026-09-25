@@ -5,6 +5,8 @@ import com.materia.backend.contexts.invoice.domain.valueObjects.InvoiceCode;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Year;
+
 /**
  * Generates stable invoice business codes.
  */
@@ -21,7 +23,9 @@ public class InvoiceCodeGeneratorService {
     }
 
     public InvoiceCode generateCode() {
-        int nextNumber = sequenceRepository.getNextValueAndIncrement(PREFIX);
-        return InvoiceCode.fromPrefixAndNumber(PREFIX, nextNumber);
+        int currentYear = Year.now().getValue();
+        String sequenceKey = PREFIX + "-" + currentYear;
+        int nextNumber = sequenceRepository.getNextValueAndIncrement(sequenceKey);
+        return InvoiceCode.fromPrefixYearAndNumber(PREFIX, currentYear, nextNumber);
     }
 }

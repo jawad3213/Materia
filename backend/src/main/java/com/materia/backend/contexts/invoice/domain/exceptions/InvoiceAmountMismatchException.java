@@ -1,6 +1,6 @@
 package com.materia.backend.contexts.invoice.domain.exceptions;
 
-import com.materia.backend.contexts.masterData.domain.valueObjects.Money;
+import com.materia.backend.common.domain.valueObjects.Money;
 
 /**
  * Exception levée lorsque le montant total de la facture est incohérent

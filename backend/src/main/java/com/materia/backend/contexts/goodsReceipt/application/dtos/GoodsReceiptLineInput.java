@@ -1,7 +1,7 @@
 package com.materia.backend.contexts.goodsReceipt.application.dtos;
 
 import com.materia.backend.common.application.BaseInput;
-import com.materia.backend.contexts.masterData.domain.valueObjects.Money;
+import com.materia.backend.common.domain.valueObjects.Money;
 
 import java.time.LocalDate;
 import java.util.UUID;

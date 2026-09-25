@@ -6,12 +6,12 @@ import com.materia.backend.contexts.purchaseRequisition.application.dtos.Requisi
 import com.materia.backend.contexts.purchaseRequisition.application.dtos.RequisitionSearchCriteria;
 import com.materia.backend.contexts.purchaseRequisition.application.dtos.UpdateRequisitionInput;
 import com.materia.backend.contexts.purchaseRequisition.domain.entities.RequisitionLine;
-import com.materia.backend.contexts.purchaseRequisition.infrastructure.adapters.in.web.dtos.requisition.CreateRequisitionWebRequest;
-import com.materia.backend.contexts.purchaseRequisition.infrastructure.adapters.in.web.dtos.requisition.RequisitionLineWebRequest;
-import com.materia.backend.contexts.purchaseRequisition.infrastructure.adapters.in.web.dtos.requisition.RequisitionLineWebResponse;
-import com.materia.backend.contexts.purchaseRequisition.infrastructure.adapters.in.web.dtos.requisition.RequisitionSearchWebRequest;
-import com.materia.backend.contexts.purchaseRequisition.infrastructure.adapters.in.web.dtos.requisition.RequisitionWebResponse;
-import com.materia.backend.contexts.purchaseRequisition.infrastructure.adapters.in.web.dtos.requisition.UpdateRequisitionWebRequest;
+import com.materia.backend.contexts.purchaseRequisition.infrastructure.adapters.in.web.dtos.request.CreateRequisitionWebRequest;
+import com.materia.backend.contexts.purchaseRequisition.infrastructure.adapters.in.web.dtos.request.RequisitionLineWebRequest;
+import com.materia.backend.contexts.purchaseRequisition.infrastructure.adapters.in.web.dtos.request.RequisitionSearchWebRequest;
+import com.materia.backend.contexts.purchaseRequisition.infrastructure.adapters.in.web.dtos.request.UpdateRequisitionWebRequest;
+import com.materia.backend.contexts.purchaseRequisition.infrastructure.adapters.in.web.dtos.response.RequisitionLineWebResponse;
+import com.materia.backend.contexts.purchaseRequisition.infrastructure.adapters.in.web.dtos.response.RequisitionWebResponse;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Component;
 
@@ -99,6 +99,7 @@ public class RequisitionWebMapper implements BaseWebMapper<
         line.setId(webLine.getId());
         line.setMaterialId(webLine.getMaterialId());
         line.setMaterialCode(webLine.getMaterialCode());
+        line.setMaterialName(webLine.getMaterialName());
         line.setQuantity(webLine.getQuantity());
         line.setRequiredDate(webLine.getRequiredDate());
         line.setSupplierId(webLine.getSupplierId());

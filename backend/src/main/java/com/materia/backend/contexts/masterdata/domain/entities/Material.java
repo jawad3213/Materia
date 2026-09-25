@@ -1,20 +1,28 @@
 package com.materia.backend.contexts.masterData.domain.entities;
 
-import com.materia.backend.contexts.masterData.domain.enums.CurrencyCode;
-import com.materia.backend.contexts.masterData.domain.enums.MaterialType;
-import com.materia.backend.contexts.masterData.domain.enums.MaterialStatus;
-import com.materia.backend.contexts.masterData.domain.enums.StockMovementType;
-import com.materia.backend.contexts.masterData.domain.enums.UnitOfMeasure;
-import com.materia.backend.contexts.masterData.domain.valueObjects.MaterialCode;
-import com.materia.backend.contexts.masterData.domain.valueObjects.Money;
-
 import com.materia.backend.common.domain.BaseEntity;
+import com.materia.backend.common.domain.DomainEvent;
+import com.materia.backend.common.domain.enums.CurrencyCode;
+import com.materia.backend.contexts.masterData.domain.enums.MaterialStatus;
+import com.materia.backend.contexts.masterData.domain.enums.MaterialType;
+import com.materia.backend.contexts.masterData.domain.enums.StockMovementType;
+import com.materia.backend.contexts.masterData.domain.enums.StockStatus;
+import com.materia.backend.contexts.masterData.domain.enums.UnitOfMeasure;
+import com.materia.backend.contexts.masterData.domain.events.MaterialBelowReorderPointEvent;
+import com.materia.backend.contexts.masterData.domain.valueObjects.MaterialCode;
+import com.materia.backend.common.domain.valueObjects.Money;
+import lombok.Getter;
+import lombok.Setter;
+
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
+@Getter
+@Setter
 public class Material extends BaseEntity {
 
     // ============================================================
@@ -60,16 +68,20 @@ public class Material extends BaseEntity {
     private String obsoletedBy;
     private String obsoletedReason;
 
-    // ---- HISTORY ----
+    // ✅ NOUVEAU : Stock en commande (pour virtual stock)
+    private Integer stockOnOrder;
+
+    // ✅ NOUVEAU : Date de dernière vérification de stock
+    private LocalDateTime lastStockCheckDate;
+
+    // ---- HISTORY & DOMAIN EVENTS ----
     private List<StockMovement> stockMovements;
+    private final List<DomainEvent> domainEvents = new ArrayList<>();
 
     // ============================================================
     // CONSTRUCTORS
     // ============================================================
 
-    /**
-     * Default constructor (for JPA / serialization)
-     */
     public Material() {
         super();
         this.currentStock = 0;
@@ -79,6 +91,7 @@ public class Material extends BaseEntity {
         this.reorderPoint = 20;
         this.safetyStock = 5;
         this.economicOrderQuantity = 100;
+        this.stockOnOrder = 0;
         this.standardPrice = Money.zero(CurrencyCode.MAD);
         this.costPrice = Money.zero(CurrencyCode.MAD);
         this.lastPurchasePrice = Money.zero(CurrencyCode.MAD);
@@ -87,13 +100,8 @@ public class Material extends BaseEntity {
         this.stockMovements = new ArrayList<>();
     }
 
-    /**
-     * Private constructor (via Builder)
-     */
     private Material(Builder builder) {
         super();
-
-        // ---- IDENTIFICATION ----
         this.id = builder.id;
         this.code = builder.code;
         this.name = builder.name;
@@ -102,7 +110,6 @@ public class Material extends BaseEntity {
         this.searchKeywords = builder.searchKeywords;
         this.alternativeName = builder.alternativeName;
 
-        // ---- CLASSIFICATION ----
         this.categoryId = builder.categoryId;
         this.categoryName = builder.categoryName;
         this.supplierId = builder.supplierId;
@@ -110,10 +117,8 @@ public class Material extends BaseEntity {
         this.materialType = builder.materialType;
         this.status = builder.status;
 
-        // ---- UNITS ----
         this.unitOfMeasure = builder.unitOfMeasure;
 
-        // ---- STOCK ----
         this.currentStock = builder.currentStock;
         this.availableStock = builder.availableStock;
         this.minimumStock = builder.minimumStock;
@@ -121,24 +126,22 @@ public class Material extends BaseEntity {
         this.reorderPoint = builder.reorderPoint;
         this.safetyStock = builder.safetyStock;
         this.economicOrderQuantity = builder.economicOrderQuantity;
+        this.stockOnOrder = builder.stockOnOrder != null ? builder.stockOnOrder : 0;
+        this.lastStockCheckDate = builder.lastStockCheckDate;
 
-        // ---- FINANCES ----
         this.standardPrice = builder.standardPrice;
         this.costPrice = builder.costPrice;
         this.lastPurchasePrice = builder.lastPurchasePrice;
         this.averagePurchasePrice = builder.averagePurchasePrice;
 
-        // ---- OBSOLESCENCE ----
         this.obsoletedAt = builder.obsoletedAt;
         this.obsoletedBy = builder.obsoletedBy;
         this.obsoletedReason = builder.obsoletedReason;
 
-        // ---- HISTORY ----
         this.stockMovements = builder.stockMovements != null
                 ? new ArrayList<>(builder.stockMovements)
                 : new ArrayList<>();
 
-        // ---- AUDIT ----
         if (builder.createdAt != null) {
             this.setCreatedAt(builder.createdAt);
         }
@@ -156,7 +159,6 @@ public class Material extends BaseEntity {
     // ============================================================
 
     public static class Builder {
-        // ---- IDENTIFICATION ----
         private UUID id;
         private MaterialCode code;
         private String name;
@@ -164,54 +166,38 @@ public class Material extends BaseEntity {
         private String shortDescription;
         private String searchKeywords;
         private String alternativeName;
-
-        // ---- CLASSIFICATION ----
         private String categoryId;
         private String categoryName;
         private String supplierId;
         private String supplierName;
         private MaterialType materialType;
-        private MaterialStatus status = MaterialStatus.ACTIVE;
-
-        // ---- UNITS ----
+        private MaterialStatus status;
         private UnitOfMeasure unitOfMeasure;
-
-        // ---- STOCK ----
-        private Integer currentStock = 0;
+        private Integer currentStock;
         private Integer availableStock;
-        private Integer minimumStock = 10;
-        private Integer maximumStock = 1000;
-        private Integer reorderPoint = 20;
-        private Integer safetyStock = 5;
-        private Integer economicOrderQuantity = 100;
-
-        // ---- FINANCES ----
-        private Money standardPrice = Money.zero(CurrencyCode.MAD);
-        private Money costPrice = Money.zero(CurrencyCode.MAD);
-        private Money lastPurchasePrice = Money.zero(CurrencyCode.MAD);
-        private Money averagePurchasePrice = Money.zero(CurrencyCode.MAD);
-
-        // ---- OBSOLESCENCE ----
+        private Integer minimumStock;
+        private Integer maximumStock;
+        private Integer reorderPoint;
+        private Integer safetyStock;
+        private Integer economicOrderQuantity;
+        private Integer stockOnOrder = 0;
+        private LocalDateTime lastStockCheckDate;
+        private Money standardPrice;
+        private Money costPrice;
+        private Money lastPurchasePrice;
+        private Money averagePurchasePrice;
         private LocalDateTime obsoletedAt;
         private String obsoletedBy;
         private String obsoletedReason;
-
-        // ---- HISTORY ----
         private List<StockMovement> stockMovements = new ArrayList<>();
-
-        // ---- AUDIT ----
-        private String createdBy;
         private LocalDateTime createdAt;
         private LocalDateTime updatedAt;
-
-        // ============================================================
-        // BUILDERS - IDENTIFICATION
-        // ============================================================
+        private String createdBy;
 
         public Builder id(UUID id) { this.id = id; return this; }
         public Builder code(MaterialCode code) { this.code = code; return this; }
         public Builder code(String code) {
-            this.code = code != null && !code.trim().isEmpty() ? MaterialCode.of(code) : null;
+            this.code = (code != null && !code.trim().isEmpty()) ? MaterialCode.of(code) : null;
             return this;
         }
         public Builder name(String name) { this.name = name; return this; }
@@ -219,52 +205,26 @@ public class Material extends BaseEntity {
         public Builder shortDescription(String shortDescription) { this.shortDescription = shortDescription; return this; }
         public Builder searchKeywords(String searchKeywords) { this.searchKeywords = searchKeywords; return this; }
         public Builder alternativeName(String alternativeName) { this.alternativeName = alternativeName; return this; }
-
-        // ============================================================
-        // BUILDERS - CLASSIFICATION
-        // ============================================================
-
         public Builder categoryId(String categoryId) { this.categoryId = categoryId; return this; }
         public Builder categoryName(String categoryName) { this.categoryName = categoryName; return this; }
         public Builder supplierId(String supplierId) { this.supplierId = supplierId; return this; }
         public Builder supplierName(String supplierName) { this.supplierName = supplierName; return this; }
         public Builder materialType(MaterialType materialType) { this.materialType = materialType; return this; }
-        public Builder status(MaterialStatus status) {
-            this.status = status != null ? status : MaterialStatus.ACTIVE;
-            return this;
-        }
-
-        // ============================================================
-        // BUILDERS - UNITS
-        // ============================================================
-
+        public Builder status(MaterialStatus status) { this.status = status; return this; }
         public Builder unitOfMeasure(UnitOfMeasure unitOfMeasure) { this.unitOfMeasure = unitOfMeasure; return this; }
-
-        // ============================================================
-        // BUILDERS - STOCK
-        // ============================================================
-
-        public Builder currentStock(Integer currentStock) { this.currentStock = currentStock != null ? currentStock : 0; return this; }
+        public Builder currentStock(Integer currentStock) { this.currentStock = currentStock; return this; }
         public Builder availableStock(Integer availableStock) { this.availableStock = availableStock; return this; }
-        public Builder minimumStock(Integer minimumStock) { this.minimumStock = minimumStock != null ? minimumStock : 10; return this; }
-        public Builder maximumStock(Integer maximumStock) { this.maximumStock = maximumStock != null ? maximumStock : 1000; return this; }
-        public Builder reorderPoint(Integer reorderPoint) { this.reorderPoint = reorderPoint != null ? reorderPoint : 20; return this; }
-        public Builder safetyStock(Integer safetyStock) { this.safetyStock = safetyStock != null ? safetyStock : 5; return this; }
-        public Builder economicOrderQuantity(Integer economicOrderQuantity) { this.economicOrderQuantity = economicOrderQuantity != null ? economicOrderQuantity : 100; return this; }
-
-        // ============================================================
-        // BUILDERS - FINANCES
-        // ============================================================
-
-        public Builder standardPrice(Money standardPrice) { this.standardPrice = standardPrice != null ? standardPrice : Money.zero(CurrencyCode.MAD); return this; }
-        public Builder costPrice(Money costPrice) { this.costPrice = costPrice != null ? costPrice : Money.zero(CurrencyCode.MAD); return this; }
-        public Builder lastPurchasePrice(Money lastPurchasePrice) { this.lastPurchasePrice = lastPurchasePrice != null ? lastPurchasePrice : Money.zero(CurrencyCode.MAD); return this; }
-        public Builder averagePurchasePrice(Money averagePurchasePrice) { this.averagePurchasePrice = averagePurchasePrice != null ? averagePurchasePrice : Money.zero(CurrencyCode.MAD); return this; }
-
-        // ============================================================
-        // BUILDERS - OBSOLESCENCE
-        // ============================================================
-
+        public Builder minimumStock(Integer minimumStock) { this.minimumStock = minimumStock; return this; }
+        public Builder maximumStock(Integer maximumStock) { this.maximumStock = maximumStock; return this; }
+        public Builder reorderPoint(Integer reorderPoint) { this.reorderPoint = reorderPoint; return this; }
+        public Builder safetyStock(Integer safetyStock) { this.safetyStock = safetyStock; return this; }
+        public Builder economicOrderQuantity(Integer economicOrderQuantity) { this.economicOrderQuantity = economicOrderQuantity; return this; }
+        public Builder stockOnOrder(Integer stockOnOrder) { this.stockOnOrder = stockOnOrder; return this; }
+        public Builder lastStockCheckDate(LocalDateTime lastStockCheckDate) { this.lastStockCheckDate = lastStockCheckDate; return this; }
+        public Builder standardPrice(Money standardPrice) { this.standardPrice = standardPrice; return this; }
+        public Builder costPrice(Money costPrice) { this.costPrice = costPrice; return this; }
+        public Builder lastPurchasePrice(Money lastPurchasePrice) { this.lastPurchasePrice = lastPurchasePrice; return this; }
+        public Builder averagePurchasePrice(Money averagePurchasePrice) { this.averagePurchasePrice = averagePurchasePrice; return this; }
         public Builder obsoletedAt(LocalDateTime obsoletedAt) { this.obsoletedAt = obsoletedAt; return this; }
         public Builder obsoletedBy(String obsoletedBy) { this.obsoletedBy = obsoletedBy; return this; }
         public Builder obsoletedReason(String obsoletedReason) { this.obsoletedReason = obsoletedReason; return this; }
@@ -272,24 +232,11 @@ public class Material extends BaseEntity {
             this.stockMovements = stockMovements != null ? new ArrayList<>(stockMovements) : new ArrayList<>();
             return this;
         }
-
-        // ============================================================
-        // BUILDERS - AUDIT
-        // ============================================================
-
-        public Builder createdBy(String createdBy) { this.createdBy = createdBy; return this; }
         public Builder createdAt(LocalDateTime createdAt) { this.createdAt = createdAt; return this; }
         public Builder updatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; return this; }
-
-        // ============================================================
-        // BUILD
-        // ============================================================
+        public Builder createdBy(String createdBy) { this.createdBy = createdBy; return this; }
 
         public Material build() {
-            // ---- ID GENERATION ----
-            if (this.id == null) { this.id = UUID.randomUUID(); }
-
-            // ---- DEFAULT VALUES ----
             if (this.currentStock == null) this.currentStock = 0;
             if (this.availableStock == null) this.availableStock = this.currentStock;
             if (this.minimumStock == null) this.minimumStock = 10;
@@ -297,30 +244,19 @@ public class Material extends BaseEntity {
             if (this.reorderPoint == null) this.reorderPoint = 20;
             if (this.safetyStock == null) this.safetyStock = 5;
             if (this.economicOrderQuantity == null) this.economicOrderQuantity = 100;
+            if (this.stockOnOrder == null) this.stockOnOrder = 0;
+
             if (this.standardPrice == null) this.standardPrice = Money.zero(CurrencyCode.MAD);
             if (this.costPrice == null) this.costPrice = Money.zero(CurrencyCode.MAD);
             if (this.lastPurchasePrice == null) this.lastPurchasePrice = Money.zero(CurrencyCode.MAD);
             if (this.averagePurchasePrice == null) this.averagePurchasePrice = Money.zero(CurrencyCode.MAD);
             if (this.status == null) this.status = MaterialStatus.ACTIVE;
 
-            // ---- DATES ----
             if (this.createdAt == null) { this.createdAt = LocalDateTime.now(); }
             if (this.updatedAt == null) { this.updatedAt = LocalDateTime.now(); }
 
-            // ---- VALIDATIONS ----
             validateRequiredFields();
             validateStockConsistency();
-
-            // ---- OBSOLESCENCE ----
-            if (MaterialStatus.OBSOLETE.equals(this.status)) {
-                if (this.obsoletedAt == null) { this.obsoletedAt = LocalDateTime.now(); }
-                if (this.obsoletedBy == null || this.obsoletedBy.trim().isEmpty()) {
-                    throw new IllegalArgumentException("The user who marked this material as obsolete is required");
-                }
-                if (this.obsoletedReason == null || this.obsoletedReason.trim().isEmpty()) {
-                    throw new IllegalArgumentException("The reason for obsolescence is required");
-                }
-            }
 
             return new Material(this);
         }
@@ -350,113 +286,86 @@ public class Material extends BaseEntity {
                                 ") cannot be greater than maximum stock (" + this.maximumStock + ")"
                 );
             }
-            if (this.reorderPoint > this.minimumStock) {
-                throw new IllegalArgumentException(
-                        "Reorder point (" + this.reorderPoint +
-                                ") cannot be greater than minimum stock (" + this.minimumStock + ")"
-                );
-            }
-            if (this.safetyStock > this.minimumStock) {
-                throw new IllegalArgumentException(
-                        "Safety stock (" + this.safetyStock +
-                                ") cannot be greater than minimum stock (" + this.minimumStock + ")"
-                );
-            }
             if (this.currentStock < 0) {
                 throw new IllegalArgumentException("Current stock cannot be negative");
             }
             if (this.availableStock < 0) {
                 throw new IllegalArgumentException("Available stock cannot be negative");
             }
-            if (this.availableStock > this.currentStock) {
-                throw new IllegalArgumentException(
-                        "Available stock (" + this.availableStock +
-                                ") cannot be greater than current stock (" + this.currentStock + ")"
-                );
-            }
         }
     }
 
-    /**
-     * Entry point to create a new Builder
-     */
     public static Builder builder() {
         return new Builder();
     }
 
     // ============================================================
-    // DOMAIN METHODS (Business Behavior)
+    // DOMAIN EVENTS HANDLING
     // ============================================================
 
-    /**
-     * Calculates the available stock (currentStock - reservedStock)
-     */
-    public void calculateAvailableStock() {
-        this.availableStock = this.currentStock;
+    public void addDomainEvent(DomainEvent event) {
+        if (event != null) {
+            this.domainEvents.add(event);
+        }
     }
 
-    /**
-     * Checks if stock is below the alert threshold
-     */
+    public List<DomainEvent> getDomainEvents() {
+        return Collections.unmodifiableList(domainEvents);
+    }
+
+    public void clearDomainEvents() {
+        this.domainEvents.clear();
+    }
+
+    // ============================================================
+    // MÉTHODES MÉTIER - GESTION DES STOCKS
+    // ============================================================
+
     public boolean isBelowMinimumStock() {
-        return currentStock < minimumStock;
+        return currentStock != null && minimumStock != null && currentStock < minimumStock;
     }
 
-    /**
-     * Checks if stock is below the reorder point
-     */
-    public boolean isBelowReorderPoint() {
-        return currentStock < reorderPoint;
-    }
-
-    /**
-     * Checks if stock exceeds the maximum
-     */
-    public boolean isAboveMaximumStock() {
-        return currentStock > maximumStock;
-    }
-
-    /**
-     * Increases stock (e.g. after receipt)
-     */
     public void increaseStock(Integer quantity) {
         increaseStock(quantity, "Stock increase");
     }
 
-    /** Increases stock while keeping the source document in the movement history. */
     public void increaseStock(Integer quantity, String reason) {
         if (isObsolete()) {
-            throw new IllegalStateException("Cannot increase stock of an obsolete material");
+            throw new IllegalStateException("Impossible d'augmenter le stock d'un matériau obsolète");
         }
         if (quantity == null || quantity <= 0) {
-            throw new IllegalArgumentException("Quantity must be positive");
+            throw new IllegalArgumentException("La quantité doit être positive");
         }
         int previousStock = this.currentStock != null ? this.currentStock : 0;
-        this.currentStock += quantity;
-        this.availableStock += quantity;
+        this.currentStock = previousStock + quantity;
+        this.availableStock = (this.availableStock != null ? this.availableStock : 0) + quantity;
         recordStockMovement(StockMovementType.RECEIPT, quantity, previousStock, this.currentStock,
                 reason != null && !reason.isBlank() ? reason : "Stock increase");
         this.setUpdatedAt(LocalDateTime.now());
     }
 
-    /**
-     * Decreases stock (e.g. after issue)
-     */
     public void decreaseStock(Integer quantity) {
         if (isObsolete()) {
-            throw new IllegalStateException("Cannot decrease stock of an obsolete material");
+            throw new IllegalStateException("Impossible de diminuer le stock d'un matériau obsolète");
         }
         if (quantity == null || quantity <= 0) {
-            throw new IllegalArgumentException("Quantity must be positive");
+            throw new IllegalArgumentException("La quantité doit être positive");
         }
-        if (this.currentStock < quantity) {
-            throw new IllegalStateException("Insufficient stock. Available: " + this.currentStock);
+        int available = this.currentStock != null ? this.currentStock : 0;
+        if (available < quantity) {
+            throw new IllegalStateException(
+                    "Stock insuffisant. Disponible: " + available +
+                            ", Demandé: " + quantity
+            );
         }
-        int previousStock = this.currentStock;
-        this.currentStock -= quantity;
-        this.availableStock -= quantity;
+        int previousStock = available;
+        this.currentStock = available - quantity;
+        this.availableStock = (this.availableStock != null ? this.availableStock : available) - quantity;
         recordStockMovement(StockMovementType.ISSUE, quantity, previousStock, this.currentStock, "Stock decrease");
         this.setUpdatedAt(LocalDateTime.now());
+
+        // ✅ Déclencher la vérification du point de réapprovisionnement
+        checkReorderPoint();
     }
 
     public void adjustStock(Integer newCurrentStock, String reason) {
@@ -482,11 +391,12 @@ public class Material extends BaseEntity {
         }
 
         this.setUpdatedAt(LocalDateTime.now());
+        checkReorderPoint();
     }
 
     public void recordOpeningBalance(String reason) {
         int openingStock = this.currentStock != null ? this.currentStock : 0;
-        if (openingStock <= 0 || !this.stockMovements.isEmpty()) {
+        if (openingStock <= 0 || (this.stockMovements != null && !this.stockMovements.isEmpty())) {
             return;
         }
 
@@ -507,174 +417,181 @@ public class Material extends BaseEntity {
         if (this.stockMovements == null) {
             this.stockMovements = new ArrayList<>();
         }
-
         this.stockMovements.add(0, StockMovement.create(type, quantity, previousStock, newStock, reason));
     }
 
+    // ============================================================
+    // ✅ NOUVELLES MÉTHODES - GESTION DES STOCKS
+    // ============================================================
+
     /**
-     * Calculates the replenishment need
+     * Vérifie si le stock est en dessous du point de réapprovisionnement
+     */
+    public boolean isBelowReorderPoint() {
+        if (reorderPoint == null || currentStock == null) {
+            return false;
+        }
+        return currentStock <= reorderPoint;
+    }
+
+    /**
+     * Vérifie si le stock est en dessous du stock de sécurité
+     */
+    public boolean isBelowSafetyStock() {
+        if (safetyStock == null || currentStock == null) {
+            return false;
+        }
+        return currentStock <= safetyStock;
+    }
+
+    /**
+     * Vérifie si le stock est épuisé
+     */
+    public boolean isOutOfStock() {
+        return currentStock != null && currentStock <= 0;
+    }
+
+    /**
+     * Calcule le stock virtuel (stock actuel + stock en commande)
+     */
+    public int getVirtualStock() {
+        int current = currentStock != null ? currentStock : 0;
+        int onOrder = stockOnOrder != null ? stockOnOrder : 0;
+        return current + onOrder;
+    }
+
+    /**
+     * Vérifie si le stock virtuel est en dessous du point de réapprovisionnement
+     */
+    public boolean isVirtualStockBelowReorderPoint() {
+        if (reorderPoint == null) {
+            return false;
+        }
+        return getVirtualStock() <= reorderPoint;
+    }
+
+    /**
+     * Obtient le statut du stock
+     */
+    public StockStatus getStockStatus() {
+        if (isOutOfStock()) {
+            return StockStatus.OUT_OF_STOCK;
+        }
+        if (isBelowSafetyStock()) {
+            return StockStatus.CRITICAL;
+        }
+        if (isBelowReorderPoint()) {
+            return StockStatus.REORDER_NEEDED;
+        }
+        return StockStatus.IN_STOCK;
+    }
+
+    /**
+     * Calcule la quantité de réapprovisionnement recommandée
+     * Quantité = EOQ (Economic Order Quantity) ou maximumStock - currentStock
      */
     public int calculateReorderQuantity() {
-        if (isObsolete()) { return 0; }
-        if (currentStock < reorderPoint) {
-            return reorderPoint - currentStock + safetyStock;
+        if (reorderPoint == null || currentStock == null) {
+            return 0;
         }
-        return 0;
+
+        // Si on est au-dessus du point de réapprovisionnement, pas besoin de commander
+        if (!isBelowReorderPoint()) {
+            return 0;
+        }
+
+        // Si on a du stock en commande, ne pas commander
+        if (getVirtualStock() > reorderPoint) {
+            return 0;
+        }
+
+        // Quantité recommandée : EOQ ou la différence jusqu'au max
+        if (economicOrderQuantity != null && economicOrderQuantity > 0) {
+            return economicOrderQuantity;
+        }
+
+        if (maximumStock != null && maximumStock > 0) {
+            return Math.min(maximumStock - currentStock, 500);
+        }
+
+        // Valeur par défaut
+        return 100;
     }
 
     /**
-     * Calculates the stock turnover rate
+     * Vérifie le point de réapprovisionnement et déclenche un événement si nécessaire
      */
-    public double calculateTurnoverRate(int annualConsumption) {
-        if (currentStock == 0) { return 0; }
-        return (double) annualConsumption / currentStock;
+    private void checkReorderPoint() {
+        if (isBelowReorderPoint() && !isVirtualStockBelowReorderPoint()) {
+            // 🔥 Ajouter un événement de réapprovisionnement
+            this.addDomainEvent(new MaterialBelowReorderPointEvent(
+                    this.getId(),
+                    this.getCode() != null ? this.getCode().getValue() : null,
+                    this.getName(),
+                    this.currentStock,
+                    this.reorderPoint,
+                    this.safetyStock,
+                    this.supplierId,
+                    this.getStockStatus()
+            ));
+        }
     }
 
     /**
-     * Formats the standard price with the currency symbol
+     * Met à jour le stock en commande (lors d'une commande)
      */
-    public String getFormattedPrice() {
-        if (standardPrice == null) { return "0.00"; }
-        return standardPrice.format();
+    public void addStockOnOrder(Integer quantity) {
+        if (quantity == null || quantity <= 0) {
+            throw new IllegalArgumentException("La quantité doit être positive");
+        }
+        this.stockOnOrder = (this.stockOnOrder == null ? 0 : this.stockOnOrder) + quantity;
+        this.setUpdatedAt(LocalDateTime.now());
     }
 
     /**
-     * Formats the standard price with the currency code
+     * Réduit le stock en commande (lors d'une réception)
      */
-    public String getFormattedPriceWithCode() {
-        if (standardPrice == null) { return "0.00"; }
-        return standardPrice.formatWithCode();
+    public void reduceStockOnOrder(Integer quantity) {
+        if (quantity == null || quantity <= 0) {
+            throw new IllegalArgumentException("La quantité doit être positive");
+        }
+        int currentOnOrder = this.stockOnOrder != null ? this.stockOnOrder : 0;
+        if (currentOnOrder < quantity) {
+            throw new IllegalStateException(
+                    "Stock en commande insuffisant. Disponible: " + currentOnOrder +
+                            ", Demandé: " + quantity
+            );
+        }
+        this.stockOnOrder = currentOnOrder - quantity;
+        this.setUpdatedAt(LocalDateTime.now());
     }
 
     // ============================================================
-    // GETTERS & SETTERS
+    // CONVENIENCE SETTERS
     // ============================================================
 
-    // ---- IDENTIFICATION ----
-    public MaterialCode getCode() { return code; }
     public void setCode(MaterialCode code) {
-        if (code == null) { throw new IllegalArgumentException("Material code is required"); }
         this.code = code;
         this.setUpdatedAt(LocalDateTime.now());
     }
 
     public void setCode(String code) {
-        if (code == null || code.trim().isEmpty()) { throw new IllegalArgumentException("Material code is required"); }
-        this.code = MaterialCode.of(code);
+        this.code = (code != null && !code.trim().isEmpty()) ? MaterialCode.of(code) : null;
         this.setUpdatedAt(LocalDateTime.now());
     }
 
-    public String getName() { return name; }
-    public void setName(String name) {
-        if (name == null || name.trim().isEmpty()) { throw new IllegalArgumentException("Material name is required"); }
-        this.name = name;
-        this.setUpdatedAt(LocalDateTime.now());
-    }
-
-    public String getDescription() { return description; }
-    public void setDescription(String description) { this.description = description; this.setUpdatedAt(LocalDateTime.now()); }
-
-    public String getShortDescription() { return shortDescription; }
-    public void setShortDescription(String shortDescription) { this.shortDescription = shortDescription; this.setUpdatedAt(LocalDateTime.now()); }
-
-    public String getSearchKeywords() { return searchKeywords; }
-    public void setSearchKeywords(String searchKeywords) { this.searchKeywords = searchKeywords; this.setUpdatedAt(LocalDateTime.now()); }
-
-    public String getAlternativeName() { return alternativeName; }
-    public void setAlternativeName(String alternativeName) { this.alternativeName = alternativeName; this.setUpdatedAt(LocalDateTime.now()); }
-
-    // ---- CLASSIFICATION ----
-    public String getCategoryId() { return categoryId; }
-    public void setCategoryId(String categoryId) {
-        if (categoryId == null || categoryId.trim().isEmpty()) { throw new IllegalArgumentException("Category is required"); }
-        this.categoryId = categoryId;
-        this.setUpdatedAt(LocalDateTime.now());
-    }
-
-    public String getCategoryName() { return categoryName; }
-    public void setCategoryName(String categoryName) { this.categoryName = categoryName; this.setUpdatedAt(LocalDateTime.now()); }
-
-    public String getSupplierId() { return supplierId; }
-    public void setSupplierId(String supplierId) { this.supplierId = supplierId; this.setUpdatedAt(LocalDateTime.now()); }
-
-    public String getSupplierName() { return supplierName; }
-    public void setSupplierName(String supplierName) { this.supplierName = supplierName; this.setUpdatedAt(LocalDateTime.now()); }
-
-    public MaterialType getMaterialType() { return materialType; }
-    public void setMaterialType(MaterialType materialType) {
-        if (materialType == null) { throw new IllegalArgumentException("Material type is required"); }
-        this.materialType = materialType;
-        this.setUpdatedAt(LocalDateTime.now());
-    }
-
-    public MaterialStatus getStatus() { return status; }
-    public void setStatus(MaterialStatus status) {
-        if (status == null) { throw new IllegalArgumentException("Status is required"); }
-        this.status = status;
-        this.setUpdatedAt(LocalDateTime.now());
-    }
-
-    // ---- UNITS ----
-    public UnitOfMeasure getUnitOfMeasure() { return unitOfMeasure; }
     public void setUnitOfMeasure(UnitOfMeasure unitOfMeasure) {
-        if (unitOfMeasure == null) { throw new IllegalArgumentException("Unit of measure is required"); }
         this.unitOfMeasure = unitOfMeasure;
         this.setUpdatedAt(LocalDateTime.now());
     }
 
-    // ---- STOCK ----
-    public Integer getCurrentStock() { return currentStock; }
-    public void setCurrentStock(Integer currentStock) {
-        if (isObsolete()) { throw new IllegalStateException("Cannot modify stock of an obsolete material"); }
-        this.currentStock = currentStock != null ? currentStock : 0;
-        this.availableStock = this.currentStock;
+    public void setUnitOfMeasure(String unitOfMeasure) {
+        if (unitOfMeasure != null && !unitOfMeasure.isBlank()) {
+            this.unitOfMeasure = UnitOfMeasure.fromValue(unitOfMeasure);
+        } else {
+            this.unitOfMeasure = null;
+        }
         this.setUpdatedAt(LocalDateTime.now());
-    }
-
-    public Integer getAvailableStock() { return availableStock; }
-    public void setAvailableStock(Integer availableStock) { this.availableStock = availableStock != null ? availableStock : 0; this.setUpdatedAt(LocalDateTime.now()); }
-
-    public Integer getMinimumStock() { return minimumStock; }
-    public void setMinimumStock(Integer minimumStock) { this.minimumStock = minimumStock != null ? minimumStock : 10; this.setUpdatedAt(LocalDateTime.now()); }
-
-    public Integer getMaximumStock() { return maximumStock; }
-    public void setMaximumStock(Integer maximumStock) { this.maximumStock = maximumStock != null ? maximumStock : 1000; this.setUpdatedAt(LocalDateTime.now()); }
-
-    public Integer getReorderPoint() { return reorderPoint; }
-    public void setReorderPoint(Integer reorderPoint) { this.reorderPoint = reorderPoint != null ? reorderPoint : 20; this.setUpdatedAt(LocalDateTime.now()); }
-
-    public Integer getSafetyStock() { return safetyStock; }
-    public void setSafetyStock(Integer safetyStock) { this.safetyStock = safetyStock != null ? safetyStock : 5; this.setUpdatedAt(LocalDateTime.now()); }
-
-    public Integer getEconomicOrderQuantity() { return economicOrderQuantity; }
-    public void setEconomicOrderQuantity(Integer economicOrderQuantity) { this.economicOrderQuantity = economicOrderQuantity != null ? economicOrderQuantity : 100; this.setUpdatedAt(LocalDateTime.now()); }
-
-    // ---- FINANCES ----
-    public Money getStandardPrice() { return standardPrice; }
-    public void setStandardPrice(Money standardPrice) { this.standardPrice = standardPrice != null ? standardPrice : Money.zero(CurrencyCode.MAD); this.setUpdatedAt(LocalDateTime.now()); }
-
-    public Money getCostPrice() { return costPrice; }
-    public void setCostPrice(Money costPrice) { this.costPrice = costPrice != null ? costPrice : Money.zero(CurrencyCode.MAD); this.setUpdatedAt(LocalDateTime.now()); }
-
-    public Money getLastPurchasePrice() { return lastPurchasePrice; }
-    public void setLastPurchasePrice(Money lastPurchasePrice) { this.lastPurchasePrice = lastPurchasePrice != null ? lastPurchasePrice : Money.zero(CurrencyCode.MAD); this.setUpdatedAt(LocalDateTime.now()); }
-
-    public Money getAveragePurchasePrice() { return averagePurchasePrice; }
-    public void setAveragePurchasePrice(Money averagePurchasePrice) { this.averagePurchasePrice = averagePurchasePrice != null ? averagePurchasePrice : Money.zero(CurrencyCode.MAD); this.setUpdatedAt(LocalDateTime.now()); }
-
-    // ---- OBSOLESCENCE ----
-    public LocalDateTime getObsoletedAt() { return obsoletedAt; }
-    public void setObsoletedAt(LocalDateTime obsoletedAt) { this.obsoletedAt = obsoletedAt; this.setUpdatedAt(LocalDateTime.now()); }
-
-    public String getObsoletedBy() { return obsoletedBy; }
-    public void setObsoletedBy(String obsoletedBy) { this.obsoletedBy = obsoletedBy; this.setUpdatedAt(LocalDateTime.now()); }
-
-    public String getObsoletedReason() { return obsoletedReason; }
-    public void setObsoletedReason(String obsoletedReason) { this.obsoletedReason = obsoletedReason; this.setUpdatedAt(LocalDateTime.now()); }
-
-    public List<StockMovement> getStockMovements() { return stockMovements; }
-    public void setStockMovements(List<StockMovement> stockMovements) {
-        this.stockMovements = stockMovements != null ? new ArrayList<>(stockMovements) : new ArrayList<>();
     }
 
     // ============================================================
@@ -684,7 +601,6 @@ public class Material extends BaseEntity {
     public boolean isActive() { return MaterialStatus.ACTIVE.equals(this.status); }
     public boolean isObsolete() { return MaterialStatus.OBSOLETE.equals(this.status); }
     public boolean isOrderable() { return isActive() && !isObsolete(); }
-    public boolean isOutOfStock() { return this.currentStock <= 0; }
 
     // ============================================================
     // EQUALS & HASHCODE
@@ -695,12 +611,12 @@ public class Material extends BaseEntity {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         Material material = (Material) o;
-        return Objects.equals(getId(), material.getId());
+        return Objects.equals(getId(), material.getId()) ||
+                Objects.equals(code, material.code);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(getId());
+        return Objects.hash(getId(), code);
     }
-
 }

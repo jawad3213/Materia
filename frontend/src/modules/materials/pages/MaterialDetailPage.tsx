@@ -5,6 +5,8 @@ import PageMeta from "../../../shared/components/common/PageMeta";
 import { materialApi } from "../services/materialApi";
 import type { Material } from "../types/Material";
 import Badge from "../../../shared/components/ui/badge/Badge";
+import MaterialStockDashboard from "../components/MaterialStockDashboard";
+import ReorderRecommendationModal from "../components/ReorderRecommendationModal";
 
 const statusColorMap: Record<string, "success" | "warning" | "error" | "info" | "light"> = {
   ACTIVE: "success",
@@ -42,20 +44,23 @@ export default function MaterialDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const [isReorderModalOpen, setIsReorderModalOpen] = useState(false);
+
+  const fetchMaterial = async () => {
+    if (!id) return;
+    try {
+      setLoading(true);
+      const response = await materialApi.getById(id);
+      setMaterial(response.data);
+    } catch (err: any) {
+      console.error("Failed to load material details:", err);
+      setError(err.response?.data?.message || "Failed to load material details");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchMaterial = async () => {
-      if (!id) return;
-      try {
-        setLoading(true);
-        const response = await materialApi.getById(id);
-        setMaterial(response.data);
-      } catch (err: any) {
-        console.error("Failed to load material details:", err);
-        setError(err.response?.data?.message || "Failed to load material details");
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchMaterial();
   }, [id]);
 
@@ -166,77 +171,11 @@ export default function MaterialDetailPage() {
             )}
           </div>
 
-          {/* Inventory & Stock Card */}
-          <div className="rounded-xl border border-gray-200 bg-white p-6 dark:border-white/[0.05] dark:bg-white/[0.03]">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-5 flex items-center gap-2">
-              <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-              </svg>
-              Inventory & Stock
-            </h3>
-            
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-              <div className="p-4 rounded-lg bg-gray-50 dark:bg-gray-800/50">
-                <span className="block text-xs font-medium uppercase tracking-wider text-gray-500 mb-1">Current Stock</span>
-                <span className="text-2xl font-semibold text-gray-900 dark:text-white">
-                  {material.currentStock} <span className="text-sm font-normal text-gray-500">{material.unitOfMeasure}</span>
-                </span>
-              </div>
-              <div className="p-4 rounded-lg bg-gray-50 dark:bg-gray-800/50">
-                <span className="block text-xs font-medium uppercase tracking-wider text-gray-500 mb-1">Available Stock</span>
-                <span className="text-2xl font-semibold text-brand-600 dark:text-brand-400">
-                  {material.availableStock} <span className="text-sm font-normal text-brand-500/70">{material.unitOfMeasure}</span>
-                </span>
-              </div>
-              <div className="p-4 rounded-lg bg-gray-50 dark:bg-gray-800/50">
-                <span className="block text-xs font-medium uppercase tracking-wider text-gray-500 mb-1">Min / Max Stock</span>
-                <span className="text-xl font-medium text-gray-700 dark:text-gray-300">
-                  {material.minimumStock} / {material.maximumStock}
-                </span>
-              </div>
-              <div className="p-4 rounded-lg bg-gray-50 dark:bg-gray-800/50">
-                <span className="block text-xs font-medium uppercase tracking-wider text-gray-500 mb-1">Safety / Reorder</span>
-                <span className="text-xl font-medium text-gray-700 dark:text-gray-300">
-                  {material.safetyStock} / {material.reorderPoint}
-                </span>
-              </div>
-            </div>
-
-            <div className="flex gap-4 mt-6 pt-6 border-t border-gray-100 dark:border-white/[0.05]">
-              {material.isBelowMinimumStock && (
-                <div className="flex items-center gap-2 text-sm text-error-600 bg-error-50 px-3 py-1.5 rounded-md dark:bg-error-500/10 dark:text-error-400">
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                  </svg>
-                  Below Minimum Stock
-                </div>
-              )}
-              {material.isReorderNeeded && (
-                <div className="flex items-center gap-2 text-sm text-warning-700 bg-warning-50 px-3 py-1.5 rounded-md dark:bg-warning-500/10 dark:text-warning-400">
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Reorder Needed
-                </div>
-              )}
-              {material.isOutOfStock && (
-                <div className="flex items-center gap-2 text-sm text-error-600 bg-error-50 px-3 py-1.5 rounded-md dark:bg-error-500/10 dark:text-error-400">
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Out of Stock
-                </div>
-              )}
-              {(!material.isBelowMinimumStock && !material.isReorderNeeded && !material.isOutOfStock) && (
-                 <div className="flex items-center gap-2 text-sm text-success-600 bg-success-50 px-3 py-1.5 rounded-md dark:bg-success-500/10 dark:text-success-400">
-                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                 </svg>
-                 Stock Levels Optimal
-               </div>
-              )}
-            </div>
-          </div>
+          {/* Inventory & Stock Dashboard (Option 3) */}
+          <MaterialStockDashboard
+            material={material}
+            onOpenReorder={() => setIsReorderModalOpen(true)}
+          />
         </div>
 
         {/* Right Column: Sidebar info */}
@@ -327,6 +266,18 @@ export default function MaterialDetailPage() {
 
         </div>
       </div>
+
+      {/* 1-Click Reorder Modal */}
+      {material && (
+        <ReorderRecommendationModal
+          materialId={material.id}
+          isOpen={isReorderModalOpen}
+          onClose={() => setIsReorderModalOpen(false)}
+          onReorderSuccess={() => {
+            fetchMaterial();
+          }}
+        />
+      )}
     </>
   );
 }
