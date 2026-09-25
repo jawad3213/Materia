@@ -1,4 +1,5 @@
 package com.materia.backend.contexts.masterData.application.dtos.supplier;
+import com.materia.backend.common.domain.enums.CurrencyCode;
 
 /**
  * Criteria for advanced supplier search.

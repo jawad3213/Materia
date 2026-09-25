@@ -15,23 +15,19 @@ public interface MaterialUseCase extends BaseUseCase<CreateMaterialInput, Materi
 
     MaterialOutput update(UUID id, UpdateMaterialInput request);
 
-    List<MaterialOutput> getMaterialsByCategory(UUID categoryId);
-
-    List<MaterialOutput> getMaterialsBySupplier(UUID supplierId);
-
     MaterialOutput increaseStock(UUID id, int quantity);
 
     MaterialOutput decreaseStock(UUID id, int quantity);
 
-    List<MaterialOutput> getMaterialsBelowMinimumStock();
+    List<MaterialOutput> getMaterialsNeedingReorder();
 
-    List<MaterialOutput> getAvailableStockMaterials();
+    List<MaterialOutput> getCriticalMaterials();
 
     List<MaterialOutput> getOutOfStockMaterials();
 
-    List<MaterialOutput> getMaterialsByStatus(String status);
+    com.materia.backend.contexts.masterData.application.dtos.material.ReorderRecommendationOutput getReorderRecommendation(UUID id);
 
-    List<MaterialOutput> getMaterialsByMaterialType(String materialType);
+    com.materia.backend.contexts.masterData.application.dtos.material.ManualReorderOutput triggerReorder(UUID id, Integer quantity, String reason);
 
     com.materia.backend.common.application.PageResponse<com.materia.backend.contexts.masterData.application.dtos.material.MaterialListOutput> getAllList(int page, int size);
 

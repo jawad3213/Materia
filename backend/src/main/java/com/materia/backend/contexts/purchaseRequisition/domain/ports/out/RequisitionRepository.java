@@ -36,6 +36,11 @@ public interface RequisitionRepository extends BaseRepository<Requisition> {
     List<Requisition> findByRequesterId(String requesterId);
 
     /**
+     * Finds the most recent requisition by requester name.
+     */
+    Optional<Requisition> findFirstByRequesterName(String requesterName);
+
+    /**
      * Finds requisitions assigned to an approver.
      */
     List<Requisition> findByApproverId(String approverId);

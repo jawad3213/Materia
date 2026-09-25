@@ -5,8 +5,8 @@ import com.materia.backend.contexts.invoice.domain.entities.InvoiceLine;
 import com.materia.backend.contexts.invoice.domain.valueObjects.InvoiceCode;
 import com.materia.backend.contexts.invoice.infrastructure.adapters.out.persistence.entities.InvoiceJpaEntity;
 import com.materia.backend.contexts.invoice.infrastructure.adapters.out.persistence.entities.InvoiceLineJpaEntity;
-import com.materia.backend.contexts.masterData.domain.enums.CurrencyCode;
-import com.materia.backend.contexts.masterData.domain.valueObjects.Money;
+import com.materia.backend.common.domain.enums.CurrencyCode;
+import com.materia.backend.common.domain.valueObjects.Money;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;

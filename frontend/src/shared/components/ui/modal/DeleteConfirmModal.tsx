@@ -52,14 +52,14 @@ export default function DeleteConfirmModal({
           <button
             onClick={onClose}
             disabled={isDeleting}
-            className="px-6 py-3 text-base font-medium transition rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700 w-1/2 sm:w-auto"
+            className="px-6 py-3 text-base font-medium transition rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700 w-1/2 sm:w-auto cursor-pointer"
           >
             No
           </button>
           <button
             onClick={onConfirm}
             disabled={isDeleting}
-            className="px-6 py-3 text-base font-medium transition rounded-lg bg-error-500 hover:bg-error-600 text-white w-1/2 sm:w-auto"
+            className="px-6 py-3 text-base font-medium transition rounded-lg bg-red-600 hover:bg-red-700 active:bg-red-800 text-white shadow-sm w-1/2 sm:w-auto cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isDeleting ? "Deleting..." : "Yes"}
           </button>

@@ -143,7 +143,7 @@ public class PurchaseOrderJpaEntity extends BaseJpaEntity {
     @Column(name = "obsoleted_reason", length = 1000)
     private String obsoletedReason;
 
-    @OneToMany(mappedBy = "purchaseOrder", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "purchaseOrder", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     @OrderBy("lineNumber ASC")
     private List<PurchaseOrderLineJpaEntity> lines = new ArrayList<>();
 

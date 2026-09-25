@@ -3,7 +3,7 @@ package com.materia.backend.contexts.payement.domain.entities;
 import com.materia.backend.common.domain.BaseEntity;
 import com.materia.backend.contexts.payement.domain.enums.PaymentStatus;
 import com.materia.backend.contexts.payement.domain.valueObjects.PaymentCode;
-import com.materia.backend.contexts.masterData.domain.valueObjects.Money;
+import com.materia.backend.common.domain.valueObjects.Money;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;

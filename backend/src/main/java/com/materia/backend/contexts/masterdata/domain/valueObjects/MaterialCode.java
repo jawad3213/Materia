@@ -12,7 +12,7 @@ public class MaterialCode {
     // CONSTANTS
     // ============================================================
 
-    private static final String PATTERN_STRING = "^[A-Z]{3}-[0-9]{4}$";
+    private static final String PATTERN_STRING = "^(?i)[A-Z0-9]{2,10}-(?:[0-9]{4}-)?[0-9]{4}$";
     private static final Pattern PATTERN = Pattern.compile(PATTERN_STRING);
 
     public static final String DEFAULT_PREFIX = "MAT";
@@ -51,26 +51,35 @@ public class MaterialCode {
     }
 
     public static MaterialCode fromPrefixAndNumber(String prefix, int number) {
+        return fromPrefixYearAndNumber(prefix, java.time.Year.now().getValue(), number);
+    }
+
+    public static MaterialCode fromPrefixYearAndNumber(String prefix, int year, int number) {
+        if (prefix == null || prefix.trim().isEmpty()) {
+            throw new IllegalArgumentException("Prefix is required");
+        }
         if (number < 0 || number > 9999) {
             throw new IllegalArgumentException("Number must be between 0 and 9999");
         }
-        String code = prefix + "-" + String.format("%04d", number);
+        String code = prefix.trim().toUpperCase() + "-" + year + "-" + String.format("%04d", number);
         return new MaterialCode(code);
     }
 
     public static MaterialCode generateNext(String current) {
-        MaterialCode code = MaterialCode.of(current);
-        int number = code.getNumberAsInt() + 1;
-        return fromPrefixAndNumber(code.getPrefix(), number);
+        return generateNext(MaterialCode.of(current));
     }
 
     public static MaterialCode generateNext(MaterialCode current) {
         int number = current.getNumberAsInt() + 1;
+        int year = current.getYear();
+        if (year != -1) {
+            return fromPrefixYearAndNumber(current.getPrefix(), year, number);
+        }
         return fromPrefixAndNumber(current.getPrefix(), number);
     }
 
     public static MaterialCode createDefault() {
-        return new MaterialCode("MAT-0001");
+        return fromPrefixAndNumber(DEFAULT_PREFIX, 1);
     }
 
     public static MaterialCode createForType(MaterialType type) {
@@ -95,7 +104,7 @@ public class MaterialCode {
         if (!PATTERN.matcher(value).matches()) {
             throw new IllegalArgumentException(
                     "Invalid format for material code: " + value +
-                            ". Expected format: XXX-0000 (e.g. MAT-0001)"
+                            ". Expected format: XXX-YYYY-0000 (e.g. MAT-2026-0001) or legacy XXX-0000 (e.g. MAT-0001)"
             );
         }
     }
@@ -104,10 +113,33 @@ public class MaterialCode {
     // BUSINESS METHODS
     // ============================================================
 
-    public String getPrefix() { return value.substring(0, 3); }
-    public String getNumber() { return value.substring(4); }
+    public String getPrefix() {
+        int hyphenIndex = value.indexOf('-');
+        return hyphenIndex != -1 ? value.substring(0, hyphenIndex) : value;
+    }
+
+    public String getNumber() {
+        int hyphenIndex = value.lastIndexOf('-');
+        return hyphenIndex != -1 ? value.substring(hyphenIndex + 1) : value;
+    }
+
     public int getNumberAsInt() { return Integer.parseInt(getNumber()); }
-    public boolean startsWith(String prefix) { return value.startsWith(prefix); }
+
+    public int getYear() {
+        String[] parts = value.split("-");
+        if (parts.length == 3) {
+            try {
+                return Integer.parseInt(parts[1]);
+            } catch (NumberFormatException e) {
+                return -1;
+            }
+        }
+        return -1;
+    }
+
+    public boolean startsWith(String prefix) {
+        return value.toUpperCase().startsWith(prefix.toUpperCase());
+    }
 
     public boolean isRawMaterial() { return startsWith(RAW_MATERIAL_PREFIX); }
     public boolean isFinishedGood() { return startsWith(FINISHED_GOOD_PREFIX); }
@@ -123,6 +155,10 @@ public class MaterialCode {
     public MaterialCode increment() { return generateNext(this); }
 
     public MaterialCode withNewPrefix(String newPrefix) {
+        int year = getYear();
+        if (year != -1) {
+            return fromPrefixYearAndNumber(newPrefix, year, getNumberAsInt());
+        }
         return fromPrefixAndNumber(newPrefix, getNumberAsInt());
     }
 

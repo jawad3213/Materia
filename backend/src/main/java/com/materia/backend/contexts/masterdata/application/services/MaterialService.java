@@ -24,6 +24,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import com.materia.backend.contexts.masterData.application.dtos.material.ManualReorderOutput;
+import com.materia.backend.contexts.masterData.application.dtos.material.ReorderRecommendationOutput;
+import com.materia.backend.common.domain.valueObjects.Money;
+import com.materia.backend.contexts.masterData.domain.valueObjects.ReorderQuantity;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Retryable;
@@ -36,17 +41,26 @@ public class MaterialService implements MaterialUseCase {
     private final SupplierRepository supplierRepository;
     private final MaterialMapper mapper;
     private final MaterialCodeGeneratorService codeGenerator;
+    private final MaterialStockDomainService stockDomainService;
+    private final ReorderService reorderService;
+    private final ApplicationEventPublisher eventPublisher;
 
     public MaterialService(MaterialRepository materialRepository,
                            CategoryRepository categoryRepository,
                            SupplierRepository supplierRepository,
                            MaterialMapper mapper,
-                           MaterialCodeGeneratorService codeGenerator) {
+                           MaterialCodeGeneratorService codeGenerator,
+                           MaterialStockDomainService stockDomainService,
+                           ReorderService reorderService,
+                           ApplicationEventPublisher eventPublisher) {
         this.materialRepository = materialRepository;
         this.categoryRepository = categoryRepository;
         this.supplierRepository = supplierRepository;
         this.mapper = mapper;
         this.codeGenerator = codeGenerator;
+        this.stockDomainService = stockDomainService;
+        this.reorderService = reorderService;
+        this.eventPublisher = eventPublisher;
     }
 
     // ============================================================
@@ -163,17 +177,6 @@ public class MaterialService implements MaterialUseCase {
     // ============================================================
 
     @Override
-    @Transactional(readOnly = true)
-    public List<MaterialOutput> getMaterialsByCategory(UUID categoryId) {
-        return mapper.toResponseList(materialRepository.findByCategoryId(categoryId.toString()));
-    }
-
-    @Override
-    public List<MaterialOutput> getMaterialsBySupplier(UUID supplierId) {
-        return mapper.toResponseList(materialRepository.findBySupplierId(supplierId.toString()));
-    }
-
-    @Override
     @Transactional
     public MaterialOutput increaseStock(UUID id, int quantity) {
         Material material = materialRepository.findById(id)
@@ -203,36 +206,87 @@ public class MaterialService implements MaterialUseCase {
             );
         }
         material.decreaseStock(quantity);
-        return mapper.toResponse(materialRepository.save(material));
-    }
+        Material saved = materialRepository.save(material);
 
-    @Override
-    public List<MaterialOutput> getMaterialsBelowMinimumStock() {
-        return mapper.toResponseList(materialRepository.findBelowMinimumStock());
-    }
+        // Publish domain events (e.g. MaterialBelowReorderPointEvent)
+        for (var event : saved.getDomainEvents()) {
+            eventPublisher.publishEvent(event);
+        }
+        saved.clearDomainEvents();
 
-    @Override
-    public List<MaterialOutput> getAvailableStockMaterials() {
-        return mapper.toResponseList(materialRepository.findAvailableStock());
-    }
-
-    @Override
-    public List<MaterialOutput> getOutOfStockMaterials() {
-        return mapper.toResponseList(materialRepository.findOutOfStock());
-    }
-
-    @Override
-    public List<MaterialOutput> getMaterialsByStatus(String status) {
-        MaterialStatus materialStatus = MaterialStatus.fromValue(status);
-        return mapper.toResponseList(materialRepository.findByStatus(materialStatus));
+        return mapper.toResponse(saved);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<MaterialOutput> getMaterialsByMaterialType(String materialType) {
-        com.materia.backend.contexts.masterData.domain.enums.MaterialType type =
-                com.materia.backend.contexts.masterData.domain.enums.MaterialType.fromValue(materialType);
-        return mapper.toResponseList(materialRepository.findByMaterialType(type));
+    public List<MaterialOutput> getMaterialsNeedingReorder() {
+        List<Material> activeMaterials = materialRepository.findByStatus(MaterialStatus.ACTIVE);
+        List<Material> needingReorder = stockDomainService.getMaterialsNeedingReorder(activeMaterials);
+        return mapper.toResponseList(needingReorder);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MaterialOutput> getCriticalMaterials() {
+        List<Material> activeMaterials = materialRepository.findByStatus(MaterialStatus.ACTIVE);
+        List<Material> critical = stockDomainService.getCriticalMaterials(activeMaterials);
+        return mapper.toResponseList(critical);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MaterialOutput> getOutOfStockMaterials() {
+        List<Material> activeMaterials = materialRepository.findByStatus(MaterialStatus.ACTIVE);
+        List<Material> outOfStock = stockDomainService.getOutOfStockMaterials(activeMaterials);
+        return mapper.toResponseList(outOfStock);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ReorderRecommendationOutput getReorderRecommendation(UUID id) {
+        Material material = materialRepository.findById(id)
+                .orElseThrow(() -> new MaterialNotFoundException(id.toString()));
+        ReorderQuantity rq = stockDomainService.getRecommendedReorderQuantity(material);
+        if (rq == null) {
+            int eoq = material.getEconomicOrderQuantity() != null && material.getEconomicOrderQuantity() > 0
+                    ? material.getEconomicOrderQuantity() : 100;
+            Money estimated = material.getStandardPrice() != null ? material.getStandardPrice().multiply(eoq) : null;
+            rq = new ReorderQuantity(eoq, estimated, "Standard EOQ quantity", material.isBelowSafetyStock());
+        }
+        return new ReorderRecommendationOutput(
+                material.getId(),
+                material.getCode() != null ? material.getCode().getValue() : null,
+                material.getName(),
+                material.getCurrentStock(),
+                material.getStockOnOrder(),
+                material.getVirtualStock(),
+                material.getReorderPoint(),
+                material.getSafetyStock(),
+                rq.getQuantity(),
+                rq.getEstimatedCost() != null ? rq.getEstimatedCost().getAmount() : null,
+                rq.getEstimatedCost() != null && rq.getEstimatedCost().getCurrency() != null 
+                        ? rq.getEstimatedCost().getCurrency().getCode() : "MAD",
+                rq.getReason(),
+                rq.isUrgent(),
+                material.getStockStatus() != null ? material.getStockStatus().getCode() : null
+        );
+    }
+
+    @Override
+    @Transactional
+    public ManualReorderOutput triggerReorder(UUID id, Integer quantity, String reason) {
+        Material material = materialRepository.findById(id)
+                .orElseThrow(() -> new MaterialNotFoundException(id.toString()));
+        String requisitionId = reorderService.triggerManualReorder(id, quantity, reason);
+        int finalQty = (quantity != null && quantity > 0) ? quantity
+                : (material.getEconomicOrderQuantity() != null ? material.getEconomicOrderQuantity() : 100);
+        return new ManualReorderOutput(
+                material.getId(),
+                material.getCode() != null ? material.getCode().getValue() : null,
+                requisitionId,
+                finalQty,
+                "Demande d'achat " + requisitionId + " créée avec succès pour " + material.getName()
+        );
     }
 
 

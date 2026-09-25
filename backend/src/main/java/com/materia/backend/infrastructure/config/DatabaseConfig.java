@@ -41,35 +41,35 @@ public class DatabaseConfig {
     @Value("${spring.datasource.password}")
     private String password;
 
-    @Value("${spring.datasource.driver-class-name:org.postgresql.Driver}")
+    @Value("${spring.datasource.driver-class-name}")
     private String driverClassName;
 
     // JPA / Hibernate
-    @Value("${spring.jpa.show-sql:false}")
+    @Value("${spring.jpa.show-sql}")
     private boolean showSql;
 
-    @Value("${spring.jpa.format-sql:false}")
+    @Value("${spring.jpa.format-sql}")
     private boolean formatSql;
 
-    @Value("${spring.jpa.generate-ddl:true}")
+    @Value("${spring.jpa.generate-ddl}")
     private boolean generateDdl;
 
-    @Value("${spring.jpa.hibernate.ddl-auto:update}")
+    @Value("${spring.jpa.hibernate.ddl-auto}")
     private String ddlAuto;
 
-    @Value("${spring.jpa.properties.hibernate.dialect:org.hibernate.dialect.PostgreSQLDialect}")
+    @Value("${spring.jpa.properties.hibernate.dialect}")
     private String dialect;
 
-    @Value("${spring.jpa.properties.hibernate.default_schema:public}")
+    @Value("${spring.jpa.properties.hibernate.default_schema}")
     private String defaultSchema;
 
-    @Value("${spring.jpa.properties.hibernate.jdbc.batch_size:30}")
+    @Value("${spring.jpa.properties.hibernate.jdbc.batch_size}")
     private int batchSize;
 
-    @Value("${spring.jpa.properties.hibernate.order_inserts:true}")
+    @Value("${spring.jpa.properties.hibernate.order_inserts}")
     private boolean orderInserts;
 
-    @Value("${spring.jpa.properties.hibernate.order_updates:true}")
+    @Value("${spring.jpa.properties.hibernate.order_updates}")
     private boolean orderUpdates;
 
     // ============================================

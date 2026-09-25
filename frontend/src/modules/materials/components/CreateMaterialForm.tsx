@@ -113,6 +113,22 @@ export default function CreateMaterialForm() {
     setSubmitMessage(null);
     setFieldErrors({}); // Reset errors on new submission
     
+    // Client-side mandatory validation
+    const newErrors: Record<string, string> = {};
+    if (!formData.name?.trim()) newErrors.name = "Name is mandatory";
+    if (!formData.categoryId) newErrors.categoryId = "Category is mandatory";
+    if (!formData.supplierId) newErrors.supplierId = "Supplier is mandatory";
+    if (!formData.materialType) newErrors.materialType = "Material Type is mandatory";
+    if (!formData.unitOfMeasure) newErrors.unitOfMeasure = "Unit of Measure is mandatory";
+    if (!formData.createdBy?.trim()) newErrors.createdBy = "Created by is mandatory";
+
+    if (Object.keys(newErrors).length > 0) {
+      setFieldErrors(newErrors);
+      setSubmitMessage({ type: 'error', text: 'Validation failed. Please check the highlighted fields below.' });
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
       const requestPayload: CreateMaterialRequest = {
         ...formData,
@@ -166,7 +182,7 @@ export default function CreateMaterialForm() {
     <>
       {/* Floating Toast Notification */}
       {submitMessage && (
-        <div className="fixed top-8 right-7 z-50 animate-in fade-in slide-in-from-top-5 duration-300">
+        <div className="fixed top-20 right-6 z-[999999] animate-in fade-in slide-in-from-top-5 duration-300">
           <Toast 
             variant={submitMessage.type} 
             message={submitMessage.text} 
@@ -526,6 +542,7 @@ export default function CreateMaterialForm() {
             Cancel
           </Button>
           <Button 
+            type="submit"
             variant="primary" 
             disabled={isSubmitting}
             startIcon={

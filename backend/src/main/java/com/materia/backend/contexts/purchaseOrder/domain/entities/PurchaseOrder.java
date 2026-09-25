@@ -1,8 +1,8 @@
 package com.materia.backend.contexts.purchaseOrder.domain.entities;
 
 import com.materia.backend.common.domain.BaseEntity;
-import com.materia.backend.contexts.masterData.domain.enums.CurrencyCode;
-import com.materia.backend.contexts.masterData.domain.valueObjects.Money;
+import com.materia.backend.common.domain.enums.CurrencyCode;
+import com.materia.backend.common.domain.valueObjects.Money;
 import com.materia.backend.contexts.purchaseOrder.domain.enums.DeliveryStatus;
 import com.materia.backend.contexts.purchaseOrder.domain.enums.OrderStatus;
 import com.materia.backend.contexts.purchaseOrder.domain.exceptions.PurchaseOrderInvalidLineException;

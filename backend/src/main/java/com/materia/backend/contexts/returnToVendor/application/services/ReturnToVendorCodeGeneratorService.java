@@ -5,6 +5,8 @@ import com.materia.backend.contexts.returnToVendor.domain.valueObjects.ReturnCod
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Year;
+
 @Service
 @Transactional
 public class ReturnToVendorCodeGeneratorService {
@@ -18,7 +20,9 @@ public class ReturnToVendorCodeGeneratorService {
     }
 
     public ReturnCode generateCode() {
-        int nextNumber = sequenceRepository.getNextValueAndIncrement(PREFIX);
-        return ReturnCode.fromPrefixAndNumber(PREFIX, nextNumber);
+        int currentYear = Year.now().getValue();
+        String sequenceKey = PREFIX + "-" + currentYear;
+        int nextNumber = sequenceRepository.getNextValueAndIncrement(sequenceKey);
+        return ReturnCode.fromPrefixYearAndNumber(PREFIX, currentYear, nextNumber);
     }
 }

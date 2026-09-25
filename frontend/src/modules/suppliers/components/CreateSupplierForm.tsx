@@ -136,7 +136,7 @@ export default function CreateSupplierForm() {
     <>
       {/* Floating Toast Notification */}
       {submitMessage && (
-        <div className="fixed top-8 right-7 z-50 animate-in fade-in slide-in-from-top-5 duration-300">
+        <div className="fixed top-20 right-6 z-[999999] animate-in fade-in slide-in-from-top-5 duration-300">
           <Toast 
             variant={submitMessage.type} 
             message={submitMessage.text} 
@@ -391,6 +391,7 @@ export default function CreateSupplierForm() {
               Cancel
             </Button>
             <Button 
+              type="submit"
               variant="primary" 
               disabled={isSubmitting}
               startIcon={

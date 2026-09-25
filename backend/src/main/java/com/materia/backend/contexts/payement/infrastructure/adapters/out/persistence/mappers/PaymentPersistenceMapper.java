@@ -1,7 +1,7 @@
 package com.materia.backend.contexts.payement.infrastructure.adapters.out.persistence.mappers;
 
-import com.materia.backend.contexts.masterData.domain.enums.CurrencyCode;
-import com.materia.backend.contexts.masterData.domain.valueObjects.Money;
+import com.materia.backend.common.domain.enums.CurrencyCode;
+import com.materia.backend.common.domain.valueObjects.Money;
 import com.materia.backend.contexts.payement.domain.entities.Payment;
 import com.materia.backend.contexts.payement.domain.entities.PaymentLine;
 import com.materia.backend.contexts.payement.domain.valueObjects.PaymentCode;

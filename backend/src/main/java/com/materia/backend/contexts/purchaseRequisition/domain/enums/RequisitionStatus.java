@@ -11,7 +11,6 @@ public enum RequisitionStatus {
 
     DRAFT("DRAFT", "Draft", "Requisition is being prepared", "#94a3b8"),
     SUBMITTED("SUBMITTED", "Submitted", "Requisition submitted for processing", "#2563eb"),
-    UNDER_REVIEW("UNDER_REVIEW", "Under Review", "Requisition is under review", "#3b82f6"),
     APPROVED("APPROVED", "Approved", "Requisition approved for conversion", "#22c55e"),
     REJECTED("REJECTED", "Rejected", "Requisition rejected", "#ef4444"),
     CANCELLED("CANCELLED", "Cancelled", "Requisition cancelled", "#6b7280"),
@@ -69,7 +68,7 @@ public enum RequisitionStatus {
     }
 
     public static List<RequisitionStatus> getModifiableStatuses() {
-        return List.of(DRAFT);
+        return List.of(DRAFT, SUBMITTED);
     }
 
     public static List<RequisitionStatus> getConvertibleStatuses() {
@@ -77,7 +76,15 @@ public enum RequisitionStatus {
     }
 
     public static List<RequisitionStatus> getValidatableStatuses() {
-        return List.of(SUBMITTED, UNDER_REVIEW);
+        return List.of(SUBMITTED);
+    }
+
+    public static List<RequisitionStatus> getDeletableStatuses() {
+        return List.of(DRAFT, REJECTED, CANCELLED);
+    }
+
+    public static List<RequisitionStatus> getCancellableStatuses() {
+        return List.of(SUBMITTED, APPROVED);
     }
 
     public boolean isModifiable() {
@@ -92,16 +99,32 @@ public enum RequisitionStatus {
         return getValidatableStatuses().contains(this);
     }
 
-    public boolean isCancellable() {
-        return !CONVERTED.equals(this) && !REJECTED.equals(this) && !CANCELLED.equals(this);
+    public boolean isDeletable() {
+        return getDeletableStatuses().contains(this);
     }
 
-    public boolean isDeletable() {
+    public boolean isCancellable() {
+        return getCancellableStatuses().contains(this);
+    }
+
+    public boolean isSubmittable() {
         return DRAFT.equals(this);
     }
 
+    public boolean isApprovable() {
+        return SUBMITTED.equals(this);
+    }
+
+    public boolean isRejectable() {
+        return SUBMITTED.equals(this);
+    }
+
+    public boolean isTerminal() {
+        return CONVERTED.equals(this) || REJECTED.equals(this) || CANCELLED.equals(this);
+    }
+
     public boolean isActive() {
-        return DRAFT.equals(this) || SUBMITTED.equals(this) || UNDER_REVIEW.equals(this);
+        return DRAFT.equals(this) || SUBMITTED.equals(this);
     }
 
     public boolean isFinal() {

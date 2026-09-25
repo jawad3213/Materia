@@ -1,7 +1,7 @@
 package com.materia.backend.contexts.purchaseOrder.infrastructure.adapters.out.persistence.mappers;
 
-import com.materia.backend.contexts.masterData.domain.enums.CurrencyCode;
-import com.materia.backend.contexts.masterData.domain.valueObjects.Money;
+import com.materia.backend.common.domain.enums.CurrencyCode;
+import com.materia.backend.common.domain.valueObjects.Money;
 import com.materia.backend.contexts.purchaseOrder.domain.entities.PurchaseOrder;
 import com.materia.backend.contexts.purchaseOrder.domain.entities.PurchaseOrderLine;
 import com.materia.backend.contexts.purchaseOrder.domain.valueObjects.OrderCode;

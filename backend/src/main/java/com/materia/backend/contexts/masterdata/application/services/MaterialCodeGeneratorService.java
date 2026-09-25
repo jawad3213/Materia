@@ -6,6 +6,8 @@ import com.materia.backend.contexts.masterData.domain.ports.out.CodeSequenceRepo
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Year;
+
 @Service
 @Transactional
 public class MaterialCodeGeneratorService {
@@ -17,13 +19,14 @@ public class MaterialCodeGeneratorService {
     }
 
     /**
-     * Generates a code automatically based on MaterialType
+     * Generates a code automatically based on MaterialType including the generation year
      */
     public MaterialCode generateCode(MaterialType type) {
         String prefix = getPrefix(type);
-        int nextNumber = sequenceRepository.getNextValueAndIncrement(prefix);
-        String codeValue = String.format("%s-%04d", prefix, nextNumber);
-        return MaterialCode.of(codeValue);
+        int currentYear = Year.now().getValue();
+        String sequenceKey = prefix + "-" + currentYear;
+        int nextNumber = sequenceRepository.getNextValueAndIncrement(sequenceKey);
+        return MaterialCode.fromPrefixYearAndNumber(prefix, currentYear, nextNumber);
     }
 
     /**

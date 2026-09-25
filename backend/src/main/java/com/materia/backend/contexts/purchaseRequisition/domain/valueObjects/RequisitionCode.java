@@ -5,7 +5,7 @@ import java.util.regex.Pattern;
 
 public class RequisitionCode {
 
-    private static final String PATTERN_STRING = "^REQ-[0-9]{4}$";
+    private static final String PATTERN_STRING = "^(?i)(?:REQ|PR)-(?:[0-9]{4}-)?[0-9]{4}$";
     private static final Pattern PATTERN = Pattern.compile(PATTERN_STRING);
     private static final String DEFAULT_PREFIX = "REQ";
 
@@ -21,28 +21,34 @@ public class RequisitionCode {
     }
 
     public static RequisitionCode fromPrefixAndNumber(String prefix, int number) {
+        return fromPrefixYearAndNumber(prefix, java.time.Year.now().getValue(), number);
+    }
+
+    public static RequisitionCode fromPrefixYearAndNumber(String prefix, int year, int number) {
         if (prefix == null || prefix.trim().isEmpty()) {
             throw new IllegalArgumentException("Prefix is required");
         }
         if (number < 0 || number > 9999) {
             throw new IllegalArgumentException("Number must be between 0 and 9999");
         }
-        String id = prefix.trim().toUpperCase() + "-" + String.format("%04d", number);
+        String id = prefix.trim().toUpperCase() + "-" + year + "-" + String.format("%04d", number);
         return new RequisitionCode(id);
     }
 
     public static RequisitionCode createDefault() {
-        return new RequisitionCode(DEFAULT_PREFIX + "-0001");
+        return fromPrefixAndNumber(DEFAULT_PREFIX, 1);
     }
 
     public static RequisitionCode generateNext(String current) {
-        RequisitionCode id = RequisitionCode.of(current);
-        int number = id.getNumberAsInt() + 1;
-        return fromPrefixAndNumber(id.getPrefix(), number);
+        return generateNext(RequisitionCode.of(current));
     }
 
     public static RequisitionCode generateNext(RequisitionCode current) {
         int number = current.getNumberAsInt() + 1;
+        int year = current.getYear();
+        if (year != -1) {
+            return fromPrefixYearAndNumber(current.getPrefix(), year, number);
+        }
         return fromPrefixAndNumber(current.getPrefix(), number);
     }
 
@@ -64,21 +70,35 @@ public class RequisitionCode {
         if (!PATTERN.matcher(trimmed).matches()) {
             throw new IllegalArgumentException(
                     "Invalid requisition code format: '" + value +
-                            "'. Expected format: REQ-0000 (for example: REQ-0001)"
+                            "'. Expected format: REQ-YYYY-0001 (e.g. REQ-2026-0001) or legacy REQ-0001"
             );
         }
     }
 
     public String getPrefix() {
-        return value.substring(0, 3);
+        int hyphenIndex = value.indexOf('-');
+        return hyphenIndex != -1 ? value.substring(0, hyphenIndex) : value;
     }
 
     public String getNumber() {
-        return value.substring(4);
+        int hyphenIndex = value.lastIndexOf('-');
+        return hyphenIndex != -1 ? value.substring(hyphenIndex + 1) : value;
     }
 
     public int getNumberAsInt() {
         return Integer.parseInt(getNumber());
+    }
+
+    public int getYear() {
+        String[] parts = value.split("-");
+        if (parts.length == 3) {
+            try {
+                return Integer.parseInt(parts[1]);
+            } catch (NumberFormatException e) {
+                return -1;
+            }
+        }
+        return -1;
     }
 
     public RequisitionCode increment() {
