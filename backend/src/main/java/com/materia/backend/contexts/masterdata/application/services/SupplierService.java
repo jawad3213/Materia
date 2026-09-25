@@ -15,7 +15,7 @@ import com.materia.backend.contexts.masterData.application.dtos.supplier.Supplie
 import com.materia.backend.contexts.masterData.application.dtos.supplier.SupplierFilterCriteria;
 import com.materia.backend.contexts.masterData.application.dtos.supplier.SupplierSearchCriteria;
 import com.materia.backend.contexts.masterData.domain.valueObjects.SupplierSearchFilter;
-import com.materia.backend.contexts.masterData.domain.enums.CurrencyCode;
+import com.materia.backend.common.domain.enums.CurrencyCode;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

@@ -150,6 +150,7 @@ module "iam_github_actions" {
 
   name_prefix                 = local.name_prefix
   github_repo                 = var.github_repo
+  create_oidc_provider        = var.create_oidc_provider
   ecr_repository_arn          = module.ecr.repository_arn
   ecs_task_execution_role_arn = module.ecs_fargate.execution_role_arn
   ecs_task_role_arn           = module.ecs_fargate.task_role_arn

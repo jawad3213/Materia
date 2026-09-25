@@ -5,6 +5,8 @@
 # -------------------------------------------------------------------
 # GitHub OIDC Provider (Conditionally created if not already in AWS account)
 # -------------------------------------------------------------------
+data "aws_caller_identity" "current" {}
+
 resource "aws_iam_openid_connect_provider" "github" {
   count = var.create_oidc_provider ? 1 : 0
 
@@ -21,7 +23,9 @@ resource "aws_iam_openid_connect_provider" "github" {
 }
 
 locals {
-  oidc_provider_arn = var.create_oidc_provider ? aws_iam_openid_connect_provider.github[0].arn : var.existing_oidc_provider_arn
+  account_id        = data.aws_caller_identity.current.account_id
+  default_oidc_arn  = "arn:aws:iam://${local.account_id}:oidc-provider/token.actions.githubusercontent.com"
+  oidc_provider_arn = var.create_oidc_provider ? aws_iam_openid_connect_provider.github[0].arn : coalesce(var.existing_oidc_provider_arn, local.default_oidc_arn)
 }
 
 # -------------------------------------------------------------------

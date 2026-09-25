@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 
 export type ToastVariant = "success" | "info" | "warning" | "error";
 
@@ -66,7 +66,7 @@ export default function Toast({ variant, message, onClose, duration }: ToastProp
   }, [duration]);
 
   return (
-    <div className="relative overflow-hidden rounded-lg border border-gray-200 bg-white p-4 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900 sm:max-w-sm">
+    <div className="relative overflow-hidden rounded-xl border border-gray-200 bg-white p-4 shadow-2xl dark:border-gray-800 dark:bg-gray-900 sm:max-w-md">
       <div 
         className={`absolute bottom-0 left-0 h-1 ${styles.bar} transition-all ease-linear`}
         style={{

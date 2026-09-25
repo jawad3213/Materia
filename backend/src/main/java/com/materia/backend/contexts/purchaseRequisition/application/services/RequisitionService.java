@@ -3,6 +3,9 @@ package com.materia.backend.contexts.purchaseRequisition.application.services;
 import com.materia.backend.common.application.PageResponse;
 import com.materia.backend.common.application.exceptions.NotFoundException;
 import com.materia.backend.common.application.exceptions.ValidationException;
+import com.materia.backend.common.domain.enums.CurrencyCode;
+import com.materia.backend.common.domain.services.ExchangeRateService;
+import com.materia.backend.common.domain.valueObjects.Money;
 import com.materia.backend.contexts.masterData.domain.entities.Material;
 import com.materia.backend.contexts.masterData.domain.ports.out.MaterialRepository;
 import com.materia.backend.contexts.purchaseRequisition.application.dtos.CreateRequisitionInput;
@@ -42,24 +45,70 @@ public class RequisitionService implements RequisitionUseCase {
     private final MaterialRepository materialRepository;
     private final RequisitionMapper mapper;
     private final RequisitionCodeGeneratorService codeGenerator;
+    private final ExchangeRateService exchangeRateService;
 
     public RequisitionService(RequisitionRepository requisitionRepository,
                               MaterialRepository materialRepository,
                               RequisitionMapper mapper,
-                              RequisitionCodeGeneratorService codeGenerator) {
+                              RequisitionCodeGeneratorService codeGenerator,
+                              ExchangeRateService exchangeRateService) {
         this.requisitionRepository = requisitionRepository;
         this.materialRepository = materialRepository;
         this.mapper = mapper;
         this.codeGenerator = codeGenerator;
+        this.exchangeRateService = exchangeRateService;
     }
 
     @Override
     @Retryable(retryFor = DataIntegrityViolationException.class, maxAttempts = 3, backoff = @Backoff(delay = 100))
     @Transactional
     public RequisitionOutput create(CreateRequisitionInput request) {
+        CurrencyCode targetCurrency = CurrencyCode.fromCode(
+                request != null && request.getCurrencyCode() != null && !request.getCurrencyCode().isBlank()
+                        ? request.getCurrencyCode()
+                        : "MAD"
+        );
+
+        if (request != null && request.getLines() != null) {
+            hydrateAndValidateLines(request.getLines(), targetCurrency);
+        }
+
+        // Auto-resolve requesterId and createdBy:
+        // requesterId is the same as createdBy, and we look up an existing requester ID from DB by requesterName
+        String requesterName = request != null ? request.getRequesterName() : null;
+        String resolvedRequesterId = request != null ? request.getRequesterId() : null;
+
+        if ((resolvedRequesterId == null || resolvedRequesterId.trim().isEmpty()) && requesterName != null && !requesterName.trim().isEmpty()) {
+            resolvedRequesterId = requisitionRepository.findFirstByRequesterName(requesterName.trim())
+                    .map(Requisition::getRequesterId)
+                    .orElse(null);
+        }
+
+        if (resolvedRequesterId == null || resolvedRequesterId.trim().isEmpty()) {
+            if (request != null && request.getUserId() != null && !request.getUserId().trim().isEmpty()) {
+                resolvedRequesterId = request.getUserId().trim();
+            } else if (requesterName != null && !requesterName.trim().isEmpty()) {
+                resolvedRequesterId = requesterName.trim();
+            } else {
+                resolvedRequesterId = "EMP-DEFAULT";
+            }
+        }
+
+        if (request != null) {
+            request.setRequesterId(resolvedRequesterId);
+            if (request.getUserId() == null || request.getUserId().trim().isEmpty()) {
+                request.setUserId(resolvedRequesterId);
+            }
+        }
+
         Requisition requisition = mapper.toEntity(request);
-        hydrateAndValidateLines(requisition.getLines());
-        requisition.setLines(requisition.getLines());
+        if (requisition.getRequesterId() == null || requisition.getRequesterId().trim().isEmpty()) {
+            requisition.setRequesterId(resolvedRequesterId);
+        }
+        if (requisition.getCreatedBy() == null || requisition.getCreatedBy().trim().isEmpty()) {
+            requisition.setCreatedBy(resolvedRequesterId);
+        }
+
         requisition.recalculateTotal();
         requisition.setRequisitionCode(generateNextCode());
         return mapper.toResponse(requisitionRepository.save(requisition));
@@ -86,7 +135,12 @@ public class RequisitionService implements RequisitionUseCase {
             throw new RequisitionNotModifiableException();
         }
         mapper.updateEntity(existing, request);
-        hydrateAndValidateLines(existing.getLines());
+        CurrencyCode targetCurrency = CurrencyCode.fromCode(
+                existing.getCurrencyCode() != null && !existing.getCurrencyCode().isBlank()
+                        ? existing.getCurrencyCode()
+                        : "MAD"
+        );
+        hydrateAndValidateLines(existing.getLines(), targetCurrency);
         existing.setLines(existing.getLines());
         existing.recalculateTotal();
         existing.setUpdatedAt(LocalDateTime.now());
@@ -194,17 +248,17 @@ public class RequisitionService implements RequisitionUseCase {
 
     @Override
     @Transactional
-    public RequisitionOutput cancel(UUID id, String userId, String reason) {
+    public RequisitionOutput convert(UUID id, String purchaseOrderId, String purchaseOrderCode, String userId) {
         Requisition requisition = getEntityById(id);
-        requisition.cancel(userId, reason);
+        requisition.convert(purchaseOrderId, purchaseOrderCode, userId);
         return mapper.toResponse(requisitionRepository.save(requisition));
     }
 
     @Override
     @Transactional
-    public RequisitionOutput convert(UUID id, String purchaseOrderId, String purchaseOrderCode, String userId) {
+    public RequisitionOutput cancel(UUID id, String userId, String reason) {
         Requisition requisition = getEntityById(id);
-        requisition.convert(purchaseOrderId, purchaseOrderCode, userId);
+        requisition.cancel(userId, reason);
         return mapper.toResponse(requisitionRepository.save(requisition));
     }
 
@@ -213,7 +267,7 @@ public class RequisitionService implements RequisitionUseCase {
                 .orElseThrow(() -> new RequisitionNotFoundException(id));
     }
 
-    private void hydrateAndValidateLines(List<RequisitionLine> lines) {
+    private void hydrateAndValidateLines(List<RequisitionLine> lines, CurrencyCode targetCurrency) {
         if (lines == null || lines.isEmpty()) {
             throw new ValidationException("At least one requisition line is required",
                     Map.of("lines", "At least one line is required"));
@@ -229,6 +283,18 @@ public class RequisitionService implements RequisitionUseCase {
             Material material = resolveMaterial(line, i);
             UUID existingId = line.getId();
             line.populateFromMaterial(material);
+
+            if (targetCurrency != null && material.getStandardPrice() != null) {
+                Money price = material.getStandardPrice();
+                if (!price.getCurrency().equals(targetCurrency)) {
+                    Money convertedPrice = exchangeRateService.convert(price, targetCurrency);
+                    line.setUnitPrice(convertedPrice);
+                } else {
+                    line.setUnitPrice(price);
+                }
+                line.setCurrencyCode(targetCurrency.getCode());
+                line.setCurrencyCodeLine(targetCurrency.getCode());
+            }
 
             if (existingId != null) {
                 line.setId(existingId);
@@ -269,5 +335,46 @@ public class RequisitionService implements RequisitionUseCase {
 
     private com.materia.backend.contexts.purchaseRequisition.domain.valueObjects.RequisitionCode generateNextCode() {
         return codeGenerator.generateCode();
+    }
+
+    @Transactional
+    public String createRequisitionFromReorder(Material material, int quantity, String reason, boolean isUrgent) {
+        Requisition requisition = new Requisition();
+        requisition.setTitle((isUrgent ? "[URGENT] " : "") + "Reorder for " + material.getName());
+        requisition.setDescription("Auto-generated reorder requisition: " + reason);
+        requisition.setJustification(reason != null && !reason.isBlank() ? reason : "Automated stock reorder");
+        requisition.setRequiredDate(java.time.LocalDate.now().plusDays(isUrgent ? 2 : 7));
+        requisition.setCurrencyCode(material.getStandardPrice() != null && material.getStandardPrice().getCurrency() != null 
+                ? material.getStandardPrice().getCurrency().getCode() : "MAD");
+        requisition.setRequisitionCode(generateNextCode());
+        requisition.setStatus(com.materia.backend.contexts.purchaseRequisition.domain.enums.RequisitionStatus.DRAFT);
+        
+        RequisitionLine line = new RequisitionLine(material, quantity, requisition.getRequiredDate());
+        requisition.addLine(line);
+        requisition.recalculateTotal();
+        
+        Requisition saved = requisitionRepository.save(requisition);
+        return saved.getRequisitionCode() != null ? saved.getRequisitionCode().getValue() : saved.getId().toString();
+    }
+
+    @Transactional
+    public String createGroupedRequisition(String supplierId, List<RequisitionLine> lines) {
+        Requisition requisition = new Requisition();
+        requisition.setTitle("Grouped replenishment for supplier " + supplierId);
+        requisition.setDescription("Auto-generated grouped replenishment requisition for supplier: " + supplierId);
+        requisition.setJustification("Nightly automated stock replenishment");
+        requisition.setRequiredDate(java.time.LocalDate.now().plusDays(7));
+        requisition.setCurrencyCode("MAD");
+        requisition.setRequisitionCode(generateNextCode());
+        requisition.setStatus(com.materia.backend.contexts.purchaseRequisition.domain.enums.RequisitionStatus.DRAFT);
+        
+        hydrateAndValidateLines(lines, CurrencyCode.MAD);
+        for (RequisitionLine line : lines) {
+            requisition.addLine(line);
+        }
+        requisition.recalculateTotal();
+        
+        Requisition saved = requisitionRepository.save(requisition);
+        return saved.getRequisitionCode() != null ? saved.getRequisitionCode().getValue() : saved.getId().toString();
     }
 }

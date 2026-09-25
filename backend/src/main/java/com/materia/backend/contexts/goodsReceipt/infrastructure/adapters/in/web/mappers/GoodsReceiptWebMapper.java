@@ -11,8 +11,8 @@ import com.materia.backend.contexts.goodsReceipt.infrastructure.adapters.in.web.
 import com.materia.backend.contexts.goodsReceipt.infrastructure.adapters.in.web.dtos.GoodsReceiptLineWebResponse;
 import com.materia.backend.contexts.goodsReceipt.infrastructure.adapters.in.web.dtos.GoodsReceiptWebResponse;
 import com.materia.backend.contexts.goodsReceipt.infrastructure.adapters.in.web.dtos.UpdateGoodsReceiptWebRequest;
-import com.materia.backend.contexts.masterData.domain.enums.CurrencyCode;
-import com.materia.backend.contexts.masterData.domain.valueObjects.Money;
+import com.materia.backend.common.domain.enums.CurrencyCode;
+import com.materia.backend.common.domain.valueObjects.Money;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;

@@ -114,7 +114,7 @@ variable "ecs_desired_count" {
 }
 
 variable "container_image" {
-  description = "Initial Docker container image (defaults to public nginx placeholder before CI/CD push)"
+  description = "Initial Docker container image for ECS bootstrapping before CI/CD registers active task definitions"
   type        = string
   default     = "public.ecr.aws/nginx/nginx:alpine"
 }
@@ -147,4 +147,10 @@ variable "github_repo" {
   description = "GitHub repository for OIDC authentication (e.g. jawad3213/materia)"
   type        = string
   default     = "*"
+}
+
+variable "create_oidc_provider" {
+  description = "Whether to create the GitHub OIDC provider (false by default in prod to reuse the one created by staging or existing in the account)"
+  type        = bool
+  default     = false
 }

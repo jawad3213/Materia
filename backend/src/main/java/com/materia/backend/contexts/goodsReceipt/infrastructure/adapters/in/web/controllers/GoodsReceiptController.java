@@ -14,7 +14,7 @@ import com.materia.backend.contexts.goodsReceipt.infrastructure.adapters.in.web.
 import com.materia.backend.contexts.goodsReceipt.infrastructure.adapters.in.web.dtos.RemoveGoodsReceiptLineWebRequest;
 import com.materia.backend.contexts.goodsReceipt.infrastructure.adapters.in.web.dtos.UpdateGoodsReceiptWebRequest;
 import com.materia.backend.contexts.goodsReceipt.infrastructure.adapters.in.web.mappers.GoodsReceiptWebMapper;
-import com.materia.backend.infrastructure.security.SecurityUtils;
+import com.materia.backend.gateway.security.SecurityUtils;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

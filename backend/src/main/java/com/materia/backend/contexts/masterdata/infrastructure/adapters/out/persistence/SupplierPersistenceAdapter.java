@@ -1,4 +1,5 @@
 package com.materia.backend.contexts.masterData.infrastructure.adapters.out.persistence;
+import com.materia.backend.common.domain.enums.CurrencyCode;
 
 import com.materia.backend.contexts.masterData.domain.entities.Supplier;
 import com.materia.backend.contexts.masterData.domain.ports.out.SupplierRepository;

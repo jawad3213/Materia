@@ -5,6 +5,8 @@ import com.materia.backend.contexts.purchaseRequisition.domain.valueObjects.Requ
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Year;
+
 /**
  * Generates stable purchase requisition business codes.
  */
@@ -21,7 +23,9 @@ public class RequisitionCodeGeneratorService {
     }
 
     public RequisitionCode generateCode() {
-        int nextNumber = sequenceRepository.getNextValueAndIncrement(PREFIX);
-        return RequisitionCode.fromPrefixAndNumber(PREFIX, nextNumber);
+        int currentYear = Year.now().getValue();
+        String sequenceKey = PREFIX + "-" + currentYear;
+        int nextNumber = sequenceRepository.getNextValueAndIncrement(sequenceKey);
+        return RequisitionCode.fromPrefixYearAndNumber(PREFIX, currentYear, nextNumber);
     }
 }

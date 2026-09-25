@@ -242,8 +242,13 @@ export default function CategoryList() {
             <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
               {loading ? (
                 <TableRow>
-                  <td colSpan={7} className="px-5 py-4 text-center text-gray-500">
-                    Loading categories...
+                  <td colSpan={7} className="py-20 text-center">
+                    <div className="flex flex-col items-center justify-center gap-3">
+                      <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                      <span className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                        Fetching categories from database...
+                      </span>
+                    </div>
                   </td>
                 </TableRow>
               ) : filteredCategories.length === 0 ? (

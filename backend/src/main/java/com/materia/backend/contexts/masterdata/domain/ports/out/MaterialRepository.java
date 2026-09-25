@@ -62,19 +62,9 @@ public interface MaterialRepository extends BaseRepository<Material> {
     List<Material> search(String keyword);
 
     /**
-     * Finds materials whose stock is below the minimum threshold
-     */
-    List<Material> findBelowMinimumStock();
-
-    /**
      * Finds materials whose stock is below the reorder point
      */
     List<Material> findBelowReorderPoint();
-
-    /**
-     * Finds materials with available stock > 0
-     */
-    List<Material> findAvailableStock();
 
     /**
      * Finds materials with available stock <= 0 (out of stock)
