@@ -1,7 +1,7 @@
 package com.materia.backend.contexts.payement.application.mappers;
 
 import com.materia.backend.common.application.BaseMapper;
-import com.materia.backend.contexts.masterData.domain.valueObjects.Money;
+import com.materia.backend.common.domain.valueObjects.Money;
 import com.materia.backend.contexts.payement.application.dtos.CreatePaymentInput;
 import com.materia.backend.contexts.payement.application.dtos.CreatePaymentLineInput;
 import com.materia.backend.contexts.payement.application.dtos.PaymentLineOutput;
@@ -23,7 +23,7 @@ public class PaymentMapper implements BaseMapper<Payment, CreatePaymentInput, Up
         if (request == null) return null;
 
         String currencyCode = request.getCurrencyCode() != null ? request.getCurrencyCode() : "MAD";
-        com.materia.backend.contexts.masterData.domain.enums.CurrencyCode currencyEnum = com.materia.backend.contexts.masterData.domain.enums.CurrencyCode.valueOf(currencyCode);
+        com.materia.backend.common.domain.enums.CurrencyCode currencyEnum = com.materia.backend.common.domain.enums.CurrencyCode.valueOf(currencyCode);
         Money totalAmount = request.getTotalAmount() != null ? Money.of(request.getTotalAmount(), currencyEnum) : null;
 
         return Payment.builder()
@@ -97,7 +97,7 @@ public class PaymentMapper implements BaseMapper<Payment, CreatePaymentInput, Up
     private PaymentLine toLineEntity(CreatePaymentLineInput line, String currencyCode) {
         if (line == null) return null;
         
-        com.materia.backend.contexts.masterData.domain.enums.CurrencyCode currencyEnum = com.materia.backend.contexts.masterData.domain.enums.CurrencyCode.valueOf(currencyCode);
+        com.materia.backend.common.domain.enums.CurrencyCode currencyEnum = com.materia.backend.common.domain.enums.CurrencyCode.valueOf(currencyCode);
         Money lineAmount = line.getAmount() != null ? Money.of(line.getAmount(), currencyEnum) : null;
         
         return PaymentLine.builder()

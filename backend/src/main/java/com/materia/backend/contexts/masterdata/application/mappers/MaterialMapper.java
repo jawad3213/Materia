@@ -4,11 +4,11 @@ import com.materia.backend.contexts.masterData.application.dtos.material.CreateM
 import com.materia.backend.contexts.masterData.application.dtos.material.MaterialOutput;
 import com.materia.backend.contexts.masterData.application.dtos.material.UpdateMaterialInput;
 import com.materia.backend.contexts.masterData.domain.entities.Material;
-import com.materia.backend.contexts.masterData.domain.enums.CurrencyCode;
+import com.materia.backend.common.domain.enums.CurrencyCode;
 import com.materia.backend.contexts.masterData.domain.enums.MaterialType;
 import com.materia.backend.contexts.masterData.domain.enums.MaterialStatus;
 import com.materia.backend.contexts.masterData.domain.enums.UnitOfMeasure;
-import com.materia.backend.contexts.masterData.domain.valueObjects.Money;
+import com.materia.backend.common.domain.valueObjects.Money;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -161,6 +161,9 @@ public class MaterialMapper implements BaseMapper<Material, CreateMaterialInput,
         response.setIsBelowMinimumStock(entity.isBelowMinimumStock());
         response.setIsReorderNeeded(entity.isBelowReorderPoint());
         response.setIsOutOfStock(entity.isOutOfStock());
+        response.setStockStatus(entity.getStockStatus() != null ? entity.getStockStatus().getCode() : null);
+        response.setStockOnOrder(entity.getStockOnOrder());
+        response.setVirtualStock(entity.getVirtualStock());
         response.setObsoletedAt(entity.getObsoletedAt());
         response.setObsoletedBy(entity.getObsoletedBy());
         response.setObsoletedReason(entity.getObsoletedReason());
@@ -206,6 +209,13 @@ public class MaterialMapper implements BaseMapper<Material, CreateMaterialInput,
         response.setDescription(entity.getDescription());
         response.setAlternativeName(entity.getAlternativeName());
         response.setSearchKeywords(entity.getSearchKeywords());
+        response.setStockStatus(entity.getStockStatus() != null ? entity.getStockStatus().getCode() : null);
+        response.setStockOnOrder(entity.getStockOnOrder());
+        response.setReorderPoint(entity.getReorderPoint());
+        response.setSafetyStock(entity.getSafetyStock());
+        response.setIsBelowMinimumStock(entity.isBelowMinimumStock());
+        response.setIsReorderNeeded(entity.isBelowReorderPoint());
+        response.setIsOutOfStock(entity.isOutOfStock());
         return response;
     }
 

@@ -5,6 +5,8 @@ import com.materia.backend.contexts.masterData.domain.ports.out.CodeSequenceRepo
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Year;
+
 @Service
 @Transactional
 public class GoodsReceiptCodeGeneratorService {
@@ -18,7 +20,9 @@ public class GoodsReceiptCodeGeneratorService {
     }
 
     public ReceiptCode generateCode() {
-        int nextNumber = sequenceRepository.getNextValueAndIncrement(PREFIX);
-        return ReceiptCode.fromPrefixAndNumber(PREFIX, nextNumber);
+        int currentYear = Year.now().getValue();
+        String sequenceKey = PREFIX + "-" + currentYear;
+        int nextNumber = sequenceRepository.getNextValueAndIncrement(sequenceKey);
+        return ReceiptCode.fromPrefixYearAndNumber(PREFIX, currentYear, nextNumber);
     }
 }

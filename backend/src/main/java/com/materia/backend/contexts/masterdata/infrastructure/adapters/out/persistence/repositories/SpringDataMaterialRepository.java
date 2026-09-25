@@ -39,14 +39,8 @@ public interface SpringDataMaterialRepository extends JpaRepository<MaterialJpaE
 
 
 
-    @Query("SELECT m FROM MaterialJpaEntity m WHERE m.currentStock < m.minimumStock")
-    List<MaterialJpaEntity> findBelowMinimumStock();
-
     @Query("SELECT m FROM MaterialJpaEntity m WHERE m.currentStock < m.reorderPoint")
     List<MaterialJpaEntity> findBelowReorderPoint();
-
-    @Query("SELECT m FROM MaterialJpaEntity m WHERE m.availableStock > 0")
-    List<MaterialJpaEntity> findAvailableStock();
 
     @Query("SELECT m FROM MaterialJpaEntity m WHERE m.availableStock <= 0")
     List<MaterialJpaEntity> findOutOfStock();

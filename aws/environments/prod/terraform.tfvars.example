@@ -1,0 +1,18 @@
+# ===================================================================
+# Materia Production Environment Variables Example
+# Copy this file to terraform.tfvars and fill in your secrets
+# ===================================================================
+
+aws_region  = "eu-west-3"
+environment = "prod"
+
+# Required Secrets
+db_password        = "ChangeMeToAStrongProductionPassword123!"
+jwt_access_secret  = "bWF0ZXJpYS1hY2Nlc3MtdG9rZW4tc2VjcmV0LWtleS0yMDI2LXN1cGVyLXNlY3JldC1rZXktZm9yLWFjY2Vzcw=="
+jwt_refresh_secret = "bWF0ZXJpYS1yZWZyZXNoLXRva2VuLXNlY3VyaXR5LWtleS0yMDI2LXN1cGVyLXNlY3JldC1rZXktZm9yLXJlZnJlc2g="
+
+# GitHub Repository for OIDC
+github_repo = "jawad3213/materia"
+
+# Defaults to false in prod to reuse the OIDC provider created by staging in the same AWS account
+create_oidc_provider = false

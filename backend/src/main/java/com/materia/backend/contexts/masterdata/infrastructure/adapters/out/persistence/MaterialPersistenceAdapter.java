@@ -149,20 +149,8 @@ public class MaterialPersistenceAdapter implements MaterialRepository {
     }
 
     @Override
-    public List<Material> findBelowMinimumStock() {
-        return jpaRepository.findBelowMinimumStock().stream()
-                .map(mapper::toDomainEntity).collect(Collectors.toList());
-    }
-
-    @Override
     public List<Material> findBelowReorderPoint() {
         return jpaRepository.findBelowReorderPoint().stream()
-                .map(mapper::toDomainEntity).collect(Collectors.toList());
-    }
-
-    @Override
-    public List<Material> findAvailableStock() {
-        return jpaRepository.findAvailableStock().stream()
                 .map(mapper::toDomainEntity).collect(Collectors.toList());
     }
 

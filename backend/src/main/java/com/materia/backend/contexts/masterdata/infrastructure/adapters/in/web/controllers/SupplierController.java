@@ -1,4 +1,5 @@
 package com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.controllers;
+import com.materia.backend.common.domain.enums.CurrencyCode;
 
 import com.materia.backend.contexts.masterData.application.dtos.supplier.CreateSupplierInput;
 import com.materia.backend.contexts.masterData.application.dtos.supplier.SupplierOutput;

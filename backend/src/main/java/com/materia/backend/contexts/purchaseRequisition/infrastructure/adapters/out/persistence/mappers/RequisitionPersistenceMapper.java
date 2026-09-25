@@ -1,7 +1,7 @@
 package com.materia.backend.contexts.purchaseRequisition.infrastructure.adapters.out.persistence.mappers;
 
-import com.materia.backend.contexts.masterData.domain.enums.CurrencyCode;
-import com.materia.backend.contexts.masterData.domain.valueObjects.Money;
+import com.materia.backend.common.domain.enums.CurrencyCode;
+import com.materia.backend.common.domain.valueObjects.Money;
 import com.materia.backend.contexts.purchaseRequisition.domain.entities.Requisition;
 import com.materia.backend.contexts.purchaseRequisition.domain.entities.RequisitionLine;
 import com.materia.backend.contexts.purchaseRequisition.domain.valueObjects.RequisitionCode;
@@ -38,12 +38,14 @@ public class RequisitionPersistenceMapper {
         jpa.setSubmittedDate(domain.getSubmittedDate());
         jpa.setApprovedDate(domain.getApprovedDate());
         jpa.setConvertedDate(domain.getConvertedDate());
+        jpa.setCancelledDate(domain.getCancelledDate());
         jpa.setTotalAmount(domain.getTotalAmount() != null ? domain.getTotalAmount().getAmount() : null);
         jpa.setCurrencyCode(domain.getCurrencyCode());
         jpa.setApproverId(domain.getApproverId());
         jpa.setApproverName(domain.getApproverName());
         jpa.setRejectionReason(domain.getRejectionReason());
         jpa.setApprovalNotes(domain.getApprovalNotes());
+        jpa.setCancellationReason(domain.getCancellationReason());
         jpa.setPurchaseOrderId(domain.getPurchaseOrderId());
         jpa.setPurchaseOrderCode(domain.getPurchaseOrderCode());
         jpa.setCreatedAt(domain.getCreatedAt());
@@ -78,12 +80,14 @@ public class RequisitionPersistenceMapper {
         domain.setSubmittedDate(jpa.getSubmittedDate());
         domain.setApprovedDate(jpa.getApprovedDate());
         domain.setConvertedDate(jpa.getConvertedDate());
+        domain.setCancelledDate(jpa.getCancelledDate());
         domain.setTotalAmount(toMoney(jpa.getTotalAmount(), jpa.getCurrencyCode()));
         domain.setCurrencyCode(jpa.getCurrencyCode());
         domain.setApproverId(jpa.getApproverId());
         domain.setApproverName(jpa.getApproverName());
         domain.setRejectionReason(jpa.getRejectionReason());
         domain.setApprovalNotes(jpa.getApprovalNotes());
+        domain.setCancellationReason(jpa.getCancellationReason());
         domain.setPurchaseOrderId(jpa.getPurchaseOrderId());
         domain.setPurchaseOrderCode(jpa.getPurchaseOrderCode());
         domain.setLines(toDomainLines(jpa.getLines()));
@@ -172,6 +176,34 @@ public class RequisitionPersistenceMapper {
         domain.setBatchNumber(jpa.getBatchNumber());
         domain.setExpiryDate(jpa.getExpiryDate());
         return domain;
+    }
+
+    public void updateJpaEntity(RequisitionJpaEntity jpa, Requisition domain) {
+        if (jpa == null || domain == null) {
+            return;
+        }
+        jpa.setTitle(domain.getTitle());
+        jpa.setDescription(domain.getDescription());
+        jpa.setJustification(domain.getJustification());
+        jpa.setStatus(domain.getStatus());
+        jpa.setRequesterId(domain.getRequesterId());
+        jpa.setRequesterName(domain.getRequesterName());
+        jpa.setRequiredDate(domain.getRequiredDate());
+        jpa.setSubmittedDate(domain.getSubmittedDate());
+        jpa.setApprovedDate(domain.getApprovedDate());
+        jpa.setConvertedDate(domain.getConvertedDate());
+        jpa.setCancelledDate(domain.getCancelledDate());
+        jpa.setTotalAmount(domain.getTotalAmount() != null ? domain.getTotalAmount().getAmount() : null);
+        jpa.setCurrencyCode(domain.getCurrencyCode());
+        jpa.setApproverId(domain.getApproverId());
+        jpa.setApproverName(domain.getApproverName());
+        jpa.setRejectionReason(domain.getRejectionReason());
+        jpa.setApprovalNotes(domain.getApprovalNotes());
+        jpa.setCancellationReason(domain.getCancellationReason());
+        jpa.setPurchaseOrderId(domain.getPurchaseOrderId());
+        jpa.setPurchaseOrderCode(domain.getPurchaseOrderCode());
+        jpa.setUpdatedAt(domain.getUpdatedAt() != null ? domain.getUpdatedAt() : java.time.LocalDateTime.now());
+        jpa.setUpdatedBy(domain.getUpdatedBy());
     }
 
     private Money toMoney(BigDecimal amount, String currencyCode) {

@@ -6,7 +6,7 @@ import java.util.regex.Pattern;
 
 public class PaymentCode {
     
-    private static final String PATTERN_STRING = "^PAY-[0-9]{4}$";
+    private static final String PATTERN_STRING = "^(?i)PAY-(?:[0-9]{4}-)?[0-9]{4}$";
     private static final Pattern PATTERN = Pattern.compile(PATTERN_STRING);
     private static final String DEFAULT_PREFIX = "PAY";
     
@@ -22,28 +22,34 @@ public class PaymentCode {
     }
     
     public static PaymentCode fromPrefixAndNumber(String prefix, int number) {
+        return fromPrefixYearAndNumber(prefix, java.time.Year.now().getValue(), number);
+    }
+
+    public static PaymentCode fromPrefixYearAndNumber(String prefix, int year, int number) {
         if (prefix == null || prefix.trim().isEmpty()) {
             throw new IllegalArgumentException("Le préfixe est obligatoire");
         }
         if (number < 0 || number > 9999) {
             throw new IllegalArgumentException("Le numéro doit être entre 0 et 9999");
         }
-        String id = prefix.trim().toUpperCase() + "-" + String.format("%04d", number);
+        String id = prefix.trim().toUpperCase() + "-" + year + "-" + String.format("%04d", number);
         return new PaymentCode(id);
     }
     
     public static PaymentCode createDefault() {
-        return new PaymentCode(DEFAULT_PREFIX + "-0001");
+        return fromPrefixAndNumber(DEFAULT_PREFIX, 1);
     }
     
     public static PaymentCode generateNext(String current) {
-        PaymentCode id = PaymentCode.of(current);
-        int number = id.getNumberAsInt() + 1;
-        return fromPrefixAndNumber(id.getPrefix(), number);
+        return generateNext(PaymentCode.of(current));
     }
     
     public static PaymentCode generateNext(PaymentCode current) {
         int number = current.getNumberAsInt() + 1;
+        int year = current.getYear();
+        if (year != -1) {
+            return fromPrefixYearAndNumber(current.getPrefix(), year, number);
+        }
         return fromPrefixAndNumber(current.getPrefix(), number);
     }
     
@@ -65,21 +71,35 @@ public class PaymentCode {
         if (!PATTERN.matcher(trimmed).matches()) {
             throw new IllegalArgumentException(
                 "Format invalide pour le code de paiement: '" + value + 
-                "'. Format attendu: PAY-0000 (ex: PAY-0001)"
+                "'. Format attendu: PAY-YYYY-0001 (ex: PAY-2026-0001) ou legacy PAY-0001"
             );
         }
     }
     
     public String getPrefix() {
-        return value.substring(0, 3);
+        int hyphenIndex = value.indexOf('-');
+        return hyphenIndex != -1 ? value.substring(0, hyphenIndex) : value;
     }
     
     public String getNumber() {
-        return value.substring(4);
+        int hyphenIndex = value.lastIndexOf('-');
+        return hyphenIndex != -1 ? value.substring(hyphenIndex + 1) : value;
     }
     
     public int getNumberAsInt() {
         return Integer.parseInt(getNumber());
+    }
+
+    public int getYear() {
+        String[] parts = value.split("-");
+        if (parts.length == 3) {
+            try {
+                return Integer.parseInt(parts[1]);
+            } catch (NumberFormatException e) {
+                return -1;
+            }
+        }
+        return -1;
     }
     
     public PaymentCode increment() {

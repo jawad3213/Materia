@@ -1,7 +1,7 @@
 package com.materia.backend.contexts.invoice.domain.entities;
 
 import com.materia.backend.common.domain.BaseEntity;
-import com.materia.backend.contexts.masterData.domain.valueObjects.Money;
+import com.materia.backend.common.domain.valueObjects.Money;
 
 import java.time.LocalDateTime;
 import java.util.UUID;

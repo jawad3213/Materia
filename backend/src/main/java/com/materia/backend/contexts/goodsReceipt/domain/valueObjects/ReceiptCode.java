@@ -6,7 +6,7 @@ import java.util.regex.Pattern;
 
 public class ReceiptCode {
     
-    private static final String PATTERN_STRING = "^GR-[0-9]{4}$";
+    private static final String PATTERN_STRING = "^(?i)GR-(?:[0-9]{4}-)?[0-9]{4}$";
     private static final Pattern PATTERN = Pattern.compile(PATTERN_STRING);
     private static final String DEFAULT_PREFIX = "GR";
     
@@ -22,28 +22,34 @@ public class ReceiptCode {
     }
     
     public static ReceiptCode fromPrefixAndNumber(String prefix, int number) {
+        return fromPrefixYearAndNumber(prefix, java.time.Year.now().getValue(), number);
+    }
+
+    public static ReceiptCode fromPrefixYearAndNumber(String prefix, int year, int number) {
         if (prefix == null || prefix.trim().isEmpty()) {
             throw new IllegalArgumentException("Le préfixe est obligatoire");
         }
         if (number < 0 || number > 9999) {
             throw new IllegalArgumentException("Le numéro doit être entre 0 et 9999");
         }
-        String id = prefix.trim().toUpperCase() + "-" + String.format("%04d", number);
+        String id = prefix.trim().toUpperCase() + "-" + year + "-" + String.format("%04d", number);
         return new ReceiptCode(id);
     }
     
     public static ReceiptCode createDefault() {
-        return new ReceiptCode(DEFAULT_PREFIX + "-0001");
+        return fromPrefixAndNumber(DEFAULT_PREFIX, 1);
     }
     
     public static ReceiptCode generateNext(String current) {
-        ReceiptCode id = ReceiptCode.of(current);
-        int number = id.getNumberAsInt() + 1;
-        return fromPrefixAndNumber(id.getPrefix(), number);
+        return generateNext(ReceiptCode.of(current));
     }
     
     public static ReceiptCode generateNext(ReceiptCode current) {
         int number = current.getNumberAsInt() + 1;
+        int year = current.getYear();
+        if (year != -1) {
+            return fromPrefixYearAndNumber(current.getPrefix(), year, number);
+        }
         return fromPrefixAndNumber(current.getPrefix(), number);
     }
     
@@ -65,21 +71,35 @@ public class ReceiptCode {
         if (!PATTERN.matcher(trimmed).matches()) {
             throw new IllegalArgumentException(
                 "Format invalide pour le code de réception: '" + value + 
-                "'. Format attendu: GR-0000 (ex: GR-0001)"
+                "'. Format attendu: GR-YYYY-0001 (ex: GR-2026-0001) ou legacy GR-0001"
             );
         }
     }
     
     public String getPrefix() {
-        return value.substring(0, 2);
+        int hyphenIndex = value.indexOf('-');
+        return hyphenIndex != -1 ? value.substring(0, hyphenIndex) : value;
     }
     
     public String getNumber() {
-        return value.substring(3);
+        int hyphenIndex = value.lastIndexOf('-');
+        return hyphenIndex != -1 ? value.substring(hyphenIndex + 1) : value;
     }
     
     public int getNumberAsInt() {
         return Integer.parseInt(getNumber());
+    }
+
+    public int getYear() {
+        String[] parts = value.split("-");
+        if (parts.length == 3) {
+            try {
+                return Integer.parseInt(parts[1]);
+            } catch (NumberFormatException e) {
+                return -1;
+            }
+        }
+        return -1;
     }
     
     public ReceiptCode increment() {

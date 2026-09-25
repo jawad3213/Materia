@@ -27,6 +27,8 @@ public interface SpringDataRequisitionRepository extends JpaRepository<Requisiti
 
     List<RequisitionJpaEntity> findByRequesterId(String requesterId);
 
+    Optional<RequisitionJpaEntity> findFirstByRequesterNameIgnoreCaseOrderByCreatedAtDesc(String requesterName);
+
     List<RequisitionJpaEntity> findByApproverId(String approverId);
 
     List<RequisitionJpaEntity> findByRequiredDateBetween(LocalDate startDate, LocalDate endDate);

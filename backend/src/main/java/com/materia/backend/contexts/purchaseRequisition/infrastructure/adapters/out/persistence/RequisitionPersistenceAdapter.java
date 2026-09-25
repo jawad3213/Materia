@@ -51,6 +51,14 @@ public class RequisitionPersistenceAdapter implements RequisitionRepository {
 
     @Override
     public Requisition save(Requisition entity) {
+        if (entity.getId() != null) {
+            Optional<RequisitionJpaEntity> existingOpt = jpaRepository.findById(entity.getId());
+            if (existingOpt.isPresent()) {
+                RequisitionJpaEntity existing = existingOpt.get();
+                mapper.updateJpaEntity(existing, entity);
+                return mapper.toDomainEntity(jpaRepository.save(existing));
+            }
+        }
         RequisitionJpaEntity jpa = mapper.toJpaEntity(entity);
         return mapper.toDomainEntity(jpaRepository.save(jpa));
     }
@@ -114,6 +122,15 @@ public class RequisitionPersistenceAdapter implements RequisitionRepository {
         return jpaRepository.findByRequesterId(requesterId).stream()
                 .map(mapper::toDomainEntity)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public Optional<Requisition> findFirstByRequesterName(String requesterName) {
+        if (requesterName == null || requesterName.trim().isEmpty()) {
+            return Optional.empty();
+        }
+        return jpaRepository.findFirstByRequesterNameIgnoreCaseOrderByCreatedAtDesc(requesterName.trim())
+                .map(mapper::toDomainEntity);
     }
 
     @Override
