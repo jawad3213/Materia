@@ -16,7 +16,21 @@
 
     <properties>
         <java.version>21</java.version>
+        <testcontainers.version>1.19.8</testcontainers.version>
+        <jacoco.version>0.8.12</jacoco.version>
     </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.testcontainers</groupId>
+                <artifactId>testcontainers-bom</artifactId>
+                <version>${testcontainers.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <dependencies>
         <!-- Spring Boot Starter Data JPA -->
@@ -118,6 +132,25 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- Spring Security test support (@WithMockUser, SecurityMockMvcRequestPostProcessors) -->
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Testcontainers: integration tests run against a real PostgreSQL instance -->
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+
         <!-- Spring Retry for concurrent code generation -->
         <dependency>
             <groupId>org.springframework.retry</groupId>
@@ -158,6 +191,71 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+
+            <!--
+              Results must not depend on the machine that runs them (FR-011, FR-012):
+              - time zone and locale are pinned rather than inherited from the host;
+              - SPRING_PROFILES_ACTIVE resolves the base application.properties
+                placeholder, which has no default and would otherwise fail to resolve,
+                so every test runs under the test profile without needing
+                @ActiveProfiles on each class.
+            -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <argLine>@{argLine} -Duser.timezone=UTC -Duser.language=en -Duser.country=US</argLine>
+                    <trimStackTrace>false</trimStackTrace>
+                    <!--
+                      *IT.java names the Docker-backed integration tests. Surefire ignores that
+                      suffix by default, so it is listed explicitly, or those tests would be
+                      silently skipped by `mvn test`. Run only them with -Dtest='*IT'.
+                    -->
+                    <includes>
+                        <include>**/*Test.java</include>
+                        <include>**/*Tests.java</include>
+                        <include>**/*IT.java</include>
+                    </includes>
+                    <systemPropertyVariables>
+                        <SPRING_PROFILES_ACTIVE>test</SPRING_PROFILES_ACTIVE>
+                    </systemPropertyVariables>
+                </configuration>
+            </plugin>
+
+            <!--
+              Coverage is measured on business logic only; the 80% branch threshold that
+              enforces it is added once coverage is meaningful, so it does not block the
+              build mid-feature (see tasks.md T120).
+            -->
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>${jacoco.version}</version>
+                <configuration>
+                    <excludes>
+                        <exclude>**/dtos/**</exclude>
+                        <exclude>**/config/**</exclude>
+                        <exclude>**/*JpaEntity*</exclude>
+                        <exclude>**/mappers/**</exclude>
+                        <exclude>**/*Application.class</exclude>
+                    </excludes>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>prepare-agent</id>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>report</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>

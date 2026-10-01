@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Test logging is deliberately quiet. A failure report should be dominated by the
+  assertion that failed, not by application chatter around it (FR-014).
+
+  Raise a specific logger to DEBUG while diagnosing, rather than lowering the root.
+-->
+<configuration>
+
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} %-5level %logger{36} -- %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <root level="WARN">
+        <appender-ref ref="CONSOLE"/>
+    </root>
+
+    <!-- Application code: warnings and above only. -->
+    <logger name="com.materia.backend" level="WARN"/>
+
+    <!-- Framework noise that adds nothing to a test failure. -->
+    <logger name="org.springframework" level="WARN"/>
+    <logger name="org.hibernate" level="WARN"/>
+    <logger name="org.hibernate.SQL" level="WARN"/>
+    <logger name="com.zaxxer.hikari" level="WARN"/>
+    <logger name="org.apache.kafka" level="ERROR"/>
+    <logger name="org.testcontainers" level="WARN"/>
+    <logger name="tc" level="WARN"/>
+    <logger name="com.github.dockerjava" level="ERROR"/>
+
+    <!--
+      Flyway stays at INFO: which migrations applied is genuinely useful context
+      when a schema-related test fails.
+    -->
+    <logger name="org.flywaydb" level="INFO"/>
+
+</configuration>

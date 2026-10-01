@@ -6,6 +6,8 @@ Thumbs.db
 *.log
 .vscode/
 .idea/
+**/.idea/
+specs/
 
 # ==========================================
 # Root Environment Secrets
@@ -16,4 +18,5 @@ Thumbs.db
 # Backend ignored resources
 backend/src/main/resources/db/
 backend/src/main/resources/META-INF/
+
 
