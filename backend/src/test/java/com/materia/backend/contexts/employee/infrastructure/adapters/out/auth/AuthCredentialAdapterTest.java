@@ -126,13 +126,16 @@ class AuthCredentialAdapterTest {
     }
 
     @Test
-    @DisplayName("Should not email anything when the caller supplies the password")
-    void shouldNotEmailWhenPasswordIsSupplied() {
+    @DisplayName("Should email the supplied password to the new user, so they receive their credential regardless of who chose it")
+    void shouldEmailSuppliedPasswordToRecipient() {
+        // Intended behaviour: the credential email is sent whether the password was
+        // generated or supplied by the caller. The plaintext exposure this implies is a
+        // recorded, accepted risk — see FINDING-001 in specs/001-backend-module-tests/research.md.
         stubSuccessfulSave();
 
         adapter.provisionUserAccount("john@example.com", "John", "Doe", "PURCHASER", "Str0ng!Pass");
 
-        verifyNoInteractions(emailSender);
+        verify(emailSender).sendTemporaryPasswordEmail(eq("john@example.com"), eq("Str0ng!Pass"));
     }
 
     @Test
