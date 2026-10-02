@@ -55,7 +55,26 @@ public class MaterialPersistenceAdapter implements MaterialRepository {
     @Transactional
     public Material save(Material entity) {
         MaterialJpaEntity jpa = mapper.toJpaEntity(entity);
-        MaterialJpaEntity saved = jpaRepository.save(jpa);
+        MaterialJpaEntity saved;
+        if (entity.getId() != null && jpaRepository.existsById(entity.getId())) {
+            MaterialJpaEntity existing = jpaRepository.findById(entity.getId()).orElseThrow();
+            // FINDING-026 fix: preserve existing stock movements across saves
+            List<MaterialStockMovementJpaEntity> currentMovements = existing.getStockMovements();
+            java.util.Set<UUID> existingIds = currentMovements.stream()
+                    .map(com.materia.backend.common.infrastructure.persistence.BaseJpaEntity::getId)
+                    .filter(java.util.Objects::nonNull)
+                    .collect(Collectors.toSet());
+            for (MaterialStockMovementJpaEntity newMov : jpa.getStockMovements()) {
+                if (newMov.getId() == null || !existingIds.contains(newMov.getId())) {
+                    newMov.setMaterial(existing);
+                    currentMovements.add(newMov);
+                }
+            }
+            org.springframework.beans.BeanUtils.copyProperties(jpa, existing, "id", "createdAt", "createdBy", "stockMovements");
+            saved = jpaRepository.save(existing);
+        } else {
+            saved = jpaRepository.save(jpa);
+        }
         jpaRepository.flush();
         return mapper.toDomainEntity(jpaRepository.findById(saved.getId()).orElse(saved));
     }

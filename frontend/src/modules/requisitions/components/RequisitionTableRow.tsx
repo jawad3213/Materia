@@ -4,6 +4,7 @@ import { TableRow, TableCell } from "../../../shared/components/ui/table";
 import Checkbox from "../../../shared/components/form/input/Checkbox";
 import RequisitionStatusBadge from "./RequisitionStatusBadge";
 import RequisitionRowActions from "./RequisitionRowActions";
+import useAuth from "../../../modules/auth/hooks/useAuth";
 import type { Requisition } from "../types";
 
 export interface RequisitionTableRowProps {
@@ -33,6 +34,10 @@ export default function RequisitionTableRow({
   onCancel,
   onDelete,
 }: RequisitionTableRowProps) {
+  const { hasPermission } = useAuth();
+  const hasRequisitionWrite = hasPermission('requisition:write');
+  const hasRequisitionConvert = hasPermission('requisition:convert');
+
   const linesCount = requisition.lines?.length || 0;
   const isPending =
     requisition.status === "SUBMITTED" || requisition.status === "UNDER_REVIEW";
@@ -42,17 +47,17 @@ export default function RequisitionTableRow({
   const isRejected = requisition.status === "REJECTED";
   const isCancelled = requisition.status === "CANCELLED";
 
-  // Status Lifecycle Rules:
-  // Modifier: DRAFT ✅ OUI, SUBMITTED ✅ OUI, others ❌ NON
-  const canEdit = isDraft || isPending;
-  // Supprimer: DRAFT ✅ OUI, REJECTED ✅ OUI, CANCELLED ✅ OUI, others ❌ NON
-  const canDelete = isDraft || isRejected || isCancelled;
-  // Soumettre: DRAFT ✅ OUI
-  const canSubmit = isDraft;
-  // Convertir: APPROVED ✅ OUI
-  const canConvert = isApproved;
-  // Annuler: SUBMITTED ✅ OUI, APPROVED ✅ OUI, DRAFT ❌ NON (delete directly instead)
-  const canCancel = isPending || isApproved;
+  // Status Lifecycle Rules gated by backend authorization permissions:
+  // Modifier: requisition:write && (DRAFT || SUBMITTED)
+  const canEdit = hasRequisitionWrite && (isDraft || isPending);
+  // Supprimer: requisition:write && (DRAFT || REJECTED || CANCELLED)
+  const canDelete = hasRequisitionWrite && (isDraft || isRejected || isCancelled);
+  // Soumettre: requisition:write && DRAFT
+  const canSubmit = hasRequisitionWrite && isDraft;
+  // Convertir: requisition:convert && APPROVED
+  const canConvert = hasRequisitionConvert && isApproved;
+  // Annuler: requisition:write && (SUBMITTED || APPROVED)
+  const canCancel = hasRequisitionWrite && (isPending || isApproved);
 
   const requesterInitials = (requisition.requesterName || "U")
     .split(" ")

@@ -65,7 +65,6 @@ class MaterialPersistenceIT extends AbstractIntegrationTest {
     }
 
     @Test
-    @Disabled(FINDING_026)
     @DisplayName("stock: the movement history accumulates across separate changes, and nothing earlier is lost")
     void stockMovements_accumulateAcrossSaves() {
         Material m = materials.save(aMaterial().stock(40).build());
@@ -85,7 +84,6 @@ class MaterialPersistenceIT extends AbstractIntegrationTest {
     }
 
     @Test
-    @Disabled(FINDING_027)
     @DisplayName("stock: stock on order persists, so virtual stock is still correct after a reload")
     void stockOnOrder_persists() {
         Material m = materials.save(aMaterial().stock(12).onOrder(30).build());

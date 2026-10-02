@@ -1,0 +1,68 @@
+name: Backend Verification & Quality Gates
+
+on:
+  pull_request:
+    branches:
+      - main
+      - develop
+      - staging
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-tests.yml"
+  push:
+    branches:
+      - main
+      - develop
+      - staging
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-tests.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
+
+jobs:
+  test-and-verify:
+    name: Backend Test Suite & Quality Gates
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "21"
+          cache: "maven"
+
+      - name: Verify Docker is Available
+        run: |
+          docker version
+          docker info
+
+      - name: Run Test Suite & Verify Quality Gates (JaCoCo 80%)
+        run: |
+          cd backend
+          chmod +x mvnw
+          ./mvnw clean verify
+
+      - name: Upload Surefire Test Reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: surefire-reports
+          path: backend/target/surefire-reports/
+          retention-days: 14
+
+      - name: Upload JaCoCo Coverage Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-coverage-report
+          path: backend/target/site/jacoco/
+          retention-days: 14

@@ -12,6 +12,7 @@ import com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.ma
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -29,6 +30,7 @@ public class SupplierController {
         this.webMapper = webMapper;
     }
 
+    @PreAuthorize("hasAuthority('supplier:write')")
     @PostMapping
     public ResponseEntity<SupplierWebResponse> createSupplier(@Valid @RequestBody CreateSupplierWebRequest webRequest) {
         CreateSupplierInput request = webMapper.toAppCreateRequest(webRequest);
@@ -36,18 +38,21 @@ public class SupplierController {
         return new ResponseEntity<>(webMapper.toWebResponse(response), HttpStatus.CREATED);
     }
 
+    @PreAuthorize("hasAuthority('supplier:read')")
     @GetMapping("/{id}")
     public ResponseEntity<SupplierWebResponse> getSupplier(@PathVariable UUID id) {
         SupplierOutput response = supplierUseCase.getById(id);
         return ResponseEntity.ok(webMapper.toWebResponse(response));
     }
 
+    @PreAuthorize("hasAuthority('supplier:read')")
     @GetMapping("/code/{code}")
     public ResponseEntity<SupplierWebResponse> getSupplierByCode(@PathVariable String code) {
         SupplierOutput response = supplierUseCase.getByCode(code);
         return ResponseEntity.ok(webMapper.toWebResponse(response));
     }
 
+    @PreAuthorize("hasAuthority('supplier:read')")
     @GetMapping
     public ResponseEntity<List<SupplierWebResponse>> getAllSuppliers(
             @RequestParam(required = false) String status,
@@ -77,6 +82,7 @@ public class SupplierController {
         return ResponseEntity.ok(responses);
     }
 
+    @PreAuthorize("hasAuthority('supplier:write')")
     @PutMapping("/{id}")
     public ResponseEntity<SupplierWebResponse> updateSupplier(
             @PathVariable UUID id,
@@ -86,6 +92,7 @@ public class SupplierController {
         return ResponseEntity.ok(webMapper.toWebResponse(response));
     }
 
+    @PreAuthorize("hasAuthority('supplier:delete')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteSupplier(@PathVariable UUID id) {
         supplierUseCase.delete(id);
@@ -94,12 +101,14 @@ public class SupplierController {
 
     // ---- Custom Endpoints ----
 
+    @PreAuthorize("hasAuthority('supplier:read')")
     @GetMapping("/search")
     public ResponseEntity<List<SupplierWebResponse>> searchSuppliers(@RequestParam String keyword) {
         List<SupplierOutput> responses = supplierUseCase.searchSuppliers(keyword);
         return ResponseEntity.ok(webMapper.toWebResponseList(responses));
     }
 
+    @PreAuthorize("hasAuthority('supplier:read')")
     @GetMapping("/list")
     public ResponseEntity<com.materia.backend.common.application.PageResponse<com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.dtos.supplier.SupplierListWebResponse>> getAllSuppliersList(
             @RequestParam(defaultValue = "0") int page,
@@ -117,6 +126,7 @@ public class SupplierController {
         return ResponseEntity.ok(webPage);
     }
 
+    @PreAuthorize("hasAuthority('supplier:read')")
     @PostMapping("/filter/list")
     public ResponseEntity<com.materia.backend.common.application.PageResponse<com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.dtos.supplier.SupplierListWebResponse>> filterList(
             @RequestBody com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.dtos.supplier.SupplierFilterWebRequest webRequest,
@@ -138,6 +148,7 @@ public class SupplierController {
         return ResponseEntity.ok(webPage);
     }
 
+    @PreAuthorize("hasAuthority('supplier:read')")
     @PostMapping("/search/list")
     public ResponseEntity<com.materia.backend.common.application.PageResponse<com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.dtos.supplier.SupplierWebResponse>> searchAdvancedList(
             @RequestBody com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.dtos.supplier.SupplierSearchWebRequest webRequest,

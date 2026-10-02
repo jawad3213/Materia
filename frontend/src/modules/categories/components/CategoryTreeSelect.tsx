@@ -15,6 +15,7 @@ interface CategoryTreeSelectProps {
   className?: string;
   maxHeightClass?: string;
   error?: boolean;
+  excludeId?: string;
 }
 
 export default function CategoryTreeSelect({
@@ -24,6 +25,7 @@ export default function CategoryTreeSelect({
   className = "",
   maxHeightClass = "max-h-[320px]",
   error = false,
+  excludeId,
 }: CategoryTreeSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [nodes, setNodes] = useState<TreeNode[]>([]);
@@ -131,7 +133,9 @@ export default function CategoryTreeSelect({
   };
 
   const renderNodes = (nodeList: TreeNode[], level = 0) => {
-    return nodeList.map((node) => (
+    return nodeList
+      .filter((node) => !excludeId || node.id !== excludeId)
+      .map((node) => (
       <div key={node.id}>
         <div
           className={`flex items-center px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 ${

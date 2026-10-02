@@ -36,7 +36,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /** The requisition HTTP contract (T059-T062), through the real security chain. */
 @WebMvcTest(RequisitionController.class)
 @Import(RequisitionWebMapper.class)
-@WithMockUser(username = "alice")
+@WithMockUser(username = "alice", authorities = {"requisition:read", "requisition:write", "requisition:validate", "requisition:convert"})
 class RequisitionControllerTest extends AbstractWebMvcTest {
 
     private static final String BASE = "/api/v1/purchase-requisitions";
@@ -233,7 +233,6 @@ class RequisitionControllerTest extends AbstractWebMvcTest {
     // ---- Identity integrity ----
 
     @Test
-    @Disabled(FINDING_020)
     @DisplayName("identity: the approver recorded is the signed-in user, not whoever the caller names")
     void approve_recordsSignedInUserNotCallerSuppliedApprover() throws Exception {
         when(useCase.approve(eq(id), anyString(), anyString(), any())).thenReturn(output("APPROVED"));
@@ -242,5 +241,15 @@ class RequisitionControllerTest extends AbstractWebMvcTest {
         mockMvc.perform(patch(BASE + "/{id}/approve", id).param("approverId", "cfo").param("approverName", "The CFO"));
 
         verify(useCase, never()).approve(eq(id), eq("cfo"), anyString(), any());
+    }
+
+    // ---- Authorization: T113, T114 ----
+
+    @Test
+    @WithMockUser(authorities = {"requisition:read"})
+    @DisplayName("security: user lacking requisition:write receives 403 Forbidden")
+    void delete_withoutWriteAuthority_is403() throws Exception {
+        mockMvc.perform(delete(BASE + "/{id}", id))
+                .andExpect(status().isForbidden());
     }
 }

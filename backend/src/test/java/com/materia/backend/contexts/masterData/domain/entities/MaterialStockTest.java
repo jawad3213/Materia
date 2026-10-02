@@ -199,7 +199,6 @@ class MaterialStockTest {
     }
 
     @Test
-    @Disabled(FINDING_022)
     @DisplayName("reorder alert: fires when stock falls to the reorder point with nothing on order to cover it")
     void reorderAlert_firesWhenNothingOnOrder() {
         // The case automatic reordering exists for: stock drops below the reorder point and no
@@ -210,7 +209,6 @@ class MaterialStockTest {
     }
 
     @Test
-    @Disabled(FINDING_022)
     @DisplayName("reorder alert: stays silent when stock already on order covers the shortfall")
     void reorderAlert_silentWhenAlreadyCovered() {
         Material m = aMaterial().stock(25).reorderPoint(20).onOrder(100).build();

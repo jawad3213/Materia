@@ -66,7 +66,7 @@ export default function VisitorAnalyticsChart() {
     },
     tooltip: {
       y: {
-        formatter: function (val) {
+        formatter: function (val: number) {
           return val + " Visitors";
         },
       },

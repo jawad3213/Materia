@@ -38,7 +38,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * PostgreSQL schema (T063, T064). Also carries the edge cases that only exist end to end.
  */
 @AutoConfigureMockMvc
-@WithMockUser(username = "alice")
+@WithMockUser(username = "alice", authorities = {"requisition:read", "requisition:write", "requisition:validate", "requisition:convert", "material:read", "material:write", "material:stock:read", "material:stock:write"})
 class RequisitionWorkflowIT extends AbstractIntegrationTest {
 
     private static final String BASE = "/api/v1/purchase-requisitions";
@@ -176,7 +176,6 @@ class RequisitionWorkflowIT extends AbstractIntegrationTest {
     }
 
     @Test
-    @Disabled(FINDING_021)
     @DisplayName("create: a requisition always starts as a draft, whatever status the caller asks for")
     void create_ignoresClientSuppliedStatus() throws Exception {
         Material material = orderableMaterial();

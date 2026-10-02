@@ -18,6 +18,7 @@ import Pagination from "../../../shared/components/ui/Pagination";
 import SupplierFilters from "./SupplierFilters";
 import SupplierCard from "./SupplierCard";
 import SupplierInfoModal from "./SupplierInfoModal";
+import useAuth from "../../../modules/auth/hooks/useAuth";
 
 const colorClasses: Record<string, string> = {
   red: "bg-red-50 text-red-500 dark:bg-red-500/15 dark:text-red-500",
@@ -30,6 +31,9 @@ const colorClasses: Record<string, string> = {
 const colors = ["red", "orange", "purple", "green", "blue"];
 
 export default function SupplierListTable() {
+  const { hasPermission } = useAuth();
+  const canDeleteSupplier = hasPermission('supplier:delete');
+
   const [suppliers, setSuppliers] = useState<SupplierListItem[]>([]);
   const [searchSuppliers, setSearchSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(true);
@@ -211,7 +215,7 @@ export default function SupplierListTable() {
               onChange={(e) => {
                 setSearchKeyword(e.target.value);
                 if (e.target.value === "") {
-                  fetchSuppliers(filterStatus, filterCurrency, filterCountry, "");
+                  fetchSuppliers();
                 }
               }}
               onKeyDown={(e) => {
@@ -226,7 +230,7 @@ export default function SupplierListTable() {
                 type="button"
                 onClick={() => {
                   setSearchKeyword("");
-                  fetchSuppliers(filterStatus, filterCurrency, filterCountry, "");
+                  fetchSuppliers();
                 }}
                 className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
               >
@@ -565,15 +569,17 @@ export default function SupplierListTable() {
                             </svg>
                           </button>
                         </Link>
-                        <button 
-                          onClick={() => setSupplierToDelete(supplier)}
-                          className="flex items-center justify-center p-2 rounded-lg text-gray-400 hover:text-error-500 hover:bg-error-50 dark:hover:bg-error-500/10 dark:hover:text-error-500 transition-colors"
-                          title="Delete Supplier"
-                        >
-                          <svg className="size-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        </button>
+                        {canDeleteSupplier && (
+                          <button 
+                            onClick={() => setSupplierToDelete(supplier)}
+                            className="flex items-center justify-center p-2 rounded-lg text-gray-400 hover:text-error-500 hover:bg-error-50 dark:hover:bg-error-500/10 dark:hover:text-error-500 transition-colors"
+                            title="Delete Supplier"
+                          >
+                            <svg className="size-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>

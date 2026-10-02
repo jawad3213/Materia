@@ -43,12 +43,18 @@ class AuthService {
       (email ? email.split('@')[0] : 'User');
 
     const mustChangePassword = !!(backendUser.mustChangePassword ?? data.mustChangePassword);
+    const permissions: string[] = Array.isArray(data.permissions)
+      ? data.permissions
+      : Array.isArray(backendUser.permissions)
+      ? backendUser.permissions
+      : [];
 
     const user: User = {
       id: userId,
       name,
       email,
       role: rawRole,
+      permissions,
       createdAt: new Date().toISOString(),
       mustChangePassword,
     };

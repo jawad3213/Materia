@@ -1,6 +1,7 @@
 import { createContext, useState, useEffect, type ReactNode } from 'react';
 import type {
   User,
+  UserRole,
   LoginCredentials,
   ChangePasswordCredentials,
   ResetPasswordCredentials,
@@ -20,6 +21,8 @@ export interface AuthContextType {
   clearMustChangePassword: () => void;
   resetPassword: (data: ResetPasswordCredentials) => Promise<string>;
   confirmPasswordReset: (data: ConfirmResetPasswordCredentials) => Promise<string>;
+  hasRole: (roles: UserRole | UserRole[]) => boolean;
+  hasPermission: (permission: string) => boolean;
   clearError: () => void;
 }
 
@@ -170,6 +173,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const clearError = () => setError(null);
 
+  const hasRole = (roles: UserRole | UserRole[]): boolean => {
+    if (!user) return false;
+    const roleList = Array.isArray(roles) ? roles : [roles];
+    return roleList.includes(user.role);
+  };
+
+  const hasPermission = (permission: string): boolean => {
+    if (!user) return false;
+    if (user.role === 'ADMIN') return true;
+    if (user.permissions && user.permissions.includes(permission)) return true;
+    
+    // Canonical permission matrix fallback
+    const rolePermissions: Record<UserRole, string[]> = {
+      ADMIN: ['*'],
+      PURCHASER: [
+        'category:read', 'category:write',
+        'material:read', 'supplier:read', 'supplier:write',
+        'requisition:read', 'requisition:write', 'requisition:validate', 'requisition:convert'
+      ],
+      RECEIVER: [
+        'category:read', 'material:read', 'material:stock:read', 'material:stock:write',
+        'supplier:read', 'requisition:read'
+      ]
+    };
+    return rolePermissions[user.role]?.includes(permission) ?? false;
+  };
+
   const value: AuthContextType = {
     user,
     isAuthenticated: !!user,
@@ -181,6 +211,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     clearMustChangePassword,
     resetPassword,
     confirmPasswordReset,
+    hasRole,
+    hasPermission,
     clearError,
   };
 

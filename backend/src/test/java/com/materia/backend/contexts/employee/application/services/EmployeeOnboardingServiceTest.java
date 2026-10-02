@@ -57,7 +57,7 @@ class EmployeeOnboardingServiceTest {
     void setUp() {
         onboardingService = new EmployeeOnboardingService(
                 employeeRepository, credentialPort, new EmployeeDtoMapper(), codeGeneratorService);
-        when(employeeRepository.save(any(Employee.class)))
+        lenient().when(employeeRepository.save(any(Employee.class)))
                 .thenAnswer(inv -> inv.getArgument(0));
     }
 

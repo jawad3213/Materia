@@ -12,6 +12,7 @@ import com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.ma
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -29,6 +30,7 @@ public class CategoryController {
         this.webMapper = webMapper;
     }
 
+    @PreAuthorize("hasAuthority('category:write')")
     @PostMapping
     public ResponseEntity<CategoryWebResponse> createCategory(@Valid @RequestBody CreateCategoryWebRequest webRequest) {
         CreateCategoryInput request = webMapper.toAppCreateRequest(webRequest);
@@ -36,24 +38,28 @@ public class CategoryController {
         return new ResponseEntity<>(webMapper.toWebResponse(response), HttpStatus.CREATED);
     }
 
+    @PreAuthorize("hasAuthority('category:read')")
     @GetMapping("/{id}")
     public ResponseEntity<CategoryWebResponse> getCategory(@PathVariable UUID id) {
         CategoryOutput response = categoryUseCase.getById(id);
         return ResponseEntity.ok(webMapper.toWebResponse(response));
     }
 
+    @PreAuthorize("hasAuthority('category:read')")
     @GetMapping("/code/{code}")
     public ResponseEntity<CategoryWebResponse> getCategoryByCode(@PathVariable String code) {
         CategoryOutput response = categoryUseCase.getByCode(code);
         return ResponseEntity.ok(webMapper.toWebResponse(response));
     }
 
+    @PreAuthorize("hasAuthority('category:read')")
     @GetMapping
     public ResponseEntity<List<CategoryListWebResponse>> getAllCategories() {
         List<CategoryOutput> responses = categoryUseCase.getAll();
         return ResponseEntity.ok(webMapper.toWebListResponseList(responses));
     }
 
+    @PreAuthorize("hasAuthority('category:write')")
     @PutMapping("/{id}")
     public ResponseEntity<CategoryWebResponse> updateCategory(
             @PathVariable UUID id,
@@ -63,6 +69,7 @@ public class CategoryController {
         return ResponseEntity.ok(webMapper.toWebResponse(response));
     }
 
+    @PreAuthorize("hasAuthority('category:delete')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteCategory(@PathVariable UUID id) {
         categoryUseCase.delete(id);
@@ -71,12 +78,14 @@ public class CategoryController {
 
     // ---- Custom Endpoints ----
 
+    @PreAuthorize("hasAuthority('category:read')")
     @GetMapping("/roots")
     public ResponseEntity<List<CategoryListWebResponse>> getRootCategories() {
         List<CategoryOutput> responses = categoryUseCase.getRootCategories();
         return ResponseEntity.ok(webMapper.toWebListResponseList(responses));
     }
 
+    @PreAuthorize("hasAuthority('category:read')")
     @GetMapping("/{parentId}/subcategories")
     public ResponseEntity<List<CategoryListWebResponse>> getSubCategories(@PathVariable UUID parentId) {
         List<CategoryOutput> responses = categoryUseCase.getSubCategories(parentId);

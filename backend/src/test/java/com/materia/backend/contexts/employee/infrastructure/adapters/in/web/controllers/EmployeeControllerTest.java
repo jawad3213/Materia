@@ -41,7 +41,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @WebMvcTest(EmployeeController.class)
 @Import(EmployeeWebMapper.class)
-@WithMockUser(username = "alice")
+@WithMockUser(username = "alice", authorities = {"user:read", "user:write", "user:delete"})
 class EmployeeControllerTest extends AbstractWebMvcTest {
 
     private static final String BASE = "/api/v1/employees";
@@ -298,5 +298,32 @@ class EmployeeControllerTest extends AbstractWebMvcTest {
                 .andExpect(jsonPath("$.email").exists())
                 .andExpect(jsonPath("$.status").exists())
                 .andExpect(jsonPath("$.hireDate").exists());
+    }
+
+    // ---- Authorization: T113, T114 – 403 on missing permission, 401 on unauthenticated ----
+
+    @Test
+    @DisplayName("POST /employees: user lacking user:write receives 403")
+    @WithMockUser(authorities = {"user:read"})
+    void create_withoutWriteAuthority_returns403() throws Exception {
+        Map<String, Object> req = Map.of(
+                "firstName", "Bob",
+                "lastName", "Jones",
+                "email", "bob@example.com",
+                "hireDate", "2026-01-15"
+        );
+
+        mockMvc.perform(post(BASE)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(req)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("DELETE /employees/{id}: user lacking user:delete receives 403")
+    @WithMockUser(authorities = {"user:read", "user:write"})
+    void delete_withoutDeleteAuthority_returns403() throws Exception {
+        mockMvc.perform(delete(BASE + "/" + id))
+                .andExpect(status().isForbidden());
     }
 }

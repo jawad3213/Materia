@@ -36,7 +36,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @WebMvcTest(MaterialController.class)
 @Import(MaterialWebMapper.class)
-@WithMockUser
+@WithMockUser(username = "alice", authorities = {"material:stock:read", "material:stock:write", "requisition:write"})
 class MaterialStockControllerTest extends AbstractWebMvcTest {
 
     private static final String BASE = "/api/v1/masterdata/materials";
@@ -183,5 +183,13 @@ class MaterialStockControllerTest extends AbstractWebMvcTest {
                 .andExpect(status().isUnauthorized());
         mockMvc.perform(get(BASE + "/stock/critical")).andExpect(status().isUnauthorized());
         verifyNoInteractions(useCase);
+    }
+
+    @Test
+    @WithMockUser(authorities = {"material:stock:read"})
+    @DisplayName("security: user lacking material:stock:write receives 403 Forbidden")
+    void increaseStock_withoutStockWriteAuthority_is403() throws Exception {
+        mockMvc.perform(patch(BASE + "/{id}/stock/increase", id).param("quantity", "1"))
+                .andExpect(status().isForbidden());
     }
 }

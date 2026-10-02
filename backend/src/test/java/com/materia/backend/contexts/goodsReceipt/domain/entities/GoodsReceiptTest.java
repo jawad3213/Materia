@@ -4,6 +4,7 @@ import com.materia.backend.contexts.goodsReceipt.domain.enums.QualityStatus;
 import com.materia.backend.contexts.goodsReceipt.domain.enums.ReceiptStatus;
 import com.materia.backend.contexts.goodsReceipt.domain.exceptions.GoodsReceiptInvalidQuantityException;
 import com.materia.backend.contexts.goodsReceipt.domain.exceptions.GoodsReceiptQualityInspectionRequiredException;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -12,6 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 class GoodsReceiptTest {
 
     @Test
+    @DisplayName("domain: rejects a rejected quantity greater than the received quantity")
     void rejectsARejectedQuantityGreaterThanTheReceivedQuantity() {
         assertThrows(GoodsReceiptInvalidQuantityException.class, () -> GoodsReceiptLine.builder()
                 .materialCode("MAT-001")
@@ -22,6 +24,7 @@ class GoodsReceiptTest {
     }
 
     @Test
+    @DisplayName("domain: completes as partial when any received quantity is rejected")
     void completesAsPartialWhenAnyReceivedQuantityIsRejected() {
         GoodsReceiptLine line = GoodsReceiptLine.builder()
                 .materialCode("MAT-001")
@@ -44,6 +47,7 @@ class GoodsReceiptTest {
     }
 
     @Test
+    @DisplayName("domain: cannot complete while quality is under review")
     void cannotCompleteWhileQualityIsUnderReview() {
         GoodsReceiptLine line = GoodsReceiptLine.builder()
                 .materialCode("MAT-001")

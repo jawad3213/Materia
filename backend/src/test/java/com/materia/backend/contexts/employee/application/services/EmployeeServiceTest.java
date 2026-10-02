@@ -49,7 +49,7 @@ class EmployeeServiceTest {
                 .code("EMP-0001")
                 .email("alice@example.com")
                 .build();
-        when(employeeRepository.save(any(Employee.class))).thenAnswer(inv -> inv.getArgument(0));
+        lenient().when(employeeRepository.save(any(Employee.class))).thenAnswer(inv -> inv.getArgument(0));
     }
 
     // ---- Create ----

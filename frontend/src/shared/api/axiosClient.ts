@@ -83,6 +83,9 @@ const axiosClient = axios.create({
 // Request interceptor to attach JWT Bearer token
 axiosClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
+    if (config.url?.includes('/auth/refresh')) {
+      return config;
+    }
     const token = getAccessToken();
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;

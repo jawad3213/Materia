@@ -4,11 +4,11 @@ import Button from '../../../shared/components/ui/button/Button';
 import InputField from '../../../shared/components/form/input/InputField';
 import Label from '../../../shared/components/form/Label';
 import TextArea from '../../../shared/components/form/input/TextArea';
-import type { UserItem, OffboardUserRequest } from '../types';
+import type { UserItem, UserListItem, OffboardUserRequest } from '../types';
 
 interface OffboardUserModalProps {
   isOpen: boolean;
-  user: UserItem | null;
+  user: UserItem | UserListItem | null;
   onClose: () => void;
   onSuccess: (data: OffboardUserRequest) => Promise<void>;
 }
