@@ -52,7 +52,8 @@ jobs:
         run: |
           cd backend
           chmod +x mvnw
-          ./mvnw clean package -DskipTests
+          ./mvnw clean verify
+
 
       - name: Authenticate with AWS via OIDC (Keyless)
         uses: aws-actions/configure-aws-credentials@v4

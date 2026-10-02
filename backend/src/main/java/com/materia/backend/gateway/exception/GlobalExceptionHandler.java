@@ -17,6 +17,9 @@ import com.materia.backend.contexts.purchaseRequisition.domain.exceptions.Requis
 import com.materia.backend.contexts.employee.domain.exceptions.EmailAlreadyInUseException;
 import com.materia.backend.contexts.employee.domain.exceptions.EmployeeCodeAlreadyExistsException;
 import com.materia.backend.contexts.employee.domain.exceptions.EmployeeNotFoundException;
+import com.materia.backend.contexts.masterData.domain.exceptions.DuplicateMaterialCodeException;
+import com.materia.backend.contexts.auth.domain.exceptions.AccountLockedException;
+import com.materia.backend.contexts.auth.domain.exceptions.InvalidCredentialsException;
 import jakarta.persistence.OptimisticLockException;
 import jakarta.validation.ConstraintViolationException;
 import org.slf4j.Logger;
@@ -212,6 +215,54 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 "Employee Email Conflict",
                 ex.getErrorCode(),
                 ex.getFormattedMessage(),
+                request,
+                null
+        );
+    }
+
+    // ----- FINDING-005: DuplicateMaterialCodeException → 409 -----
+
+    @ExceptionHandler(DuplicateMaterialCodeException.class)
+    public ResponseEntity<ErrorResponse> handleDuplicateMaterialCodeException(
+            DuplicateMaterialCodeException ex, WebRequest request) {
+        log.warn("Duplicate material code: {}", ex.getMessage());
+        return buildErrorResponse(
+                HttpStatus.CONFLICT,
+                "Duplicate Material Code",
+                "DUPLICATE_MATERIAL_CODE",
+                ex.getMessage(),
+                request,
+                null
+        );
+    }
+
+    // ----- FINDING-006: AccountLockedException → 401 -----
+
+    @ExceptionHandler(AccountLockedException.class)
+    public ResponseEntity<ErrorResponse> handleAccountLockedException(
+            AccountLockedException ex, WebRequest request) {
+        log.warn("Account locked: {}", ex.getMessage());
+        return buildErrorResponse(
+                HttpStatus.UNAUTHORIZED,
+                "Account Locked",
+                "AUTH_ACCOUNT_LOCKED",
+                ex.getMessage(),
+                request,
+                null
+        );
+    }
+
+    // ----- FINDING-007: InvalidCredentialsException → 401 -----
+
+    @ExceptionHandler(InvalidCredentialsException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidCredentialsException(
+            InvalidCredentialsException ex, WebRequest request) {
+        log.warn("Invalid credentials: {}", ex.getMessage());
+        return buildErrorResponse(
+                HttpStatus.UNAUTHORIZED,
+                "Invalid Credentials",
+                "AUTH_INVALID_CREDENTIALS",
+                ex.getMessage(),
                 request,
                 null
         );
