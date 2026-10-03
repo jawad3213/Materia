@@ -95,14 +95,4 @@ export const requisitionApi = {
     axiosClient.patch<Requisition>(`${BASE_URL}/${id}/cancel`, {}, {
       params: { userId, ...(reason ? { reason } : {}) },
     }),
-
-  convert: (
-    id: string,
-    purchaseOrderId: string,
-    purchaseOrderCode: string,
-    userId: string = 'current-user'
-  ) =>
-    axiosClient.patch<Requisition>(`${BASE_URL}/${id}/convert`, {}, {
-      params: { purchaseOrderId, purchaseOrderCode, userId },
-    }),
 };

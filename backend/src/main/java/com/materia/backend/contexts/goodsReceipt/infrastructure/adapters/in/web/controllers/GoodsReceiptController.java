@@ -18,6 +18,7 @@ import com.materia.backend.gateway.security.SecurityUtils;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -46,6 +47,7 @@ public class GoodsReceiptController {
         this.webMapper = webMapper;
     }
 
+    @PreAuthorize("hasAuthority('receipt:write')")
     @PostMapping
     public ResponseEntity<GoodsReceiptWebResponse> createGoodsReceipt(
             @Valid @RequestBody CreateGoodsReceiptWebRequest webRequest) {
@@ -55,24 +57,28 @@ public class GoodsReceiptController {
         return new ResponseEntity<>(webMapper.toWebResponse(response), HttpStatus.CREATED);
     }
 
+    @PreAuthorize("hasAuthority('receipt:read')")
     @GetMapping("/{id}")
     public ResponseEntity<GoodsReceiptWebResponse> getGoodsReceiptById(@PathVariable UUID id) {
         GoodsReceiptOutput response = goodsReceiptUseCase.getById(id);
         return ResponseEntity.ok(webMapper.toWebResponse(response));
     }
 
+    @PreAuthorize("hasAuthority('receipt:read')")
     @GetMapping("/code/{code}")
     public ResponseEntity<GoodsReceiptWebResponse> getGoodsReceiptByCode(@PathVariable String code) {
         GoodsReceiptOutput response = goodsReceiptUseCase.getByCode(code);
         return ResponseEntity.ok(webMapper.toWebResponse(response));
     }
 
+    @PreAuthorize("hasAuthority('receipt:read')")
     @GetMapping
     public ResponseEntity<List<GoodsReceiptWebResponse>> getAllGoodsReceipts() {
         List<GoodsReceiptOutput> responses = goodsReceiptUseCase.getAll();
         return ResponseEntity.ok(webMapper.toWebResponseList(responses));
     }
 
+    @PreAuthorize("hasAuthority('receipt:write')")
     @PutMapping("/{id}")
     public ResponseEntity<GoodsReceiptWebResponse> updateGoodsReceipt(
             @PathVariable UUID id,
@@ -83,12 +89,14 @@ public class GoodsReceiptController {
         return ResponseEntity.ok(webMapper.toWebResponse(response));
     }
 
+    @PreAuthorize("hasAuthority('receipt:write')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteGoodsReceipt(@PathVariable UUID id) {
         goodsReceiptUseCase.delete(id, currentUserId());
         return ResponseEntity.noContent().build();
     }
 
+    @PreAuthorize("hasAuthority('receipt:read')")
     @GetMapping("/status/{status}")
     public ResponseEntity<List<GoodsReceiptWebResponse>> getGoodsReceiptsByStatus(@PathVariable String status) {
         ReceiptStatus receiptStatus = ReceiptStatus.fromCode(status);
@@ -96,6 +104,7 @@ public class GoodsReceiptController {
         return ResponseEntity.ok(webMapper.toWebResponseList(responses));
     }
 
+    @PreAuthorize("hasAuthority('receipt:read')")
     @GetMapping("/purchase-order/{purchaseOrderId}")
     public ResponseEntity<List<GoodsReceiptWebResponse>> getGoodsReceiptsByPurchaseOrderId(
             @PathVariable String purchaseOrderId) {
@@ -103,6 +112,7 @@ public class GoodsReceiptController {
         return ResponseEntity.ok(webMapper.toWebResponseList(responses));
     }
 
+    @PreAuthorize("hasAuthority('receipt:read')")
     @GetMapping("/receiver/{receiverId}")
     public ResponseEntity<List<GoodsReceiptWebResponse>> getGoodsReceiptsByReceiverId(
             @PathVariable String receiverId) {
@@ -110,6 +120,7 @@ public class GoodsReceiptController {
         return ResponseEntity.ok(webMapper.toWebResponseList(responses));
     }
 
+    @PreAuthorize("hasAuthority('receipt:read')")
     @GetMapping("/search/keyword")
     public ResponseEntity<List<GoodsReceiptWebResponse>> searchGoodsReceiptsByKeyword(
             @RequestParam String keyword) {
@@ -117,6 +128,7 @@ public class GoodsReceiptController {
         return ResponseEntity.ok(webMapper.toWebResponseList(responses));
     }
 
+    @PreAuthorize("hasAuthority('receipt:write')")
     @PatchMapping("/{id}/lines")
     public ResponseEntity<GoodsReceiptWebResponse> addLine(
             @PathVariable UUID id,
@@ -126,6 +138,7 @@ public class GoodsReceiptController {
         return ResponseEntity.ok(webMapper.toWebResponse(response));
     }
 
+    @PreAuthorize("hasAuthority('receipt:write')")
     @DeleteMapping("/{id}/lines/{lineIndex}")
     public ResponseEntity<GoodsReceiptWebResponse> removeLine(
             @PathVariable UUID id,
@@ -135,6 +148,7 @@ public class GoodsReceiptController {
         return ResponseEntity.ok(webMapper.toWebResponse(response));
     }
 
+    @PreAuthorize("hasAuthority('receipt:write')")
     @PatchMapping("/{id}/complete")
     public ResponseEntity<GoodsReceiptWebResponse> completeGoodsReceipt(
             @PathVariable UUID id,
@@ -143,6 +157,7 @@ public class GoodsReceiptController {
         return ResponseEntity.ok(webMapper.toWebResponse(response));
     }
 
+    @PreAuthorize("hasAuthority('receipt:write')")
     @PatchMapping("/{id}/cancel")
     public ResponseEntity<GoodsReceiptWebResponse> cancelGoodsReceipt(
             @PathVariable UUID id,

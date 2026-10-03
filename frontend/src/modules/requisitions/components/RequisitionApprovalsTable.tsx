@@ -13,10 +13,14 @@ import { requisitionApi } from "../services/requisitionApi";
 import type { Requisition } from "../types";
 import RequisitionStatusBadge from "./RequisitionStatusBadge";
 import RequisitionApprovalModal from "./RequisitionApprovalModal";
+import useAuth from "../../../modules/auth/hooks/useAuth";
 
 export type ApprovalTab = "PENDING" | "APPROVED" | "REJECTED" | "ALL";
 
 export default function RequisitionApprovalsTable() {
+  const { hasPermission } = useAuth();
+  const canValidate = hasPermission("requisition:validate");
+
   const [requisitions, setRequisitions] = useState<Requisition[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<ApprovalTab>("PENDING");
@@ -616,7 +620,7 @@ export default function RequisitionApprovalsTable() {
                               </svg>
                             </Link>
 
-                            {isPending ? (
+                            {isPending && canValidate ? (
                               <>
                                 {/* Approve Button */}
                                 <button

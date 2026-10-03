@@ -255,6 +255,50 @@
                             <goal>report</goal>
                         </goals>
                     </execution>
+                    <!--
+                      T120 – 80% branch coverage enforced on domain and application packages.
+                      Infrastructure (adapters, JPA entities) is intentionally excluded.
+                    -->
+                    <execution>
+                        <id>check</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                        <configuration>
+                            <rules>
+                                <rule>
+                                    <element>PACKAGE</element>
+                                    <!--
+                                      Only contexts that have verification are gated (002 research F-009).
+                                      Add a context here when it gets tests; invoice, payement and
+                                      returnToVendor are untested and would fail at 0%.
+                                    -->
+                                    <includes>
+                                        <include>com.materia.backend.contexts.auth.domain.*</include>
+                                        <include>com.materia.backend.contexts.auth.application.*</include>
+                                        <include>com.materia.backend.contexts.employee.domain.*</include>
+                                        <include>com.materia.backend.contexts.employee.application.*</include>
+                                        <include>com.materia.backend.contexts.masterData.domain.*</include>
+                                        <include>com.materia.backend.contexts.masterData.application.*</include>
+                                        <include>com.materia.backend.contexts.purchaseRequisition.domain.*</include>
+                                        <include>com.materia.backend.contexts.purchaseRequisition.application.*</include>
+                                        <include>com.materia.backend.contexts.purchaseOrder.domain.*</include>
+                                        <include>com.materia.backend.contexts.purchaseOrder.application.*</include>
+                                        <include>com.materia.backend.contexts.goodsReceipt.domain.*</include>
+                                        <include>com.materia.backend.contexts.goodsReceipt.application.*</include>
+                                    </includes>
+                                    <limits>
+                                        <limit>
+                                            <counter>BRANCH</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.80</minimum>
+                                        </limit>
+                                    </limits>
+                                </rule>
+                            </rules>
+                        </configuration>
+                    </execution>
                 </executions>
             </plugin>
         </plugins>

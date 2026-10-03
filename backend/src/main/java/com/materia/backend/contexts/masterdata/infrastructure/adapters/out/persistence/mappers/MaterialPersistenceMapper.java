@@ -50,6 +50,7 @@ public class MaterialPersistenceMapper {
         jpa.setReorderPoint(domain.getReorderPoint());
         jpa.setSafetyStock(domain.getSafetyStock());
         jpa.setEconomicOrderQuantity(domain.getEconomicOrderQuantity());
+        jpa.setStockOnOrder(domain.getStockOnOrder());
 
         // Flatten Money value objects
         if (domain.getStandardPrice() != null) {
@@ -115,6 +116,7 @@ public class MaterialPersistenceMapper {
         domain.setReorderPoint(jpa.getReorderPoint());
         domain.setSafetyStock(jpa.getSafetyStock());
         domain.setEconomicOrderQuantity(jpa.getEconomicOrderQuantity());
+        domain.setStockOnOrder(jpa.getStockOnOrder());
 
         // Reconstruct Money value objects
         domain.setStandardPrice(toMoney(jpa.getStandardPrice(), jpa.getStandardPriceCurrency()));

@@ -33,7 +33,7 @@ export default function RadialChartOne() {
             fontWeight: 600,
             color: "#1E293B",
             offsetY: 10,
-            formatter: function (val) {
+            formatter: function (val: number) {
               return val + "%";
             },
           },

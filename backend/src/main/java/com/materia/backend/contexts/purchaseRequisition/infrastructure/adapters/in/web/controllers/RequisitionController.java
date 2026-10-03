@@ -14,6 +14,8 @@ import com.materia.backend.contexts.purchaseRequisition.infrastructure.adapters.
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -43,6 +45,7 @@ public class RequisitionController {
         this.webMapper = webMapper;
     }
 
+    @PreAuthorize("hasAuthority('requisition:write')")
     @PostMapping
     public ResponseEntity<RequisitionWebResponse> createRequisition(
             @Valid @RequestBody CreateRequisitionWebRequest webRequest) {
@@ -51,24 +54,28 @@ public class RequisitionController {
         return new ResponseEntity<>(webMapper.toWebResponse(response), HttpStatus.CREATED);
     }
 
+    @PreAuthorize("hasAuthority('requisition:read')")
     @GetMapping("/{id}")
     public ResponseEntity<RequisitionWebResponse> getRequisitionById(@PathVariable UUID id) {
         RequisitionOutput response = requisitionUseCase.getById(id);
         return ResponseEntity.ok(webMapper.toWebResponse(response));
     }
 
+    @PreAuthorize("hasAuthority('requisition:read')")
     @GetMapping("/code/{code}")
     public ResponseEntity<RequisitionWebResponse> getRequisitionByCode(@PathVariable String code) {
         RequisitionOutput response = requisitionUseCase.getByCode(code);
         return ResponseEntity.ok(webMapper.toWebResponse(response));
     }
 
+    @PreAuthorize("hasAuthority('requisition:read')")
     @GetMapping
     public ResponseEntity<List<RequisitionWebResponse>> getAllRequisitions() {
         List<RequisitionOutput> responses = requisitionUseCase.getAll();
         return ResponseEntity.ok(webMapper.toWebResponseList(responses));
     }
 
+    @PreAuthorize("hasAuthority('requisition:write')")
     @PutMapping("/{id}")
     public ResponseEntity<RequisitionWebResponse> updateRequisition(
             @PathVariable UUID id,
@@ -78,30 +85,35 @@ public class RequisitionController {
         return ResponseEntity.ok(webMapper.toWebResponse(response));
     }
 
+    @PreAuthorize("hasAuthority('requisition:write')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteRequisition(@PathVariable UUID id) {
         requisitionUseCase.delete(id);
         return ResponseEntity.noContent().build();
     }
 
+    @PreAuthorize("hasAuthority('requisition:read')")
     @GetMapping("/status/{status}")
     public ResponseEntity<List<RequisitionWebResponse>> getRequisitionsByStatus(@PathVariable String status) {
         List<RequisitionOutput> responses = requisitionUseCase.getByStatus(status);
         return ResponseEntity.ok(webMapper.toWebResponseList(responses));
     }
 
+    @PreAuthorize("hasAuthority('requisition:read')")
     @GetMapping("/requester/{requesterId}")
     public ResponseEntity<List<RequisitionWebResponse>> getRequisitionsByRequester(@PathVariable String requesterId) {
         List<RequisitionOutput> responses = requisitionUseCase.getByRequesterId(requesterId);
         return ResponseEntity.ok(webMapper.toWebResponseList(responses));
     }
 
+    @PreAuthorize("hasAuthority('requisition:read')")
     @GetMapping("/search/keyword")
     public ResponseEntity<List<RequisitionWebResponse>> searchByKeyword(@RequestParam String keyword) {
         List<RequisitionOutput> responses = requisitionUseCase.searchByKeyword(keyword);
         return ResponseEntity.ok(webMapper.toWebResponseList(responses));
     }
 
+    @PreAuthorize("hasAuthority('requisition:read')")
     @PostMapping("/search")
     public ResponseEntity<PageResponse<RequisitionWebResponse>> searchAdvanced(
             @RequestBody RequisitionSearchWebRequest webRequest,
@@ -120,50 +132,51 @@ public class RequisitionController {
         return ResponseEntity.ok(webPage);
     }
 
+    @PreAuthorize("hasAuthority('requisition:write')")
     @PatchMapping("/{id}/submit")
     public ResponseEntity<RequisitionWebResponse> submitRequisition(
             @PathVariable UUID id,
-            @RequestParam String userId) {
-        RequisitionOutput response = requisitionUseCase.submit(id, userId);
+            Authentication authentication) {
+        // FINDING-020 fix: actor identity resolved from the authenticated JWT principal, not from a request parameter.
+        String principal = authentication != null ? authentication.getName() : "unknown";
+        RequisitionOutput response = requisitionUseCase.submit(id, principal);
         return ResponseEntity.ok(webMapper.toWebResponse(response));
     }
 
+    @PreAuthorize("hasAuthority('requisition:validate')")
     @PatchMapping("/{id}/approve")
     public ResponseEntity<RequisitionWebResponse> approveRequisition(
             @PathVariable UUID id,
-            @RequestParam String approverId,
-            @RequestParam String approverName,
-            @RequestParam(required = false) String notes) {
-        RequisitionOutput response = requisitionUseCase.approve(id, approverId, approverName, notes);
+            @RequestParam(required = false) String notes,
+            Authentication authentication) {
+        // FINDING-020 fix: approverId and approverName are derived from the authenticated principal only.
+        String principal = authentication != null ? authentication.getName() : "unknown";
+        RequisitionOutput response = requisitionUseCase.approve(id, principal, principal, notes);
         return ResponseEntity.ok(webMapper.toWebResponse(response));
     }
 
+    @PreAuthorize("hasAuthority('requisition:validate')")
     @PatchMapping("/{id}/reject")
     public ResponseEntity<RequisitionWebResponse> rejectRequisition(
             @PathVariable UUID id,
-            @RequestParam String approverId,
-            @RequestParam String approverName,
-            @RequestParam String reason) {
-        RequisitionOutput response = requisitionUseCase.reject(id, approverId, approverName, reason);
+            @RequestParam String reason,
+            Authentication authentication) {
+        // FINDING-020 fix: approverId and approverName are derived from the authenticated principal only.
+        String principal = authentication != null ? authentication.getName() : "unknown";
+        RequisitionOutput response = requisitionUseCase.reject(id, principal, principal, reason);
         return ResponseEntity.ok(webMapper.toWebResponse(response));
     }
 
-    @PatchMapping("/{id}/convert")
-    public ResponseEntity<RequisitionWebResponse> convertRequisition(
-            @PathVariable UUID id,
-            @RequestParam String purchaseOrderId,
-            @RequestParam String purchaseOrderCode,
-            @RequestParam String userId) {
-        RequisitionOutput response = requisitionUseCase.convert(id, purchaseOrderId, purchaseOrderCode, userId);
-        return ResponseEntity.ok(webMapper.toWebResponse(response));
-    }
-
+    @PreAuthorize("hasAuthority('requisition:write')")
     @PatchMapping("/{id}/cancel")
     public ResponseEntity<RequisitionWebResponse> cancelRequisition(
             @PathVariable UUID id,
-            @RequestParam(defaultValue = "current-user") String userId,
-            @RequestParam(required = false) String reason) {
-        RequisitionOutput response = requisitionUseCase.cancel(id, userId, reason);
+            @RequestParam(required = false) String reason,
+            Authentication authentication) {
+        // FINDING-020 fix: cancelling user resolved from the authenticated principal.
+        // The default "current-user" string is replaced by the actual principal name.
+        String principal = authentication != null ? authentication.getName() : "unknown";
+        RequisitionOutput response = requisitionUseCase.cancel(id, principal, reason);
         return ResponseEntity.ok(webMapper.toWebResponse(response));
     }
 }

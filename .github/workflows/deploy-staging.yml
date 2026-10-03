@@ -52,7 +52,8 @@ jobs:
         run: |
           cd backend
           chmod +x mvnw
-          ./mvnw clean package -DskipTests
+          ./mvnw clean verify
+
 
       - name: Authenticate with AWS via OIDC (Keyless)
         uses: aws-actions/configure-aws-credentials@v4
@@ -122,6 +123,12 @@ jobs:
         run: |
           cd frontend
           npm ci
+
+      # A failing frontend test stops the deploy (spec 002, FR-023).
+      - name: Run Frontend Tests
+        run: |
+          cd frontend
+          npm test
 
       - name: Build React Staging Bundle
         env:

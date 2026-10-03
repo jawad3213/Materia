@@ -36,7 +36,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /** The requisition HTTP contract (T059-T062), through the real security chain. */
 @WebMvcTest(RequisitionController.class)
 @Import(RequisitionWebMapper.class)
-@WithMockUser(username = "alice")
+@WithMockUser(username = "alice", authorities = {"requisition:read", "requisition:write", "requisition:validate", "requisition:convert"})
 class RequisitionControllerTest extends AbstractWebMvcTest {
 
     private static final String BASE = "/api/v1/purchase-requisitions";
@@ -107,13 +107,12 @@ class RequisitionControllerTest extends AbstractWebMvcTest {
     }
 
     @Test
-    @DisplayName("transitions: submit, approve, reject, cancel and convert each reach the service")
+    @DisplayName("transitions: submit, approve, reject and cancel each reach the service; convert is not exposed")
     void transitions_succeed() throws Exception {
         when(useCase.submit(eq(id), anyString())).thenReturn(output("SUBMITTED"));
         when(useCase.approve(eq(id), anyString(), anyString(), any())).thenReturn(output("APPROVED"));
         when(useCase.reject(eq(id), anyString(), anyString(), anyString())).thenReturn(output("REJECTED"));
         when(useCase.cancel(eq(id), anyString(), any())).thenReturn(output("CANCELLED"));
-        when(useCase.convert(eq(id), anyString(), anyString(), anyString())).thenReturn(output("CONVERTED"));
 
         mockMvc.perform(patch(BASE + "/{id}/submit", id).param("userId", "alice")).andExpect(status().isOk());
         mockMvc.perform(patch(BASE + "/{id}/approve", id).param("approverId", "alice").param("approverName", "Alice"))
@@ -121,8 +120,10 @@ class RequisitionControllerTest extends AbstractWebMvcTest {
         mockMvc.perform(patch(BASE + "/{id}/reject", id).param("approverId", "alice").param("approverName", "Alice")
                 .param("reason", "over budget")).andExpect(status().isOk());
         mockMvc.perform(patch(BASE + "/{id}/cancel", id).param("userId", "alice")).andExpect(status().isOk());
+        // Conversion happens only when a purchase order is created from the requisition.
         mockMvc.perform(patch(BASE + "/{id}/convert", id).param("purchaseOrderId", "po-1")
-                .param("purchaseOrderCode", "PO-2026-0001").param("userId", "alice")).andExpect(status().isOk());
+                .param("purchaseOrderCode", "PO-2026-0001")).andExpect(status().is4xxClientError());
+        verify(useCase, never()).convert(any(), any(), any(), any());
     }
 
     @Test
@@ -233,7 +234,6 @@ class RequisitionControllerTest extends AbstractWebMvcTest {
     // ---- Identity integrity ----
 
     @Test
-    @Disabled(FINDING_020)
     @DisplayName("identity: the approver recorded is the signed-in user, not whoever the caller names")
     void approve_recordsSignedInUserNotCallerSuppliedApprover() throws Exception {
         when(useCase.approve(eq(id), anyString(), anyString(), any())).thenReturn(output("APPROVED"));
@@ -242,5 +242,15 @@ class RequisitionControllerTest extends AbstractWebMvcTest {
         mockMvc.perform(patch(BASE + "/{id}/approve", id).param("approverId", "cfo").param("approverName", "The CFO"));
 
         verify(useCase, never()).approve(eq(id), eq("cfo"), anyString(), any());
+    }
+
+    // ---- Authorization: T113, T114 ----
+
+    @Test
+    @WithMockUser(authorities = {"requisition:read"})
+    @DisplayName("security: user lacking requisition:write receives 403 Forbidden")
+    void delete_withoutWriteAuthority_is403() throws Exception {
+        mockMvc.perform(delete(BASE + "/{id}", id))
+                .andExpect(status().isForbidden());
     }
 }

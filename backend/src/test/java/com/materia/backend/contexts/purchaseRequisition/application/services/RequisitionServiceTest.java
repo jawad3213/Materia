@@ -85,6 +85,37 @@ class RequisitionServiceTest {
     }
 
     @Test
+    @DisplayName("release: reverting a conversion linked to the order persists the requisition as approved (US2-6)")
+    void revertConversion_persists() {
+        UUID orderId = UUID.randomUUID();
+        Requisition r = aRequisition().convertedTo(orderId, "PO-2026-0001").build();
+        when(requisitions.findById(r.getId())).thenReturn(Optional.of(r));
+
+        assertEquals(APPROVED.getCode(), codeOf(service.revertConversion(r.getId(), orderId.toString(), "buyer").getStatus()));
+        verify(requisitions).save(r);
+    }
+
+    @Test
+    @DisplayName("release: reverting for a different order is refused and nothing is saved (US2-7)")
+    void revertConversion_otherOrder_isRefusedAndNotSaved() {
+        Requisition r = aRequisition().convertedTo(UUID.randomUUID(), "PO-2026-0001").build();
+        when(requisitions.findById(r.getId())).thenReturn(Optional.of(r));
+
+        assertThrows(RequisitionInvalidStatusTransitionException.class,
+                () -> service.revertConversion(r.getId(), UUID.randomUUID().toString(), "buyer"));
+        verify(requisitions, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("release: reverting an unknown requisition is a not-found")
+    void revertConversion_unknown_isNotFound() {
+        UUID unknown = UUID.randomUUID();
+        when(requisitions.findById(unknown)).thenReturn(Optional.empty());
+
+        assertThrows(RequisitionNotFoundException.class, () -> service.revertConversion(unknown, "po", "buyer"));
+    }
+
+    @Test
     @DisplayName("transitions: an unknown requisition is a not-found, for every action")
     void transitions_unknownId_isNotFound() {
         UUID unknown = UUID.randomUUID();

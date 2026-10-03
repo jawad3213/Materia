@@ -18,6 +18,7 @@ import com.materia.backend.contexts.employee.infrastructure.adapters.in.web.mapp
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -48,6 +49,7 @@ public class EmployeeController {
         this.webMapper = webMapper;
     }
 
+    @PreAuthorize("hasAuthority('user:write')")
     @PostMapping
     public ResponseEntity<EmployeeWebResponse> createEmployee(
             @Valid @RequestBody CreateEmployeeWebRequest webRequest) {
@@ -56,6 +58,7 @@ public class EmployeeController {
         return new ResponseEntity<>(webMapper.toWebResponse(output), HttpStatus.CREATED);
     }
 
+    @PreAuthorize("hasAuthority('user:write')")
     @PostMapping("/onboard")
     public ResponseEntity<EmployeeWebResponse> onboardEmployee(
             @Valid @RequestBody OnboardEmployeeWebRequest webRequest) {
@@ -64,6 +67,7 @@ public class EmployeeController {
         return new ResponseEntity<>(webMapper.toWebResponse(output), HttpStatus.CREATED);
     }
 
+    @PreAuthorize("hasAuthority('user:write')")
     @PostMapping("/offboard")
     public ResponseEntity<EmployeeWebResponse> offboardEmployee(
             @Valid @RequestBody OffboardEmployeeWebRequest webRequest) {
@@ -72,24 +76,28 @@ public class EmployeeController {
         return ResponseEntity.ok(webMapper.toWebResponse(output));
     }
 
+    @PreAuthorize("hasAuthority('user:read')")
     @GetMapping("/{id}")
     public ResponseEntity<EmployeeWebResponse> getEmployeeById(@PathVariable UUID id) {
         EmployeeOutput output = employeeUseCase.getById(id);
         return ResponseEntity.ok(webMapper.toWebResponse(output));
     }
 
+    @PreAuthorize("hasAuthority('user:read')")
     @GetMapping("/code/{code}")
     public ResponseEntity<EmployeeWebResponse> getEmployeeByCode(@PathVariable String code) {
         EmployeeOutput output = employeeUseCase.getByCode(code);
         return ResponseEntity.ok(webMapper.toWebResponse(output));
     }
 
+    @PreAuthorize("hasAuthority('user:read')")
     @GetMapping("/email/{email}")
     public ResponseEntity<EmployeeWebResponse> getEmployeeByEmail(@PathVariable String email) {
         EmployeeOutput output = employeeUseCase.getByEmail(email);
         return ResponseEntity.ok(webMapper.toWebResponse(output));
     }
 
+    @PreAuthorize("hasAuthority('user:read')")
     @GetMapping
     public ResponseEntity<List<EmployeeWebResponse>> getAllEmployees(
             @RequestParam(required = false) EmploymentStatus status) {
@@ -102,6 +110,7 @@ public class EmployeeController {
         return ResponseEntity.ok(webMapper.toWebResponseList(outputs));
     }
 
+    @PreAuthorize("hasAuthority('user:write')")
     @PutMapping("/{id}")
     public ResponseEntity<EmployeeWebResponse> updateEmployee(
             @PathVariable UUID id,
@@ -111,6 +120,7 @@ public class EmployeeController {
         return ResponseEntity.ok(webMapper.toWebResponse(output));
     }
 
+    @PreAuthorize("hasAuthority('user:delete')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteEmployee(@PathVariable UUID id) {
         employeeUseCase.delete(id);

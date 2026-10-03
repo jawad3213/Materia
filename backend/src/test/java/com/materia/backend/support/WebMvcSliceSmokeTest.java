@@ -40,7 +40,7 @@ class WebMvcSliceSmokeTest extends AbstractWebMvcTest {
     }
 
     @Test
-    @WithMockUser
+    @WithMockUser(authorities = "category:read")
     @DisplayName("slice: an authenticated request passes security and reaches the controller")
     void protectedEndpoint_authenticated_reachesController() throws Exception {
         // The mocked use case returns null, so the mapper yields an empty body. What matters
@@ -50,7 +50,7 @@ class WebMvcSliceSmokeTest extends AbstractWebMvcTest {
     }
 
     @Test
-    @WithMockUser
+    @WithMockUser(authorities = "category:read")
     @DisplayName("slice: a domain not-found becomes a 404 with a specific errorCode, per the error contract")
     void missingRecord_mapsTo404WithErrorCode() throws Exception {
         UUID id = UUID.randomUUID();

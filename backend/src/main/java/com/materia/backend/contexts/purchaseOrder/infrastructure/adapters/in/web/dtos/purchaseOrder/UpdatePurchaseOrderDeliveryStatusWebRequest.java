@@ -10,7 +10,6 @@ public class UpdatePurchaseOrderDeliveryStatusWebRequest {
     @NotBlank(message = "Delivery status is mandatory")
     private String deliveryStatus;
 
-    @NotBlank(message = "User ID is mandatory")
     private String userId;
 
     public String getDeliveryStatus() {

@@ -13,7 +13,6 @@ public enum OrderStatus {
     CONFIRMED("CONFIRMED", "Confirmee", "Commande confirmee par le fournisseur", "#3b82f6"),
     READY_FOR_RECEIPT("READY_FOR_RECEIPT", "Prete pour reception", "Commande assignee pour reception", "#0ea5e9"),
     RECEIVED("RECEIVED", "Recue", "Commande receptionnee", "#10b981"),
-    IN_PROGRESS("IN_PROGRESS", "En cours", "Commande en cours de traitement", "#8b5cf6"),
     PARTIALLY_RECEIVED("PARTIALLY_RECEIVED", "Partiellement recue", "Commande partiellement livree", "#f59e0b"),
     COMPLETED("COMPLETED", "Terminee", "Commande completement livree", "#22c55e"),
     CANCELLED("CANCELLED", "Annulee", "Commande annulee", "#ef4444"),
@@ -70,7 +69,8 @@ public enum OrderStatus {
         return this == DRAFT || this == SUBMITTED;
     }
 
+    /** Once goods have been received the order can only be closed short, never cancelled. */
     public boolean isCancellable() {
-        return isActive() && this != COMPLETED && this != RECEIVED;
+        return isActive() && this != PARTIALLY_RECEIVED;
     }
 }

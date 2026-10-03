@@ -38,9 +38,12 @@ public class RequisitionWebMapper implements BaseWebMapper<
         }
 
         CreateRequisitionInput request = new CreateRequisitionInput();
-        BeanUtils.copyProperties(webRequest, request, "lines", "createdBy");
+        // FINDING-021 fix: ignore any client-supplied status — every requisition must start at DRAFT.
+        // BeanUtils.copyProperties copies 'status' from the web request, so we exclude it explicitly.
+        BeanUtils.copyProperties(webRequest, request, "lines", "createdBy", "status");
         request.setLines(toDomainLines(webRequest.getLines()));
         request.setUserId(webRequest.getCreatedBy());
+        // status is intentionally NOT copied — the service/entity defaults it to DRAFT.
         return request;
     }
 

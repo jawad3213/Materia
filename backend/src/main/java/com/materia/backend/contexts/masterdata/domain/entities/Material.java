@@ -519,11 +519,16 @@ public class Material extends BaseEntity {
     }
 
     /**
-     * Vérifie le point de réapprovisionnement et déclenche un événement si nécessaire
+     * Vérifie le point de réapprovisionnement et déclenche un événement si nécessaire.
+     *
+     * <p>FINDING-022 fix: the original condition was inverted — it fired when on-hand stock was
+     * below the reorder point but virtual stock (on-hand + on-order) was NOT below it, meaning
+     * existing orders already covered the gap and no new order was needed. The correct behaviour
+     * is to fire when BOTH on-hand stock AND virtual stock are below the reorder point — i.e.,
+     * nothing already on order covers the shortfall and a new purchase is required.
      */
     private void checkReorderPoint() {
-        if (isBelowReorderPoint() && !isVirtualStockBelowReorderPoint()) {
-            // 🔥 Ajouter un événement de réapprovisionnement
+        if (isBelowReorderPoint() && isVirtualStockBelowReorderPoint()) {
             this.addDomainEvent(new MaterialBelowReorderPointEvent(
                     this.getId(),
                     this.getCode() != null ? this.getCode().getValue() : null,

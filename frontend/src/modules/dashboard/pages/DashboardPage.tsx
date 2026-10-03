@@ -1,7 +1,7 @@
 import React from 'react';
 import PageMeta from '../../../shared/components/common/PageMeta';
 import PageBreadcrumb from '../../../shared/components/common/PageBreadCrumb';
-import { BoxIcon, GroupIcon, FolderIcon, DollarLineIcon, ArrowUpIcon, ArrowDownIcon } from '../../../shared/icons';
+import { BoxIcon, GroupIcon, FolderIcon, DollarLineIcon, ArrowUpIcon, ArrowDownIcon, ArrowRightIcon } from '../../../shared/icons';
 import { Link } from 'react-router-dom';
 
 export default function DashboardPage() {

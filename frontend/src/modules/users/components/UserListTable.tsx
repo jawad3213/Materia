@@ -36,8 +36,8 @@ export const UserListTable: React.FC = () => {
   const [selectedStatus, setSelectedStatus] = useState('');
 
   // Modal states
-  const [userToOffboard, setUserToOffboard] = useState<UserItem | null>(null);
-  const [userToDelete, setUserToDelete] = useState<UserItem | null>(null);
+  const [userToOffboard, setUserToOffboard] = useState<UserListItem | null>(null);
+  const [userToDelete, setUserToDelete] = useState<UserListItem | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
   // Statistics

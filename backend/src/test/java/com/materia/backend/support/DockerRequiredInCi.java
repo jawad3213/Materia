@@ -27,8 +27,14 @@ public class DockerRequiredInCi implements ExecutionCondition {
         if ("true".equalsIgnoreCase(System.getenv("CI"))) {
             return ConditionEvaluationResult.enabled("CI: integration tests always run");
         }
-        if (DockerClientFactory.instance().isDockerAvailable()) {
-            return ConditionEvaluationResult.enabled("Docker is available");
+        try {
+            if (DockerClientFactory.instance().isDockerAvailable()) {
+                return ConditionEvaluationResult.enabled("Docker is available");
+            }
+        } catch (Throwable t) {
+            return ConditionEvaluationResult.disabled(
+                    "Docker probe failed or Docker is not running (" + t.getMessage() + "), so integration tests are skipped locally. "
+                            + "Start Docker to run them. They are never skipped in CI.");
         }
         return ConditionEvaluationResult.disabled(
                 "Docker is not running, so integration tests are skipped locally. "

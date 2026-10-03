@@ -61,6 +61,8 @@ public final class RequisitionFixtures {
         private String requesterId = "requester-" + UUID.randomUUID();
         private String title = "Office supplies";
         private boolean withDefaultLine = true;
+        private String convertedToOrderId;
+        private String convertedToOrderCode;
 
         public Builder inStatus(RequisitionStatus status) {
             this.status = status;
@@ -86,6 +88,17 @@ public final class RequisitionFixtures {
 
         public Builder requestedBy(String requesterId) {
             this.requesterId = requesterId;
+            return this;
+        }
+
+        /**
+         * An approved requisition that was converted into the given order. Built as approved, then
+         * converted through the real entity method, so the order link is recorded as production does.
+         */
+        public Builder convertedTo(UUID purchaseOrderId, String purchaseOrderCode) {
+            this.status = RequisitionStatus.APPROVED;
+            this.convertedToOrderId = purchaseOrderId.toString();
+            this.convertedToOrderCode = purchaseOrderCode;
             return this;
         }
 
@@ -117,6 +130,9 @@ public final class RequisitionFixtures {
             }
             if (!withDefaultLine) {
                 requisition.removeLine(0);
+            }
+            if (convertedToOrderId != null) {
+                requisition.convert(convertedToOrderId, convertedToOrderCode, "buyer-1");
             }
             return requisition;
         }

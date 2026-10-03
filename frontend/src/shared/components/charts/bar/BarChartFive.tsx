@@ -55,7 +55,7 @@ export default function BarChartFive() {
       max: 100,
       tickAmount: 5,
       labels: {
-        formatter: (val) => `${val}%`,
+        formatter: (val: number) => `${val}%`,
       },
     },
     legend: {

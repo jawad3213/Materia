@@ -109,7 +109,7 @@ class MaterialServiceStockTest {
     @DisplayName("decrease: raised domain events are published and then cleared, so none is published twice")
     void decrease_publishesAndClearsEvents() {
         // A stock level whose decrease raises an event under the current rule (see FINDING-022).
-        Material m = stored(aMaterial().stock(25).reorderPoint(20).onOrder(100).build());
+        Material m = stored(aMaterial().stock(25).reorderPoint(20).onOrder(0).build());
 
         service.decreaseStock(m.getId(), 10);
 

@@ -55,6 +55,7 @@ const menuSections: MenuSection[] = [
         title: 'Materials',
         menuKey: 'materials',
         icon: BoxIcon,
+        path: '/materials',
         submenu: [
           { title: 'Materials List', path: '/materials' },
           { title: 'Material Cards', path: '/materials/cards' },
@@ -65,6 +66,7 @@ const menuSections: MenuSection[] = [
         title: 'Categories',
         menuKey: 'categories',
         icon: FolderIcon,
+        path: '/categories',
         roles: ['ADMIN', 'PURCHASER'],
         submenu: [
           { title: 'Category Tree', path: '/categories' },
@@ -75,6 +77,7 @@ const menuSections: MenuSection[] = [
         title: 'Suppliers',
         menuKey: 'suppliers',
         icon: GroupIcon,
+        path: '/suppliers',
         roles: ['ADMIN', 'PURCHASER'],
         submenu: [
           { title: 'Supplier Directory', path: '/suppliers' },
@@ -90,6 +93,7 @@ const menuSections: MenuSection[] = [
         title: 'Requisitions',
         menuKey: 'requisitions',
         icon: DocsIcon,
+        path: '/requisitions',
         roles: ['ADMIN', 'PURCHASER'],
         submenu: [
           { title: 'Requisitions List', path: '/requisitions' },
@@ -99,15 +103,20 @@ const menuSections: MenuSection[] = [
       },
       {
         title: 'Purchase Orders',
+        menuKey: 'purchaseOrders',
         icon: FileIcon,
         path: '/purchase-orders',
-        roles: ['ADMIN', 'PURCHASER'],
+        roles: ['ADMIN', 'PURCHASER', 'RECEIVER'],
+        submenu: [
+          { title: 'Orders List', path: '/purchase-orders' },
+          { title: 'Create Order', path: '/purchase-orders/create', roles: ['ADMIN', 'PURCHASER'] },
+        ],
       },
       {
         title: 'Goods Receipts',
         icon: BoxIconLine,
         path: '/goods-receipts',
-        roles: ['ADMIN', 'RECEIVER'],
+        roles: ['ADMIN', 'PURCHASER', 'RECEIVER'],
       },
     ],
   },
@@ -140,6 +149,7 @@ const menuSections: MenuSection[] = [
         title: 'Users & Staff',
         menuKey: 'users',
         icon: UserCircleIcon,
+        path: '/users',
         roles: ['ADMIN'],
         submenu: [
           { title: 'Staff Directory', path: '/users' },
@@ -212,6 +222,9 @@ export const Sidebar: React.FC = () => {
     }
     if (item.submenu) {
       return item.submenu.some((sub) => isSubmenuItemActive(sub, item.submenu!));
+    }
+    if (item.path && location.pathname.startsWith(item.path + '/')) {
+      return true;
     }
     return false;
   };
@@ -297,49 +310,74 @@ export const Sidebar: React.FC = () => {
                   const active = isCurrentActive(item);
 
                   if (hasSubmenu) {
+                    const targetPath = item.path || (item.submenu && item.submenu.length > 0 ? item.submenu[0].path : '#');
+
                     return (
                       <div key={item.title} className="flex flex-col">
-                        <button
-                          title={!isFullOpen ? item.title : undefined}
-                          onClick={() => item.menuKey && toggleSubmenu(item.menuKey)}
-                          className={`flex items-center w-full py-2.5 rounded-xl text-sm font-medium transition-colors ${
-                            isFullOpen ? 'justify-between px-3.5' : 'justify-center px-2'
-                          } ${
+                        <div
+                          className={`flex items-center w-full rounded-xl transition-colors ${
                             active || isOpen
                               ? 'bg-blue-50/80 text-blue-600 dark:bg-blue-500/15 dark:text-blue-400 font-semibold'
                               : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-800/60 dark:hover:text-white'
                           }`}
                         >
-                          <div className="flex items-center gap-3">
-                            <Icon
-                              className={`shrink-0 w-5 h-5 ${
-                                active || isOpen
-                                  ? 'text-blue-600 dark:text-blue-400'
-                                  : 'text-gray-500 dark:text-gray-400'
-                              }`}
-                            />
-                            {isFullOpen && (
-                              <span className="whitespace-nowrap transition-opacity duration-200">
-                                {item.title}
-                              </span>
-                            )}
-                          </div>
+                          <NavLink
+                            to={targetPath}
+                            title={!isFullOpen ? item.title : undefined}
+                            onClick={() => {
+                              closeMobileSidebar();
+                              if (!isOpen && item.menuKey) {
+                                toggleSubmenu(item.menuKey);
+                              }
+                            }}
+                            className={`flex items-center flex-1 py-2.5 text-sm font-medium transition-colors ${
+                              isFullOpen ? 'pl-3.5 pr-2' : 'justify-center px-2 w-full'
+                            }`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <Icon
+                                className={`shrink-0 w-5 h-5 ${
+                                  active || isOpen
+                                    ? 'text-blue-600 dark:text-blue-400'
+                                    : 'text-gray-500 dark:text-gray-400'
+                                }`}
+                              />
+                              {isFullOpen && (
+                                <span className="whitespace-nowrap transition-opacity duration-200">
+                                  {item.title}
+                                </span>
+                              )}
+                            </div>
+                          </NavLink>
 
                           {isFullOpen && (
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1.5 pr-2.5">
                               {item.isNew && (
                                 <span className="px-2 py-0.5 text-[11px] font-semibold text-emerald-600 bg-emerald-50 rounded-full dark:bg-emerald-500/15 dark:text-emerald-400">
                                   NEW
                                 </span>
                               )}
-                              <ChevronDownIcon
-                                className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${
-                                  isOpen ? 'rotate-180 text-blue-600 dark:text-blue-400' : ''
-                                }`}
-                              />
+                              <button
+                                type="button"
+                                aria-label={`Toggle ${item.title} submenu`}
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  if (item.menuKey) {
+                                    toggleSubmenu(item.menuKey);
+                                  }
+                                }}
+                                className="p-1.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+                              >
+                                <ChevronDownIcon
+                                  className={`w-4 h-4 transition-transform duration-200 ${
+                                    isOpen ? 'rotate-180 text-blue-600 dark:text-blue-400' : ''
+                                  }`}
+                                />
+                              </button>
                             </div>
                           )}
-                        </button>
+                        </div>
 
                         {/* Submenu Items */}
                         {isOpen && isFullOpen && (

@@ -7,16 +7,14 @@ import jakarta.validation.constraints.NotBlank;
  */
 public class PurchaseOrderAssignReceiverWebRequest {
 
-    @NotBlank(message = "User ID is mandatory")
     private String userId;
 
-    @NotBlank(message = "User name is mandatory")
     private String userName;
 
     @NotBlank(message = "Assigned user ID is mandatory")
     private String assignedUserId;
 
-    @NotBlank(message = "Assigned user name is mandatory")
+    /** Ignored by the server, which takes the name from the receiver's account. */
     private String assignedUserName;
 
     public String getUserId() {

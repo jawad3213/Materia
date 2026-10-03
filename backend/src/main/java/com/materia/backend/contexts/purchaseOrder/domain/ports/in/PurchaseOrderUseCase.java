@@ -4,6 +4,7 @@ import com.materia.backend.common.domain.BaseUseCase;
 import com.materia.backend.contexts.purchaseOrder.application.dtos.CreatePurchaseOrderInput;
 import com.materia.backend.contexts.purchaseOrder.application.dtos.PurchaseOrderOutput;
 import com.materia.backend.contexts.purchaseOrder.application.dtos.UpdatePurchaseOrderInput;
+import com.materia.backend.contexts.purchaseOrder.domain.ports.out.ReceiverDirectory;
 
 import java.util.List;
 import java.util.UUID;
@@ -31,9 +32,15 @@ public interface PurchaseOrderUseCase extends BaseUseCase<CreatePurchaseOrderInp
 
     PurchaseOrderOutput assignReceiver(UUID id, String userId, String userName, String assignedUserId, String assignedUserName);
 
+    List<ReceiverDirectory.Receiver> getAssignableReceivers();
+
     PurchaseOrderOutput confirmReceipt(UUID id, String receiverId, String receiverName);
 
+    PurchaseOrderOutput reject(UUID id, String userId, String reason);
+
     PurchaseOrderOutput cancel(UUID id, String userId, String reason);
+
+    void delete(UUID id, String userId);
 
     PurchaseOrderOutput complete(UUID id, String userId);
 

@@ -93,6 +93,10 @@ public class MaterialJpaEntity extends BaseJpaEntity {
     @Column(name = "economic_order_quantity")
     private Integer economicOrderQuantity;
 
+    // FINDING-027 fix: stock_on_order was missing from the JPA entity, so every reload returned 0.
+    @Column(name = "stock_on_order")
+    private Integer stockOnOrder;
+
     // ---- FINANCES (flattened from Money value object) ----
     @Column(name = "standard_price", precision = 19, scale = 4)
     private BigDecimal standardPrice;
@@ -211,6 +215,9 @@ public class MaterialJpaEntity extends BaseJpaEntity {
 
     public Integer getEconomicOrderQuantity() { return economicOrderQuantity; }
     public void setEconomicOrderQuantity(Integer economicOrderQuantity) { this.economicOrderQuantity = economicOrderQuantity; }
+
+    public Integer getStockOnOrder() { return stockOnOrder; }
+    public void setStockOnOrder(Integer stockOnOrder) { this.stockOnOrder = stockOnOrder; }
 
     public BigDecimal getStandardPrice() { return standardPrice; }
     public void setStandardPrice(BigDecimal standardPrice) { this.standardPrice = standardPrice; }
