@@ -167,19 +167,6 @@ public class RequisitionController {
         return ResponseEntity.ok(webMapper.toWebResponse(response));
     }
 
-    @PreAuthorize("hasAuthority('requisition:convert')")
-    @PatchMapping("/{id}/convert")
-    public ResponseEntity<RequisitionWebResponse> convertRequisition(
-            @PathVariable UUID id,
-            @RequestParam String purchaseOrderId,
-            @RequestParam String purchaseOrderCode,
-            Authentication authentication) {
-        // FINDING-020 fix: converting user resolved from the authenticated principal.
-        String principal = authentication != null ? authentication.getName() : "unknown";
-        RequisitionOutput response = requisitionUseCase.convert(id, purchaseOrderId, purchaseOrderCode, principal);
-        return ResponseEntity.ok(webMapper.toWebResponse(response));
-    }
-
     @PreAuthorize("hasAuthority('requisition:write')")
     @PatchMapping("/{id}/cancel")
     public ResponseEntity<RequisitionWebResponse> cancelRequisition(

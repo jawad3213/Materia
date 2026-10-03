@@ -4,6 +4,7 @@ import com.materia.backend.contexts.masterData.domain.entities.Material;
 import com.materia.backend.contexts.masterData.domain.enums.MaterialStatus;
 import com.materia.backend.contexts.masterData.domain.ports.out.MaterialRepository;
 import com.materia.backend.contexts.masterData.infrastructure.adapters.out.persistence.entities.MaterialJpaEntity;
+import com.materia.backend.contexts.masterData.infrastructure.adapters.out.persistence.entities.MaterialStockMovementJpaEntity;
 import com.materia.backend.contexts.masterData.infrastructure.adapters.out.persistence.mappers.MaterialPersistenceMapper;
 import com.materia.backend.contexts.masterData.infrastructure.adapters.out.persistence.repositories.SpringDataMaterialRepository;
 import org.springframework.data.jpa.domain.Specification;

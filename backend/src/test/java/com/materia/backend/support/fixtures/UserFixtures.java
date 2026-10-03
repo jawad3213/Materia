@@ -22,6 +22,23 @@ public final class UserFixtures {
         return new Builder();
     }
 
+    /** An active, enabled receiver: the only kind of user an order may be assigned to. */
+    public static Builder aReceiver() {
+        return new Builder().role(Role.RECEIVER).firstName("Rita").lastName("Receiver");
+    }
+
+    public static Builder anInactiveReceiver() {
+        return aReceiver().status(UserStatus.INACTIVE);
+    }
+
+    public static Builder aDisabledReceiver() {
+        return aReceiver().enabled(false);
+    }
+
+    public static Builder aPurchaser() {
+        return new Builder().role(Role.PURCHASER).firstName("Bob").lastName("Buyer");
+    }
+
     public static String uniqueEmail() {
         return String.format("user-%04d@materia.test", SEQUENCE.getAndIncrement() % 10000);
     }

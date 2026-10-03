@@ -3,6 +3,8 @@ import MaterialsRoutes from '../../modules/materials/MaterialsRoutes';
 import CategoriesRoutes from '../../modules/categories/CategoriesRoutes';
 import SuppliersRoutes from '../../modules/suppliers/SuppliersRoutes';
 import RequisitionsRoutes from '../../modules/requisitions/RequisitionsRoutes';
+import PurchaseOrdersRoutes from '../../modules/purchaseOrders/PurchaseOrdersRoutes';
+import GoodsReceiptsRoutes from '../../modules/goodsReceipts/GoodsReceiptsRoutes';
 import UsersRoutes from '../../modules/users/UsersRoutes';
 import DashboardPage from '../../modules/dashboard/pages/DashboardPage';
 import ProfilePage from '../../modules/userProfile/pages/ProfilePage';
@@ -133,6 +135,26 @@ export default function AppRoutes() {
         />
         <Route path="/approvals" element={<Navigate to="/requisitions/approvals" replace />} />
         <Route path="/approvals/*" element={<Navigate to="/requisitions/approvals" replace />} />
+        
+        {/* Purchase Orders: receivers can view the orders they receive; creation and editing are guarded inside */}
+        <Route
+          path="/purchase-orders/*"
+          element={
+            <RoleGuard allowedRoles={['ADMIN', 'PURCHASER', 'RECEIVER']}>
+              <PurchaseOrdersRoutes />
+            </RoleGuard>
+          }
+        />
+
+        {/* Goods Receipts: purchasers can consult, receivers record */}
+        <Route
+          path="/goods-receipts/*"
+          element={
+            <RoleGuard allowedRoles={['ADMIN', 'PURCHASER', 'RECEIVER']}>
+              <GoodsReceiptsRoutes />
+            </RoleGuard>
+          }
+        />
         
         {/* Users & Staff Management: STRICTLY ADMIN ONLY */}
         <Route

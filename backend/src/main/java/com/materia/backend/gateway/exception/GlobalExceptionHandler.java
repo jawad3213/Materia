@@ -10,6 +10,7 @@ import com.materia.backend.contexts.auth.domain.exceptions.InvalidTokenException
 import com.materia.backend.contexts.auth.domain.exceptions.TokenExpiredException;
 import com.materia.backend.contexts.auth.domain.exceptions.UserAlreadyExistsException;
 import com.materia.backend.contexts.auth.domain.exceptions.UserNotFoundException;
+import com.materia.backend.contexts.goodsReceipt.domain.exceptions.GoodsReceiptBusinessException;
 import com.materia.backend.contexts.purchaseOrder.domain.exceptions.PurchaseOrderBusinessException;
 import com.materia.backend.contexts.purchaseOrder.domain.exceptions.PurchaseOrderNotFoundException;
 import com.materia.backend.contexts.purchaseOrder.domain.exceptions.PurchaseOrderValidationException;
@@ -73,6 +74,20 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return buildErrorResponse(
                 HttpStatus.CONFLICT,
                 "Purchase Order Error",
+                ex.getErrorCode(),
+                ex.getFormattedMessage(),
+                request,
+                null
+        );
+    }
+
+    @ExceptionHandler(GoodsReceiptBusinessException.class)
+    public ResponseEntity<ErrorResponse> handleGoodsReceiptBusinessException(
+            GoodsReceiptBusinessException ex, WebRequest request) {
+        log.error("Goods receipt exception: {}", ex.getMessage(), ex);
+        return buildErrorResponse(
+                HttpStatus.CONFLICT,
+                "Goods Receipt Error",
                 ex.getErrorCode(),
                 ex.getFormattedMessage(),
                 request,

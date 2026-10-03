@@ -7,11 +7,13 @@ import com.materia.backend.contexts.goodsReceipt.application.dtos.UpdateGoodsRec
 import com.materia.backend.contexts.goodsReceipt.application.mappers.GoodsReceiptMapper;
 import com.materia.backend.contexts.goodsReceipt.domain.entities.GoodsReceipt;
 import com.materia.backend.contexts.goodsReceipt.domain.entities.GoodsReceiptLine;
+import com.materia.backend.contexts.goodsReceipt.domain.enums.QualityStatus;
 import com.materia.backend.contexts.goodsReceipt.domain.enums.ReceiptStatus;
 import com.materia.backend.contexts.goodsReceipt.domain.events.GoodsReceiptCompletedEvent;
 import com.materia.backend.contexts.goodsReceipt.domain.events.GoodsReceiptCreatedEvent;
 import com.materia.backend.contexts.goodsReceipt.domain.events.GoodsReceiptPartialEvent;
 import com.materia.backend.contexts.goodsReceipt.domain.events.GoodsReceiptRejectedEvent;
+import com.materia.backend.contexts.goodsReceipt.domain.exceptions.GoodsReceiptBusinessException;
 import com.materia.backend.contexts.goodsReceipt.domain.exceptions.GoodsReceiptLineRequiredException;
 import com.materia.backend.contexts.goodsReceipt.domain.exceptions.GoodsReceiptNotFoundException;
 import com.materia.backend.contexts.goodsReceipt.domain.exceptions.GoodsReceiptNotModifiableException;
@@ -24,8 +26,9 @@ import com.materia.backend.contexts.masterData.domain.entities.Material;
 import com.materia.backend.contexts.masterData.domain.ports.out.MaterialRepository;
 import com.materia.backend.contexts.purchaseOrder.domain.entities.PurchaseOrder;
 import com.materia.backend.contexts.purchaseOrder.domain.entities.PurchaseOrderLine;
-import com.materia.backend.contexts.purchaseOrder.domain.enums.DeliveryStatus;
 import com.materia.backend.contexts.purchaseOrder.domain.enums.OrderStatus;
+import com.materia.backend.contexts.purchaseOrder.domain.events.PurchaseOrderDeliveredEvent;
+import com.materia.backend.contexts.purchaseOrder.domain.ports.out.PurchaseOrderEventPublisher;
 import com.materia.backend.contexts.purchaseOrder.domain.ports.out.PurchaseOrderRepository;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.retry.annotation.Backoff;
@@ -35,14 +38,21 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-/** Application service for the goods receipt lifecycle. */
+/**
+ * Application service for the goods receipt lifecycle.
+ *
+ * <p>Reads run in a read-only transaction: receipt lines are lazily loaded and open-in-view is off,
+ * so mapping a receipt outside a transaction fails (spec 002 research F-014). Writes declare their own.
+ */
 @Service
+@Transactional(readOnly = true)
 public class GoodsReceiptService implements GoodsReceiptUseCase {
 
     private final GoodsReceiptRepository goodsReceiptRepository;
@@ -51,19 +61,22 @@ public class GoodsReceiptService implements GoodsReceiptUseCase {
     private final GoodsReceiptCodeGeneratorService codeGenerator;
     private final PurchaseOrderRepository purchaseOrderRepository;
     private final MaterialRepository materialRepository;
+    private final PurchaseOrderEventPublisher purchaseOrderEventPublisher;
 
     public GoodsReceiptService(GoodsReceiptRepository goodsReceiptRepository,
                                GoodsReceiptMapper goodsReceiptMapper,
                                GoodsReceiptEventPublisher eventPublisher,
                                GoodsReceiptCodeGeneratorService codeGenerator,
                                PurchaseOrderRepository purchaseOrderRepository,
-                               MaterialRepository materialRepository) {
+                               MaterialRepository materialRepository,
+                               PurchaseOrderEventPublisher purchaseOrderEventPublisher) {
         this.goodsReceiptRepository = goodsReceiptRepository;
         this.goodsReceiptMapper = goodsReceiptMapper;
         this.eventPublisher = eventPublisher;
         this.codeGenerator = codeGenerator;
         this.purchaseOrderRepository = purchaseOrderRepository;
         this.materialRepository = materialRepository;
+        this.purchaseOrderEventPublisher = purchaseOrderEventPublisher;
     }
 
     @Override
@@ -111,7 +124,7 @@ public class GoodsReceiptService implements GoodsReceiptUseCase {
             String code = request.getReceiptCode().trim();
             if (!goodsReceipt.getReceiptCode().getValue().equals(code)
                     && goodsReceiptRepository.existsByReceiptCode(code)) {
-                throw new GoodsReceiptValidationException("A goods receipt already uses this code");
+                throw new GoodsReceiptBusinessException("A goods receipt already uses this code", "GOODS_RECEIPT_RULE_VIOLATION");
             }
         }
 
@@ -267,6 +280,43 @@ public class GoodsReceiptService implements GoodsReceiptUseCase {
         return goodsReceiptMapper.toResponse(goodsReceiptRepository.save(goodsReceipt));
     }
 
+    @Override
+    @Transactional
+    public GoodsReceiptOutput receiveRemaining(String purchaseOrderId, String receiverId, String receiverName) {
+        PurchaseOrder purchaseOrder = getPurchaseOrder(purchaseOrderId);
+        Map<String, Integer> previouslyReceived = receivedQuantitiesByPurchaseOrderLine(
+                purchaseOrder.getId().toString(), null);
+
+        CreateGoodsReceiptInput request = new CreateGoodsReceiptInput();
+        request.setPurchaseOrderId(purchaseOrder.getId().toString());
+        request.setReceivedBy(receiverId);
+        request.setReceivedByName(receiverName);
+        request.setUserId(receiverId);
+
+        List<GoodsReceiptLineInput> lines = new ArrayList<>();
+        for (PurchaseOrderLine orderLine : purchaseOrder.getLines()) {
+            String orderLineId = orderLine.getId().toString();
+            int remaining = orderLine.getQuantity() - previouslyReceived.getOrDefault(orderLineId, 0);
+            if (remaining <= 0) {
+                continue;
+            }
+            GoodsReceiptLineInput line = new GoodsReceiptLineInput();
+            line.setPurchaseOrderLineId(orderLineId);
+            line.setMaterialCode(orderLine.getMaterialCode());
+            line.setQuantityReceived(remaining);
+            line.setQuantityRejected(0);
+            line.setQualityStatus(QualityStatus.ACCEPTED.getCode());
+            lines.add(line);
+        }
+        if (lines.isEmpty()) {
+            throw new GoodsReceiptBusinessException("Nothing remains to be received on this purchase order", "GOODS_RECEIPT_RULE_VIOLATION");
+        }
+        request.setLines(lines);
+
+        GoodsReceiptOutput created = create(request);
+        return complete(created.getId(), receiverId);
+    }
+
     private GoodsReceipt getGoodsReceiptById(UUID id) {
         return goodsReceiptRepository.findById(id)
                 .orElseThrow(() -> new GoodsReceiptNotFoundException("Goods receipt not found: " + id));
@@ -276,7 +326,7 @@ public class GoodsReceiptService implements GoodsReceiptUseCase {
         if (request.getReceiptCode() != null && !request.getReceiptCode().isBlank()) {
             String code = request.getReceiptCode().trim();
             if (goodsReceiptRepository.existsByReceiptCode(code)) {
-                throw new GoodsReceiptValidationException("A goods receipt already uses this code");
+                throw new GoodsReceiptBusinessException("A goods receipt already uses this code", "GOODS_RECEIPT_RULE_VIOLATION");
             }
             return code;
         }
@@ -308,7 +358,7 @@ public class GoodsReceiptService implements GoodsReceiptUseCase {
         PurchaseOrder purchaseOrder = getPurchaseOrder(goodsReceipt.getPurchaseOrderId());
         if (purchaseOrder.getStatus() != OrderStatus.READY_FOR_RECEIPT
                 && purchaseOrder.getStatus() != OrderStatus.PARTIALLY_RECEIVED) {
-            throw new GoodsReceiptValidationException("The purchase order is not ready for receipt");
+            throw new GoodsReceiptBusinessException("The purchase order is not ready for receipt", "GOODS_RECEIPT_RULE_VIOLATION");
         }
         if (purchaseOrder.getAssignedTo() == null || !purchaseOrder.getAssignedTo().equals(userId)) {
             throw new AccessDeniedException("You are not assigned to receive this purchase order");
@@ -317,6 +367,9 @@ public class GoodsReceiptService implements GoodsReceiptUseCase {
             throw new AccessDeniedException("The goods receipt receiver must be the assigned purchase-order receiver");
         }
 
+        if (purchaseOrder.getAssignedToName() != null && !purchaseOrder.getAssignedToName().isBlank()) {
+            goodsReceipt.setReceivedByName(purchaseOrder.getAssignedToName());
+        }
         goodsReceipt.setPurchaseOrderId(purchaseOrder.getId().toString());
         goodsReceipt.setPurchaseOrderCode(purchaseOrder.getOrderCode().getValue());
         goodsReceipt.setSupplierId(purchaseOrder.getSupplierId().toString());
@@ -336,14 +389,17 @@ public class GoodsReceiptService implements GoodsReceiptUseCase {
                 throw new GoodsReceiptValidationException("Each goods receipt line must reference a purchase-order line");
             }
             if (!orderLine.getMaterialCode().equals(receiptLine.getMaterialCode())) {
-                throw new GoodsReceiptValidationException(
-                        "Receipt material does not match purchase-order line " + orderLine.getLineNumber());
+                throw new GoodsReceiptBusinessException(
+                        "Receipt material does not match purchase-order line " + orderLine.getLineNumber(), "GOODS_RECEIPT_RULE_VIOLATION");
             }
 
             validateLineQuantities(receiptLine, orderLine.getQuantity());
             receiptQuantities.merge(purchaseOrderLineId, receiptLine.getQuantityReceived(), Integer::sum);
 
-            receiptLine.setQuantityOrdered(orderLine.getQuantity());
+            // A receipt expects what is still outstanding on the order line, not the full ordered quantity,
+            // so a receipt that brings in exactly the remainder has no discrepancy (F-005).
+            int outstanding = orderLine.getQuantity() - previouslyReceived.getOrDefault(purchaseOrderLineId, 0);
+            receiptLine.setQuantityOrdered(Math.max(0, outstanding));
             receiptLine.setMaterialId(orderLine.getMaterialId());
             receiptLine.setMaterialName(orderLine.getMaterialName());
             receiptLine.setUnitOfMeasure(orderLine.getUnitOfMeasure());
@@ -356,9 +412,9 @@ public class GoodsReceiptService implements GoodsReceiptUseCase {
             PurchaseOrderLine orderLine = orderLines.get(entry.getKey());
             int alreadyReceived = previouslyReceived.getOrDefault(entry.getKey(), 0);
             if (alreadyReceived + entry.getValue() > orderLine.getQuantity()) {
-                throw new GoodsReceiptValidationException(
+                throw new GoodsReceiptBusinessException(
                         "Received quantity exceeds the remaining quantity for purchase-order line "
-                                + orderLine.getLineNumber());
+                                + orderLine.getLineNumber(), "GOODS_RECEIPT_RULE_VIOLATION");
             }
         }
         return purchaseOrder;
@@ -442,8 +498,10 @@ public class GoodsReceiptService implements GoodsReceiptUseCase {
 
         boolean fullyReceived = purchaseOrder.getLines().stream().allMatch(line ->
                 receivedQuantities.getOrDefault(line.getId().toString(), 0) >= line.getQuantity());
-        purchaseOrder.updateDeliveryStatus(fullyReceived ? DeliveryStatus.DELIVERED : DeliveryStatus.PARTIAL, userId);
-        purchaseOrderRepository.save(purchaseOrder);
+        purchaseOrder.recordReceipt(fullyReceived, userId);
+        PurchaseOrder saved = purchaseOrderRepository.save(purchaseOrder);
+        purchaseOrderEventPublisher.publish(new PurchaseOrderDeliveredEvent(
+                saved.getId(), saved.getOrderCode().getValue(), saved.getDeliveryStatus(), userId));
     }
 
     private UpdateGoodsReceiptInput toUpdateRequest(CreateGoodsReceiptInput request) {

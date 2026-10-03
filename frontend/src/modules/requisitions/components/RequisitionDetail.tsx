@@ -1,10 +1,15 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { requisitionApi } from "../services/requisitionApi";
+import purchaseOrderService from "../../purchaseOrders/services/purchaseOrderService";
+import type { CreatePurchaseOrderRequest } from "../../purchaseOrders/types";
+import { supplierApi } from "../../suppliers/services/supplierApi";
+import useAuth from "../../auth/hooks/useAuth";
 import type { Requisition } from "../types";
 import RequisitionStatusBadge from "./RequisitionStatusBadge";
 import RequisitionApprovalModal from "./RequisitionApprovalModal";
 import RequisitionCancelModal from "./RequisitionCancelModal";
+import RequisitionConvertToPoModal from "./RequisitionConvertToPoModal";
 import Button from "../../../shared/components/ui/button/Button";
 import DeleteConfirmModal from "../../../shared/components/ui/modal/DeleteConfirmModal";
 import {
@@ -18,6 +23,7 @@ import {
 export default function RequisitionDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const [requisition, setRequisition] = useState<Requisition | null>(null);
   const [loading, setLoading] = useState(true);
@@ -35,6 +41,9 @@ export default function RequisitionDetail() {
 
   // Cancel modal state
   const [showCancelModal, setShowCancelModal] = useState(false);
+
+  // Convert to PO modal state
+  const [showConvertModal, setShowConvertModal] = useState(false);
 
   // Success toast feedback
   const [feedback, setFeedback] = useState<{
@@ -150,29 +159,87 @@ export default function RequisitionDetail() {
     }
   };
 
-  const handleConvertToPo = async () => {
+  const handleConvertToPo = async (selectedSupplier?: { id: string; name: string; code?: string }) => {
     if (!requisition) return;
     try {
       setActionLoading(true);
-      const generatedPoCode = `PO-${new Date().getFullYear()}-${Math.floor(
-        1000 + Math.random() * 9000
-      )}`;
-      const res = await requisitionApi.convert(
-        requisition.id,
-        crypto.randomUUID(),
-        generatedPoCode,
-        "current-user"
-      );
+      // Resolve supplier
+      let supId = selectedSupplier?.id;
+      let supName = selectedSupplier?.name;
+      let supCode = selectedSupplier?.code;
+
+      if (!supId) {
+        const lineWithSup = requisition.lines?.find((l) => l.supplierId && l.supplierName);
+        if (lineWithSup) {
+          supId = lineWithSup.supplierId;
+          supName = lineWithSup.supplierName;
+          supCode = lineWithSup.supplierCode;
+        }
+      }
+
+      if (!supId) {
+        const supList = await supplierApi.getAllUnpaginated();
+        if (supList.data && supList.data.length > 0) {
+          supId = supList.data[0].id;
+          supName = supList.data[0].name;
+          supCode = supList.data[0].code;
+        }
+      }
+
+      if (!supId) {
+        setShowConvertModal(false);
+        navigate(`/purchase-orders/create?fromRequisition=${requisition.id}`);
+        return;
+      }
+
+      const poPayload: CreatePurchaseOrderRequest = {
+        requisitionId: requisition.id,
+        requisitionCode: requisition.requisitionCode,
+        supplierId: supId,
+        supplierName: supName || "Fournisseur",
+        supplierCode: supCode || undefined,
+        orderDate: new Date().toISOString().split("T")[0],
+        expectedDeliveryDate: requisition.requiredDate || undefined,
+        paymentTerms: "Virement 30 jours",
+        paymentDelayDays: 30,
+        deliveryTerms: "Livraison sur site DAP",
+        incoterm: "DAP",
+        currencyCode: requisition.currencyCode || "MAD",
+        taxAmount: 0,
+        shippingCost: 0,
+        orderedBy: user?.id || "CURRENT_USER",
+        orderedByName: user?.name || user?.email || "Acheteur",
+        notes: requisition.title + (requisition.description ? ` - ${requisition.description}` : ""),
+        lines: (requisition.lines || []).map((l, idx) => ({
+          lineNumber: idx + 1,
+          requisitionLineId: l.id,
+          materialCode: l.materialCode,
+          materialId: l.materialId || undefined,
+          materialName: l.materialName || undefined,
+          unitOfMeasure: l.unitOfMeasure || undefined,
+          quantity: Number(l.quantity) || 1,
+          unitPrice: Number(l.unitPrice) || 0,
+          currencyCode: l.currencyCode || requisition.currencyCode || "MAD",
+          expectedDeliveryDate: l.requiredDate || requisition.requiredDate || undefined,
+          notes: l.notes || undefined,
+        })),
+        createdBy: user?.email || "system",
+      };
+
+      // The backend converts the requisition in the same transaction as the order creation.
+      const createdPo = await purchaseOrderService.create(poPayload);
+      const res = await requisitionApi.getById(requisition.id);
       setRequisition(res.data);
+      setShowConvertModal(false);
       setFeedback({
         type: "success",
-        text: `Requisition converted to Purchase Order ${generatedPoCode}.`,
+        text: `Demande convertie avec succès en Bon de Commande ${createdPo.data.orderCode}.`,
       });
     } catch (err: any) {
       console.error("Failed to convert requisition to PO:", err);
       setFeedback({
         type: "error",
-        text: err?.response?.data?.message || "Failed to convert to PO.",
+        text: err?.response?.data?.message || "Échec de la conversion en bon de commande.",
       });
     } finally {
       setActionLoading(false);
@@ -447,7 +514,7 @@ export default function RequisitionDetail() {
             {canConvert && (
               <Button
                 size="sm"
-                onClick={handleConvertToPo}
+                onClick={() => setShowConvertModal(true)}
                 disabled={actionLoading}
                 className="bg-purple-600 hover:bg-purple-700 text-white"
               >
@@ -782,11 +849,18 @@ export default function RequisitionDetail() {
                   4. Purchase Order
                 </span>
                 <span className="text-sm font-extrabold text-gray-900 dark:text-white mt-0.5 truncate">
-                  {isConverted && requisition.purchaseOrderCode
-                    ? requisition.purchaseOrderCode
-                    : isApproved
-                      ? "Ready for PO"
-                      : "Pending Approval"}
+                  {isConverted && requisition.purchaseOrderCode ? (
+                    <Link
+                      to={`/purchase-orders/${requisition.purchaseOrderId || requisition.purchaseOrderCode}`}
+                      className="text-purple-600 hover:text-purple-700 dark:text-purple-400 underline font-bold"
+                    >
+                      {requisition.purchaseOrderCode}
+                    </Link>
+                  ) : isApproved ? (
+                    "Ready for PO"
+                  ) : (
+                    "Pending Approval"
+                  )}
                 </span>
                 <span className="text-[11px] text-gray-500 dark:text-gray-400 mt-1 truncate">
                   {requisition.convertedDate
@@ -1111,6 +1185,17 @@ export default function RequisitionDetail() {
           requisition={requisition}
           onConfirm={handleCancelRequisition}
           isLoading={actionLoading}
+        />
+      )}
+
+      {/* Convert to PO Confirmation Modal */}
+      {showConvertModal && (
+        <RequisitionConvertToPoModal
+          isOpen={showConvertModal}
+          onClose={() => setShowConvertModal(false)}
+          requisition={requisition}
+          onConfirm={handleConvertToPo}
+          isConverting={actionLoading}
         />
       )}
     </div>

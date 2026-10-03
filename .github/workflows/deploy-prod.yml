@@ -124,6 +124,12 @@ jobs:
           cd frontend
           npm ci
 
+      # A failing frontend test stops the deploy (spec 002, FR-023).
+      - name: Run Frontend Tests
+        run: |
+          cd frontend
+          npm test
+
       - name: Build React Production Bundle
         env:
           VITE_API_BASE_URL: ${{ secrets.PROD_VITE_API_BASE_URL || secrets.VITE_API_BASE_URL }}

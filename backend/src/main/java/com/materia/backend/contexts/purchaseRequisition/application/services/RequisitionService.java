@@ -256,6 +256,14 @@ public class RequisitionService implements RequisitionUseCase {
 
     @Override
     @Transactional
+    public RequisitionOutput revertConversion(UUID id, String purchaseOrderId, String userId) {
+        Requisition requisition = getEntityById(id);
+        requisition.revertConversion(purchaseOrderId, userId);
+        return mapper.toResponse(requisitionRepository.save(requisition));
+    }
+
+    @Override
+    @Transactional
     public RequisitionOutput cancel(UUID id, String userId, String reason) {
         Requisition requisition = getEntityById(id);
         requisition.cancel(userId, reason);

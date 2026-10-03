@@ -1,5 +1,6 @@
 package com.materia.backend.contexts.employee.infrastructure.adapters.out.persistence;
 
+import com.materia.backend.contexts.auth.domain.ports.out.UserRepository;
 import com.materia.backend.contexts.employee.domain.entities.Employee;
 import com.materia.backend.contexts.employee.domain.enums.EmploymentStatus;
 import com.materia.backend.contexts.employee.domain.ports.out.EmployeeRepository;
@@ -17,6 +18,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static com.materia.backend.support.fixtures.EmployeeFixtures.anEmployee;
+import static com.materia.backend.support.fixtures.UserFixtures.aUser;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -29,6 +31,9 @@ class EmployeePersistenceIT extends AbstractIntegrationTest {
 
     @Autowired
     private EmployeeRepository employees;
+
+    @Autowired
+    private UserRepository users;
 
     @PersistenceContext
     private EntityManager em;
@@ -96,7 +101,8 @@ class EmployeePersistenceIT extends AbstractIntegrationTest {
     @Test
     @DisplayName("findByUserId: returns the employee when the userId is linked")
     void findByUserId_returnsEmployee() {
-        UUID userId = UUID.randomUUID();
+        // employees.user_id references users(id), so the linked account must exist (002 research F-010).
+        UUID userId = users.save(aUser().build()).getId();
         employees.save(anEmployee().code("EMP-7003").userId(userId)
                 .email(EmployeeFixtures.uniqueEmail("em8")).build());
         flushAndClear();

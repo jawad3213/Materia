@@ -1,0 +1,171 @@
+{
+  "$comment": "Single source of truth for which actions each role may perform in each status. Both the backend tests (support/ActionMatrix) and the frontend screen-rule tests (src/test/actionMatrix.ts) assert against this file, so the screens and the API cannot disagree without a test failing (spec 002, research R8, SC-002a). Change who may do what here first.",
+  "version": 3,
+  "roles": {
+    "ADMIN": {
+      "passesEveryPermissionCheck": true,
+      "permissions": [
+        "order:read",
+        "order:write",
+        "order:validate",
+        "order:cancel",
+        "receipt:read",
+        "receipt:write",
+        "receipt:quality"
+      ]
+    },
+    "PURCHASER": {
+      "passesEveryPermissionCheck": false,
+      "permissions": [
+        "order:read",
+        "order:write",
+        "order:cancel",
+        "receipt:read"
+      ]
+    },
+    "RECEIVER": {
+      "passesEveryPermissionCheck": false,
+      "permissions": [
+        "order:read",
+        "receipt:read",
+        "receipt:write",
+        "receipt:quality"
+      ]
+    }
+  },
+  "purchaseOrder": {
+    "statuses": [
+      "DRAFT",
+      "SUBMITTED",
+      "CONFIRMED",
+      "READY_FOR_RECEIPT",
+      "PARTIALLY_RECEIVED",
+      "RECEIVED",
+      "COMPLETED",
+      "CANCELLED",
+      "REJECTED"
+    ],
+    "actions": {
+      "edit": {
+        "permission": "order:write",
+        "statuses": [
+          "DRAFT",
+          "SUBMITTED"
+        ]
+      },
+      "delete": {
+        "permission": "order:write",
+        "requiresRole": "ADMIN",
+        "statuses": [
+          "DRAFT",
+          "SUBMITTED"
+        ]
+      },
+      "submit": {
+        "permission": "order:write",
+        "statuses": [
+          "DRAFT"
+        ]
+      },
+      "confirm": {
+        "permission": "order:validate",
+        "statuses": [
+          "SUBMITTED"
+        ]
+      },
+      "reject": {
+        "permission": "order:validate",
+        "statuses": [
+          "SUBMITTED"
+        ]
+      },
+      "assignReceiver": {
+        "permission": "order:write",
+        "statuses": [
+          "CONFIRMED"
+        ]
+      },
+      "trackDelivery": {
+        "permission": "order:write",
+        "statuses": [
+          "CONFIRMED",
+          "READY_FOR_RECEIPT",
+          "PARTIALLY_RECEIVED"
+        ]
+      },
+      "receive": {
+        "permission": "receipt:write",
+        "requiresAssignedReceiver": true,
+        "statuses": [
+          "READY_FOR_RECEIPT",
+          "PARTIALLY_RECEIVED"
+        ]
+      },
+      "closeShort": {
+        "permission": "order:write",
+        "statuses": [
+          "PARTIALLY_RECEIVED",
+          "RECEIVED"
+        ],
+        "note": "RECEIVED is a legacy status that no transition produces any more; such orders can still be closed."
+      },
+      "cancel": {
+        "permission": "order:cancel",
+        "statuses": [
+          "DRAFT",
+          "SUBMITTED",
+          "CONFIRMED",
+          "READY_FOR_RECEIPT"
+        ]
+      }
+    }
+  },
+  "goodsReceipt": {
+    "statuses": [
+      "DRAFT",
+      "IN_PROGRESS",
+      "COMPLETED",
+      "PARTIAL",
+      "CANCELLED"
+    ],
+    "actions": {
+      "record": {
+        "permission": "receipt:write",
+        "statuses": [],
+        "note": "Creation; status-independent. Requires the order to be receivable and the caller to be its assigned receiver."
+      },
+      "editLines": {
+        "permission": "receipt:write",
+        "requiresOwnReceipt": true,
+        "statuses": [
+          "DRAFT",
+          "IN_PROGRESS"
+        ]
+      },
+      "complete": {
+        "permission": "receipt:write",
+        "requiresOwnReceipt": true,
+        "statuses": [
+          "DRAFT",
+          "IN_PROGRESS"
+        ]
+      },
+      "cancel": {
+        "permission": "receipt:write",
+        "requiresOwnReceipt": true,
+        "statuses": [
+          "DRAFT",
+          "IN_PROGRESS"
+        ]
+      },
+      "delete": {
+        "permission": "receipt:write",
+        "requiresOwnReceipt": true,
+        "statuses": [
+          "DRAFT",
+          "IN_PROGRESS"
+        ]
+      }
+    }
+  }
+}

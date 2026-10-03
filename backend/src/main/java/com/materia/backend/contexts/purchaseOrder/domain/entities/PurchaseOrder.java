@@ -531,7 +531,10 @@ public class PurchaseOrder extends BaseEntity {
 
     public void assignReceiver(String userId, String userName, String assignedUserId, String assignedUserName) {
         if (status != OrderStatus.CONFIRMED) {
-            throw new IllegalStateException("La commande doit etre confirmee avant l'assignation");
+            throw new PurchaseOrderInvalidStatusTransitionException("La commande doit etre confirmee avant l'assignation");
+        }
+        if (assignedUserId == null || assignedUserId.isBlank()) {
+            throw new PurchaseOrderValidationException("A receiver must be specified");
         }
 
         this.assignedTo = assignedUserId;
@@ -545,41 +548,82 @@ public class PurchaseOrder extends BaseEntity {
         this.setUpdatedBy(userId);
     }
 
-    public void confirmReceipt(String receiverId, String receiverName) {
-        if (status != OrderStatus.READY_FOR_RECEIPT) {
-            throw new IllegalStateException("La commande n'est pas prete pour la reception");
+    /** Records the supplier declining a submitted order. */
+    public void reject(String userId, String reason) {
+        if (status != OrderStatus.SUBMITTED) {
+            throw new PurchaseOrderInvalidStatusTransitionException("Only a submitted purchase order can be rejected");
         }
-
-        if (this.assignedTo == null || !this.assignedTo.equals(receiverId)) {
-            throw new SecurityException("Vous n'etes pas assigne a cette reception");
+        if (reason == null || reason.isBlank()) {
+            throw new PurchaseOrderValidationException("A rejection reason is required");
         }
-
-        this.status = OrderStatus.RECEIVED;
-        this.receivedDate = LocalDate.now();
-        if (receiverName != null && !receiverName.isBlank()) {
-            this.assignedToName = receiverName;
-        }
+        String updatedNotes = notesWithReason("Rejetee: ", reason);
+        this.status = OrderStatus.REJECTED;
+        this.notes = updatedNotes;
         this.setUpdatedAt(LocalDateTime.now());
-        this.setUpdatedBy(receiverId);
+        this.setUpdatedBy(userId);
     }
 
     public void cancel(String userId, String reason) {
         if (!status.isCancellable()) {
             throw new PurchaseOrderInvalidStatusTransitionException("This purchase order cannot be cancelled");
         }
+        String updatedNotes = notesWithReason("Annulee: ", reason);
         this.status = OrderStatus.CANCELLED;
-        this.notes = (this.notes != null ? this.notes + " " : "") + "Annulee: " + reason;
+        this.notes = updatedNotes;
         this.setUpdatedAt(LocalDateTime.now());
         this.setUpdatedBy(userId);
     }
 
-    public void updateDeliveryStatus(DeliveryStatus newStatus, String userId) {
-        this.deliveryStatus = newStatus;
+    /**
+     * Appends a labelled reason to the notes, refusing it up front when the result would exceed
+     * {@link #MAX_NOTES_LENGTH}, so the order is left unchanged instead of failing at the database.
+     */
+    private String notesWithReason(String label, String reason) {
+        String updated = (this.notes != null ? this.notes + " " : "") + label + reason;
+        if (updated.length() > MAX_NOTES_LENGTH) {
+            int room = Math.max(0, MAX_NOTES_LENGTH - (updated.length() - String.valueOf(reason).length()));
+            throw new PurchaseOrderValidationException(
+                    "The reason is too long: at most " + room + " characters fit in this order's notes");
+        }
+        return updated;
+    }
 
-        if (newStatus == DeliveryStatus.DELIVERED) {
-            this.receivedDate = LocalDate.now();
+    /**
+     * Records carrier tracking progress. Delivered and partial outcomes are set only by
+     * {@link #recordReceipt}, so a status change can never stand in for an actual goods receipt.
+     */
+    public void updateDeliveryStatus(DeliveryStatus newStatus, String userId) {
+        if (newStatus == null) {
+            throw new PurchaseOrderValidationException("Delivery status is required");
+        }
+        if (newStatus == DeliveryStatus.DELIVERED || newStatus == DeliveryStatus.PARTIAL) {
+            throw new PurchaseOrderInvalidStatusTransitionException(
+                    "Delivered and partial statuses are recorded by goods receipts");
+        }
+        if (status != OrderStatus.CONFIRMED
+                && status != OrderStatus.READY_FOR_RECEIPT
+                && status != OrderStatus.PARTIALLY_RECEIVED) {
+            throw new PurchaseOrderInvalidStatusTransitionException(
+                    "Delivery tracking is only available once the order is confirmed and until it is received");
+        }
+
+        this.deliveryStatus = newStatus;
+        this.setUpdatedAt(LocalDateTime.now());
+        this.setUpdatedBy(userId);
+    }
+
+    /** Applies the outcome of a completed goods receipt. */
+    public void recordReceipt(boolean fullyReceived, String userId) {
+        if (status != OrderStatus.READY_FOR_RECEIPT && status != OrderStatus.PARTIALLY_RECEIVED) {
+            throw new PurchaseOrderInvalidStatusTransitionException("The purchase order is not ready for receipt");
+        }
+
+        if (fullyReceived) {
+            this.deliveryStatus = DeliveryStatus.DELIVERED;
             this.status = OrderStatus.COMPLETED;
-        } else if (newStatus == DeliveryStatus.PARTIAL) {
+            this.receivedDate = LocalDate.now();
+        } else {
+            this.deliveryStatus = DeliveryStatus.PARTIAL;
             this.status = OrderStatus.PARTIALLY_RECEIVED;
         }
 
@@ -587,9 +631,11 @@ public class PurchaseOrder extends BaseEntity {
         this.setUpdatedBy(userId);
     }
 
+    /** Closes an order; a partially received order is closed short, accepting the remainder will not arrive. */
     public void complete(String userId) {
-        if (status != OrderStatus.PARTIALLY_RECEIVED && status != OrderStatus.CONFIRMED && status != OrderStatus.RECEIVED) {
-            throw new PurchaseOrderInvalidStatusTransitionException("This purchase order cannot be completed");
+        if (status != OrderStatus.PARTIALLY_RECEIVED && status != OrderStatus.RECEIVED) {
+            throw new PurchaseOrderInvalidStatusTransitionException(
+                    "Only a partially received order can be closed; full receipt completes the order automatically");
         }
         this.status = OrderStatus.COMPLETED;
         this.receivedDate = LocalDate.now();

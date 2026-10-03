@@ -8,7 +8,6 @@ import jakarta.validation.constraints.Size;
  */
 public class PurchaseOrderCancelWebRequest {
 
-    @NotBlank(message = "User ID is mandatory")
     private String userId;
 
     @NotBlank(message = "Cancellation reason is mandatory")

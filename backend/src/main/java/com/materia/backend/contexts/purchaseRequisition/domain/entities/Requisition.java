@@ -867,6 +867,26 @@ public class Requisition extends BaseEntity {
     }
 
     /**
+     * Returns a converted requisition to approved when its purchase order is withdrawn before any receipt,
+     * so it can be ordered again. Only the order recorded on the requisition can release it.
+     */
+    public void revertConversion(String purchaseOrderId, String userId) {
+        if (status != RequisitionStatus.CONVERTED) {
+            throw new RequisitionInvalidStatusTransitionException("Only a converted requisition can be reverted");
+        }
+        if (this.purchaseOrderId == null || !this.purchaseOrderId.equals(purchaseOrderId)) {
+            throw new RequisitionInvalidStatusTransitionException(
+                    "The requisition is linked to a different purchase order");
+        }
+        this.status = RequisitionStatus.APPROVED;
+        this.purchaseOrderId = null;
+        this.purchaseOrderCode = null;
+        this.convertedDate = null;
+        this.setUpdatedAt(LocalDateTime.now());
+        this.setUpdatedBy(userId);
+    }
+
+    /**
      * Annule la demande
      */
     public void cancel(String userId, String reason) {

@@ -53,10 +53,16 @@ class SupplierPersistenceIT extends AbstractIntegrationTest {
         suppliers.save(aSupplier().code(code).build());
         flushAndClear();
 
-        assertThrows(DataIntegrityViolationException.class, () -> {
+        // Flushing through the EntityManager bypasses Spring's exception translation, so the raw
+        // JPA exception surfaces here; in production the transaction manager translates it into
+        // DataIntegrityViolationException (002 research F-011). Either proves the database refused it.
+        Exception refused = assertThrows(Exception.class, () -> {
             suppliers.save(aSupplier().code(code).build());
             flushAndClear();
         });
+        assertTrue(refused instanceof DataIntegrityViolationException
+                        || refused instanceof jakarta.persistence.PersistenceException,
+                () -> "Expected a constraint violation, got " + refused);
     }
 
     @Test

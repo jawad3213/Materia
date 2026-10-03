@@ -1,6 +1,9 @@
 package com.materia.backend.contexts.purchaseOrder.application.services;
 
 import com.materia.backend.common.application.AbstractCrudApplicationService;
+import com.materia.backend.contexts.goodsReceipt.domain.ports.in.GoodsReceiptUseCase;
+import com.materia.backend.contexts.purchaseRequisition.application.dtos.RequisitionOutput;
+import com.materia.backend.contexts.purchaseRequisition.domain.ports.in.RequisitionUseCase;
 import com.materia.backend.contexts.purchaseOrder.application.dtos.CreatePurchaseOrderInput;
 import com.materia.backend.contexts.purchaseOrder.application.dtos.PurchaseOrderOutput;
 import com.materia.backend.contexts.purchaseOrder.application.dtos.UpdatePurchaseOrderInput;
@@ -15,7 +18,11 @@ import com.materia.backend.contexts.purchaseOrder.domain.exceptions.PurchaseOrde
 import com.materia.backend.contexts.purchaseOrder.domain.exceptions.PurchaseOrderNotModifiableException;
 import com.materia.backend.contexts.purchaseOrder.domain.exceptions.PurchaseOrderValidationException;
 import com.materia.backend.contexts.purchaseOrder.domain.ports.in.PurchaseOrderUseCase;
+import com.materia.backend.contexts.purchaseOrder.domain.events.PurchaseOrderConfirmedEvent;
+import com.materia.backend.contexts.purchaseOrder.domain.events.PurchaseOrderSubmittedEvent;
+import com.materia.backend.contexts.purchaseOrder.domain.ports.out.PurchaseOrderEventPublisher;
 import com.materia.backend.contexts.purchaseOrder.domain.ports.out.PurchaseOrderRepository;
+import com.materia.backend.contexts.purchaseOrder.domain.ports.out.ReceiverDirectory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Retryable;
@@ -39,14 +46,26 @@ public class PurchaseOrderService extends AbstractCrudApplicationService<
     private final PurchaseOrderRepository purchaseOrderRepository;
     private final PurchaseOrderMapper purchaseOrderMapper;
     private final PurchaseOrderCodeGeneratorService codeGenerator;
+    private final GoodsReceiptUseCase goodsReceiptUseCase;
+    private final RequisitionUseCase requisitionUseCase;
+    private final PurchaseOrderEventPublisher eventPublisher;
+    private final ReceiverDirectory receiverDirectory;
 
     public PurchaseOrderService(PurchaseOrderRepository purchaseOrderRepository,
                                 PurchaseOrderMapper purchaseOrderMapper,
-                                PurchaseOrderCodeGeneratorService codeGenerator) {
+                                PurchaseOrderCodeGeneratorService codeGenerator,
+                                GoodsReceiptUseCase goodsReceiptUseCase,
+                                RequisitionUseCase requisitionUseCase,
+                                PurchaseOrderEventPublisher eventPublisher,
+                                ReceiverDirectory receiverDirectory) {
         super(purchaseOrderRepository, purchaseOrderMapper);
         this.purchaseOrderRepository = purchaseOrderRepository;
         this.purchaseOrderMapper = purchaseOrderMapper;
         this.codeGenerator = codeGenerator;
+        this.goodsReceiptUseCase = goodsReceiptUseCase;
+        this.requisitionUseCase = requisitionUseCase;
+        this.eventPublisher = eventPublisher;
+        this.receiverDirectory = receiverDirectory;
     }
 
     @Override
@@ -57,7 +76,20 @@ public class PurchaseOrderService extends AbstractCrudApplicationService<
         normalizeLines(purchaseOrder.getLines(), purchaseOrder.getCurrencyCode());
         purchaseOrder.setOrderCode(codeGenerator.generateCode());
         purchaseOrder.recalculateTotals();
-        return toResponse(saveEntity(purchaseOrder));
+
+        UUID requisitionId = purchaseOrder.getRequisitionId();
+        if (requisitionId != null) {
+            RequisitionOutput requisition = requisitionUseCase.getById(requisitionId);
+            purchaseOrder.setRequisitionCode(requisition.getRequisitionCode());
+        }
+
+        PurchaseOrder saved = saveEntity(purchaseOrder);
+        if (requisitionId != null) {
+            // Same transaction: if the requisition is not approved (or already converted), the order is rolled back.
+            requisitionUseCase.convert(requisitionId, saved.getId().toString(),
+                    saved.getOrderCode().getValue(), request.getUserId());
+        }
+        return toResponse(saved);
     }
 
     @Override
@@ -95,8 +127,16 @@ public class PurchaseOrderService extends AbstractCrudApplicationService<
         if (!purchaseOrder.isModifiable()) {
             throw new PurchaseOrderNotModifiableException();
         }
+        if (request.getRequisitionId() != null
+                && !request.getRequisitionId().equals(purchaseOrder.getRequisitionId())) {
+            throw new PurchaseOrderValidationException("The originating requisition cannot be changed");
+        }
+        UUID requisitionId = purchaseOrder.getRequisitionId();
+        String requisitionCode = purchaseOrder.getRequisitionCode();
 
         purchaseOrderMapper.updateEntity(purchaseOrder, request);
+        purchaseOrder.setRequisitionId(requisitionId);
+        purchaseOrder.setRequisitionCode(requisitionCode);
         normalizeLines(purchaseOrder.getLines(), purchaseOrder.getCurrencyCode());
         purchaseOrder.recalculateTotals();
         purchaseOrder.setUpdatedAt(LocalDateTime.now());
@@ -107,10 +147,17 @@ public class PurchaseOrderService extends AbstractCrudApplicationService<
     @Override
     @Transactional
     public void delete(UUID id) {
+        delete(id, null);
+    }
+
+    @Override
+    @Transactional
+    public void delete(UUID id, String userId) {
         PurchaseOrder purchaseOrder = getPurchaseOrderById(id);
         if (!purchaseOrder.isModifiable()) {
             throw new PurchaseOrderNotModifiableException();
         }
+        releaseRequisition(purchaseOrder, userId);
         purchaseOrderRepository.deleteById(id);
     }
 
@@ -164,7 +211,10 @@ public class PurchaseOrderService extends AbstractCrudApplicationService<
     public PurchaseOrderOutput submit(UUID id, String userId) {
         PurchaseOrder purchaseOrder = getPurchaseOrderById(id);
         purchaseOrder.submit(userId);
-        return toResponse(saveEntity(purchaseOrder));
+        PurchaseOrder saved = saveEntity(purchaseOrder);
+        eventPublisher.publish(new PurchaseOrderSubmittedEvent(saved.getId(), saved.getOrderCode().getValue(),
+                saved.getSupplierId(), saved.getSupplierName(), userId));
+        return toResponse(saved);
     }
 
     @Override
@@ -172,6 +222,18 @@ public class PurchaseOrderService extends AbstractCrudApplicationService<
     public PurchaseOrderOutput confirm(UUID id, String userId) {
         PurchaseOrder purchaseOrder = getPurchaseOrderById(id);
         purchaseOrder.confirm(userId);
+        PurchaseOrder saved = saveEntity(purchaseOrder);
+        eventPublisher.publish(new PurchaseOrderConfirmedEvent(saved.getId(), saved.getOrderCode().getValue(),
+                saved.getSupplierId(), saved.getSupplierName(), userId));
+        return toResponse(saved);
+    }
+
+    @Override
+    @Transactional
+    public PurchaseOrderOutput reject(UUID id, String userId, String reason) {
+        PurchaseOrder purchaseOrder = getPurchaseOrderById(id);
+        purchaseOrder.reject(userId, reason);
+        releaseRequisition(purchaseOrder, userId);
         return toResponse(saveEntity(purchaseOrder));
     }
 
@@ -179,16 +241,25 @@ public class PurchaseOrderService extends AbstractCrudApplicationService<
     @Transactional
     public PurchaseOrderOutput assignReceiver(UUID id, String userId, String userName, String assignedUserId, String assignedUserName) {
         PurchaseOrder purchaseOrder = getPurchaseOrderById(id);
-        purchaseOrder.assignReceiver(userId, userName, assignedUserId, assignedUserName);
+        ReceiverDirectory.Receiver receiver = receiverDirectory.findAssignableReceiver(assignedUserId)
+                .orElseThrow(() -> new PurchaseOrderValidationException(
+                        "The selected user is not an active receiver"));
+        purchaseOrder.assignReceiver(userId, userName, receiver.id(), receiver.name());
         return toResponse(saveEntity(purchaseOrder));
+    }
+
+    @Override
+    public List<ReceiverDirectory.Receiver> getAssignableReceivers() {
+        return receiverDirectory.findAssignableReceivers();
     }
 
     @Override
     @Transactional
     public PurchaseOrderOutput confirmReceipt(UUID id, String receiverId, String receiverName) {
-        PurchaseOrder purchaseOrder = getPurchaseOrderById(id);
-        purchaseOrder.confirmReceipt(receiverId, receiverName);
-        return toResponse(saveEntity(purchaseOrder));
+        getPurchaseOrderById(id);
+        // Receiving goes through a goods receipt so stock and order status move together.
+        goodsReceiptUseCase.receiveRemaining(id.toString(), receiverId, receiverName);
+        return toResponse(getPurchaseOrderById(id));
     }
 
     @Override
@@ -196,6 +267,7 @@ public class PurchaseOrderService extends AbstractCrudApplicationService<
     public PurchaseOrderOutput cancel(UUID id, String userId, String reason) {
         PurchaseOrder purchaseOrder = getPurchaseOrderById(id);
         purchaseOrder.cancel(userId, reason);
+        releaseRequisition(purchaseOrder, userId);
         return toResponse(saveEntity(purchaseOrder));
     }
 
@@ -213,6 +285,19 @@ public class PurchaseOrderService extends AbstractCrudApplicationService<
         PurchaseOrder purchaseOrder = getPurchaseOrderById(id);
         purchaseOrder.updateDeliveryStatus(purchaseOrderMapper.toDeliveryStatus(deliveryStatus), userId);
         return toResponse(saveEntity(purchaseOrder));
+    }
+
+    /** An order withdrawn before any receipt hands its requisition back so it can be ordered again. */
+    private void releaseRequisition(PurchaseOrder purchaseOrder, String userId) {
+        if (purchaseOrder.getRequisitionId() == null) {
+            return;
+        }
+        String orderId = purchaseOrder.getId().toString();
+        RequisitionOutput requisition = requisitionUseCase.getById(purchaseOrder.getRequisitionId());
+        // Orders created before conversion was transactional may reference a requisition that was never converted.
+        if ("CONVERTED".equals(requisition.getStatus()) && orderId.equals(requisition.getPurchaseOrderId())) {
+            requisitionUseCase.revertConversion(purchaseOrder.getRequisitionId(), orderId, userId);
+        }
     }
 
     private PurchaseOrder getPurchaseOrderById(UUID id) {

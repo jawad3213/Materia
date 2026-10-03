@@ -1,13 +1,10 @@
 package com.materia.backend.contexts.purchaseOrder.infrastructure.adapters.in.web.dtos.purchaseOrder;
 
-import jakarta.validation.constraints.NotBlank;
-
 /**
  * Web request DTO for completing a purchase order.
  */
 public class PurchaseOrderCompleteWebRequest {
 
-    @NotBlank(message = "User ID is mandatory")
     private String userId;
 
     public String getUserId() {

@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   Table,
   TableBody,
@@ -12,6 +12,10 @@ import Button from "../../../shared/components/ui/button/Button";
 import DeleteConfirmModal from "../../../shared/components/ui/modal/DeleteConfirmModal";
 import Pagination from "../../../shared/components/ui/Pagination";
 import { requisitionApi } from "../services/requisitionApi";
+import purchaseOrderService from "../../purchaseOrders/services/purchaseOrderService";
+import type { CreatePurchaseOrderRequest } from "../../purchaseOrders/types";
+import { supplierApi } from "../../suppliers/services/supplierApi";
+import useAuth from "../../auth/hooks/useAuth";
 import type {
   Requisition,
   RequisitionFilterTab,
@@ -25,6 +29,8 @@ import RequisitionExpandedRow from "./RequisitionExpandedRow";
 import RequisitionConvertToPoModal from "./RequisitionConvertToPoModal";
 
 export default function RequisitionListTable() {
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const [requisitions, setRequisitions] = useState<Requisition[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -302,31 +308,92 @@ export default function RequisitionListTable() {
     }
   };
 
-  const handleConvertToPoConfirm = async () => {
+  const handleConvertToPoConfirm = async (selectedSupplier?: { id: string; name: string; code?: string }) => {
     if (!convertToPoRequisition) return;
     const reqCode = convertToPoRequisition.requisitionCode;
     try {
       setIsConverting(true);
-      const generatedPoCode = `PO-${new Date().getFullYear()}-${Math.floor(
-        1000 + Math.random() * 9000
-      )}`;
-      await requisitionApi.convert(
-        convertToPoRequisition.id,
-        crypto.randomUUID(),
-        generatedPoCode,
-        "current-user"
-      );
+      // Fetch full requisition to get all line items
+      const fullReqRes = await requisitionApi.getById(convertToPoRequisition.id);
+      const fullReq = fullReqRes.data;
+
+      // Resolve supplier
+      let supId = selectedSupplier?.id;
+      let supName = selectedSupplier?.name;
+      let supCode = selectedSupplier?.code;
+
+      if (!supId) {
+        const lineWithSup = fullReq.lines?.find((l) => l.supplierId && l.supplierName);
+        if (lineWithSup) {
+          supId = lineWithSup.supplierId;
+          supName = lineWithSup.supplierName;
+          supCode = lineWithSup.supplierCode;
+        }
+      }
+
+      if (!supId) {
+        const supList = await supplierApi.getAllUnpaginated();
+        if (supList.data && supList.data.length > 0) {
+          supId = supList.data[0].id;
+          supName = supList.data[0].name;
+          supCode = supList.data[0].code;
+        }
+      }
+
+      if (!supId) {
+        setConvertToPoRequisition(null);
+        navigate(`/purchase-orders/create?fromRequisition=${fullReq.id}`);
+        return;
+      }
+
+      const poPayload: CreatePurchaseOrderRequest = {
+        requisitionId: fullReq.id,
+        requisitionCode: fullReq.requisitionCode,
+        supplierId: supId,
+        supplierName: supName || "Fournisseur",
+        supplierCode: supCode || undefined,
+        orderDate: new Date().toISOString().split("T")[0],
+        expectedDeliveryDate: fullReq.requiredDate || undefined,
+        paymentTerms: "Virement 30 jours",
+        paymentDelayDays: 30,
+        deliveryTerms: "Livraison sur site DAP",
+        incoterm: "DAP",
+        currencyCode: fullReq.currencyCode || "MAD",
+        taxAmount: 0,
+        shippingCost: 0,
+        orderedBy: user?.id || "CURRENT_USER",
+        orderedByName: user?.name || user?.email || "Acheteur",
+        notes: fullReq.title + (fullReq.description ? ` - ${fullReq.description}` : ""),
+        lines: (fullReq.lines || []).map((l, idx) => ({
+          lineNumber: idx + 1,
+          requisitionLineId: l.id,
+          materialCode: l.materialCode,
+          materialId: l.materialId || undefined,
+          materialName: l.materialName || undefined,
+          unitOfMeasure: l.unitOfMeasure || undefined,
+          quantity: Number(l.quantity) || 1,
+          unitPrice: Number(l.unitPrice) || 0,
+          currencyCode: l.currencyCode || fullReq.currencyCode || "MAD",
+          expectedDeliveryDate: l.requiredDate || fullReq.requiredDate || undefined,
+          notes: l.notes || undefined,
+        })),
+        createdBy: user?.email || "system",
+      };
+
+      // The backend converts the requisition in the same transaction as the order creation.
+      const createdPo = await purchaseOrderService.create(poPayload);
+
       setConvertToPoRequisition(null);
       setRefreshTrigger((prev) => prev + 1);
       setFeedback({
         type: "success",
-        text: `Requisition ${reqCode} successfully converted to Purchase Order ${generatedPoCode}.`,
+        text: `Demande ${reqCode} convertie avec succès en Bon de Commande ${createdPo.data.orderCode}.`,
       });
     } catch (err: any) {
       console.error("Failed to convert requisition to PO:", err);
       setFeedback({
         type: "error",
-        text: err?.response?.data?.message || `Failed to convert requisition ${reqCode} to PO.`,
+        text: err?.response?.data?.message || `Échec de la conversion de la demande ${reqCode} en bon de commande.`,
       });
     } finally {
       setIsConverting(false);

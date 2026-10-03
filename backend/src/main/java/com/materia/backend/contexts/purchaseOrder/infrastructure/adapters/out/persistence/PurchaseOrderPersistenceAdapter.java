@@ -49,7 +49,25 @@ public class PurchaseOrderPersistenceAdapter implements PurchaseOrderRepository 
     @Override
     public PurchaseOrder save(PurchaseOrder entity) {
         PurchaseOrderJpaEntity jpa = mapper.toJpaEntity(entity);
+        if (entity.getId() != null) {
+            jpaRepository.findById(entity.getId()).ifPresent(existing -> carryLineVersions(existing, jpa));
+        }
         return mapper.toDomainEntity(jpaRepository.save(jpa));
+    }
+
+    /**
+     * Domain lines carry no version, so a line rebuilt from the domain would be merged with a null
+     * version and rejected as stale. Lines that already exist keep their stored version; new lines
+     * stay unversioned and are inserted (spec 002 research F-013).
+     */
+    private static void carryLineVersions(PurchaseOrderJpaEntity existing, PurchaseOrderJpaEntity updated) {
+        java.util.Map<UUID, Long> versions = new java.util.HashMap<>();
+        existing.getLines().forEach(line -> versions.put(line.getId(), line.getVersion()));
+        updated.getLines().forEach(line -> {
+            if (versions.containsKey(line.getId())) {
+                line.setVersion(versions.get(line.getId()));
+            }
+        });
     }
 
     @Override

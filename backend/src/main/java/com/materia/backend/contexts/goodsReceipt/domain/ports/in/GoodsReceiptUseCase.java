@@ -32,5 +32,8 @@ public interface GoodsReceiptUseCase
 
     GoodsReceiptOutput complete(UUID id, String userId);
 
+    /** Creates and completes a receipt accepting every quantity still outstanding on the purchase order. */
+    GoodsReceiptOutput receiveRemaining(String purchaseOrderId, String receiverId, String receiverName);
+
     GoodsReceiptOutput cancel(UUID id, String userId, String reason);
 }
