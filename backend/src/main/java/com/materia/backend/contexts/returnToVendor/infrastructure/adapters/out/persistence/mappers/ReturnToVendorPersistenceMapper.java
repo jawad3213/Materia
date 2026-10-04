@@ -26,6 +26,7 @@ public class ReturnToVendorPersistenceMapper {
         jpa.setUpdatedAt(domain.getUpdatedAt());
         jpa.setCreatedBy(domain.getCreatedBy());
         jpa.setUpdatedBy(domain.getUpdatedBy());
+        jpa.setVersion(domain.getVersion());
         
         jpa.setReturnCode(domain.getReturnCode() != null ? domain.getReturnCode().getValue() : null);
         jpa.setGoodsReceiptId(domain.getGoodsReceiptId());
@@ -35,6 +36,7 @@ public class ReturnToVendorPersistenceMapper {
         jpa.setSupplierId(domain.getSupplierId());
         jpa.setSupplierName(domain.getSupplierName());
         jpa.setSupplierCode(domain.getSupplierCode());
+        jpa.setCurrencyCode(domain.getCurrencyCode());
         jpa.setStatus(domain.getStatus() != null ? domain.getStatus().name() : null);
         jpa.setResolutionType(domain.getResolutionType() != null ? domain.getResolutionType().name() : null);
         jpa.setReturnDate(domain.getReturnDate());
@@ -73,9 +75,13 @@ public class ReturnToVendorPersistenceMapper {
         jpa.setUpdatedAt(domain.getUpdatedAt());
         jpa.setCreatedBy(domain.getCreatedBy());
         jpa.setUpdatedBy(domain.getUpdatedBy());
+        jpa.setVersion(domain.getVersion());
         
         jpa.setLineNumber(domain.getLineNumber());
         jpa.setGoodsReceiptLineId(domain.getGoodsReceiptLineId());
+        jpa.setPurchaseOrderLineId(domain.getPurchaseOrderLineId());
+        jpa.setMaterialId(domain.getMaterialId());
+        jpa.setUnitPrice(domain.getUnitPrice());
         jpa.setMaterialCode(domain.getMaterialCode());
         jpa.setMaterialName(domain.getMaterialName());
         jpa.setUnitOfMeasure(domain.getUnitOfMeasure());
@@ -107,6 +113,8 @@ public class ReturnToVendorPersistenceMapper {
                 .supplierId(jpa.getSupplierId())
                 .supplierName(jpa.getSupplierName())
                 .supplierCode(jpa.getSupplierCode())
+                .currencyCode(jpa.getCurrencyCode())
+                .version(jpa.getVersion())
                 .status(jpa.getStatus() != null ? ReturnStatus.valueOf(jpa.getStatus()) : null)
                 .resolutionType(jpa.getResolutionType() != null ? ResolutionType.valueOf(jpa.getResolutionType()) : null)
                 .returnDate(jpa.getReturnDate())
@@ -123,13 +131,13 @@ public class ReturnToVendorPersistenceMapper {
                 .createdAt(jpa.getCreatedAt())
                 .updatedAt(jpa.getUpdatedAt())
                 .createdBy(jpa.getCreatedBy())
+                // Lines go through the builder: a return is only valid with them.
+                .lines(jpa.getLines() != null
+                        ? jpa.getLines().stream().map(this::toLineDomain).collect(Collectors.toList())
+                        : new ArrayList<>())
                 .build();
-        
+
         domain.setUpdatedBy(jpa.getUpdatedBy());
-                
-        if (jpa.getLines() != null) {
-            domain.setLines(jpa.getLines().stream().map(this::toLineDomain).collect(Collectors.toList()));
-        }
         return domain;
     }
 
@@ -142,6 +150,10 @@ public class ReturnToVendorPersistenceMapper {
                 .id(jpa.getId())
                 .lineNumber(jpa.getLineNumber())
                 .goodsReceiptLineId(jpa.getGoodsReceiptLineId())
+                .purchaseOrderLineId(jpa.getPurchaseOrderLineId())
+                .materialId(jpa.getMaterialId())
+                .unitPrice(jpa.getUnitPrice())
+                .version(jpa.getVersion())
                 .materialCode(jpa.getMaterialCode())
                 .materialName(jpa.getMaterialName())
                 .unitOfMeasure(jpa.getUnitOfMeasure())

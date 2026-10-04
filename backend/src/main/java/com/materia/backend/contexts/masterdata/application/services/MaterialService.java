@@ -275,9 +275,15 @@ public class MaterialService implements MaterialUseCase {
     @Override
     @Transactional
     public ManualReorderOutput triggerReorder(UUID id, Integer quantity, String reason) {
+        return triggerReorder(id, quantity, reason, null);
+    }
+
+    @Override
+    @Transactional
+    public ManualReorderOutput triggerReorder(UUID id, Integer quantity, String reason, String requesterId) {
         Material material = materialRepository.findById(id)
                 .orElseThrow(() -> new MaterialNotFoundException(id.toString()));
-        String requisitionId = reorderService.triggerManualReorder(id, quantity, reason);
+        String requisitionId = reorderService.triggerManualReorder(id, quantity, reason, requesterId);
         int finalQty = (quantity != null && quantity > 0) ? quantity
                 : (material.getEconomicOrderQuantity() != null ? material.getEconomicOrderQuantity() : 100);
         return new ManualReorderOutput(

@@ -5,6 +5,7 @@ import CreateRequisitionPage from "./pages/CreateRequisitionPage";
 import RequisitionApprovalsPage from "./pages/RequisitionApprovalsPage";
 import RequisitionDetailPage from "./pages/RequisitionDetailPage";
 import EditRequisitionPage from "./pages/EditRequisitionPage";
+import RoleGuard from "../../app/routes/RoleGuard";
 
 export default function RequisitionsRoutes() {
   return (
@@ -13,7 +14,14 @@ export default function RequisitionsRoutes() {
       <Route path="list" element={<RequisitionsPage />} />
       <Route path="create" element={<CreateRequisitionPage />} />
       <Route path="create-requisition" element={<CreateRequisitionPage />} />
-      <Route path="approvals" element={<RequisitionApprovalsPage />} />
+      <Route
+        path="approvals"
+        element={
+          <RoleGuard allowedRoles={["ADMIN"]} fallbackPath="/requisitions">
+            <RequisitionApprovalsPage />
+          </RoleGuard>
+        }
+      />
       <Route path="view/:id" element={<RequisitionDetailPage />} />
       <Route path="edit/:id" element={<EditRequisitionPage />} />
       <Route path=":id" element={<RequisitionDetailPage />} />

@@ -2,13 +2,19 @@ package com.materia.backend.contexts.payement.domain.entities;
 
 import com.materia.backend.common.domain.BaseEntity;
 import com.materia.backend.contexts.payement.domain.enums.PaymentStatus;
+import com.materia.backend.contexts.payement.domain.exceptions.PaymentNotCancellableException;
+import com.materia.backend.contexts.payement.domain.exceptions.PaymentNotCompletableException;
+import com.materia.backend.contexts.payement.domain.exceptions.PaymentNotPreparableException;
+import com.materia.backend.contexts.payement.domain.exceptions.PaymentValidationException;
 import com.materia.backend.contexts.payement.domain.valueObjects.PaymentCode;
 import com.materia.backend.common.domain.valueObjects.Money;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -229,6 +235,11 @@ public class Payment extends BaseEntity {
         public Builder updatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; return this; }
         
         public Payment build() {
+            if (this.currencyCode == null) this.currencyCode = "MAD";
+            // The total is derived from the lines (one amount per invoice paid), never trusted from the request.
+            if (this.lines != null && !this.lines.isEmpty()) {
+                this.totalAmount = sumLines(this.lines, this.currencyCode);
+            }
             validateRequiredFields();
             validateLines();
             
@@ -251,9 +262,7 @@ public class Payment extends BaseEntity {
             if (this.supplierId == null || this.supplierId.trim().isEmpty()) {
                 throw new IllegalArgumentException("Le fournisseur est obligatoire");
             }
-            if (this.supplierName == null || this.supplierName.trim().isEmpty()) {
-                throw new IllegalArgumentException("Le nom du fournisseur est obligatoire");
-            }
+            // The supplier name is taken from the invoices by the payment service before saving.
             if (this.totalAmount == null) {
                 throw new IllegalArgumentException("Le montant total est obligatoire");
             }
@@ -274,6 +283,26 @@ public class Payment extends BaseEntity {
         }
     }
     
+    /** Accepted payment methods; transfers and cheques must carry a bank reference. */
+    public static final Set<String> PAYMENT_METHODS = Set.of("BANK_TRANSFER", "CHECK", "CASH", "CARD");
+    private static final Set<String> METHODS_NEEDING_REFERENCE = Set.of("BANK_TRANSFER", "CHECK");
+
+    /** Sum of the line amounts, in the payment currency. */
+    private static Money sumLines(List<PaymentLine> lines, String currencyCode) {
+        Money total = Money.zero(currencyCode);
+        for (PaymentLine line : lines) {
+            if (line != null && line.getAmount() != null) {
+                total = total.add(line.getAmount());
+            }
+        }
+        return total;
+    }
+
+    /** Recomputes the total from the lines after they changed. */
+    public void recalculateTotal() {
+        this.totalAmount = sumLines(this.lines != null ? this.lines : List.of(), currencyCode != null ? currencyCode : "MAD");
+    }
+
     // ============================================================
     // DOMAINE BEHAVIOR - Version Simplifiée
     // ============================================================
@@ -284,7 +313,7 @@ public class Payment extends BaseEntity {
      */
     public void prepare(String userId) {
         if (status != PaymentStatus.DRAFT) {
-            throw new IllegalStateException("Seul un paiement en brouillon peut être préparé");
+            throw new PaymentNotPreparableException(String.valueOf(getId()), "seul un paiement en brouillon peut être préparé");
         }
         this.status = PaymentStatus.PENDING;
         this.paymentDate = LocalDateTime.now();
@@ -298,19 +327,31 @@ public class Payment extends BaseEntity {
      */
     public void markAsCompleted(String userId, String bankReference, String transactionId, String paymentMethod) {
         if (this.status == PaymentStatus.COMPLETED) {
-            throw new IllegalStateException("Ce paiement est déjà marqué comme payé");
+            throw new PaymentNotCompletableException(String.valueOf(getId()), "ce paiement est déjà marqué comme payé");
         }
         if (this.status != PaymentStatus.PENDING && this.status != PaymentStatus.DRAFT) {
-            throw new IllegalStateException("Seul un paiement en attente ou en brouillon peut être marqué comme payé");
+            throw new PaymentNotCompletableException(String.valueOf(getId()),
+                    "seul un paiement en attente ou en brouillon peut être marqué comme payé");
         }
-        
+        String method = paymentMethod != null ? paymentMethod.trim().toUpperCase(Locale.ROOT) : "";
+        if (!PAYMENT_METHODS.contains(method)) {
+            throw new PaymentValidationException("Méthode de paiement inconnue : " + paymentMethod
+                    + " (attendu : " + String.join(", ", PAYMENT_METHODS) + ")");
+        }
+        if (METHODS_NEEDING_REFERENCE.contains(method) && (bankReference == null || bankReference.isBlank())) {
+            throw new PaymentValidationException("La référence bancaire est obligatoire pour un paiement par " + method);
+        }
+
         this.status = PaymentStatus.COMPLETED;
         this.paymentDate = LocalDateTime.now();
         this.confirmedDate = LocalDateTime.now();
-        this.bankReference = bankReference;
-        this.transactionId = transactionId;
-        this.paymentMethod = paymentMethod;
+        this.bankReference = bankReference != null && !bankReference.isBlank() ? bankReference.trim() : null;
+        this.transactionId = transactionId != null && !transactionId.isBlank() ? transactionId.trim() : null;
+        this.paymentMethod = method;
         this.paidAmount = this.totalAmount;
+        if (this.lines != null) {
+            this.lines.forEach(PaymentLine::markAsPaid);
+        }
         
         this.setUpdatedAt(LocalDateTime.now());
         this.setUpdatedBy(userId);
@@ -320,11 +361,19 @@ public class Payment extends BaseEntity {
      * Annuler le paiement
      */
     public void cancel(String userId, String reason) {
-        if (this.status == PaymentStatus.COMPLETED) {
-            throw new IllegalStateException("Un paiement déjà effectué ne peut pas être annulé");
+        if (this.status == PaymentStatus.COMPLETED || this.status == PaymentStatus.CANCELLED) {
+            throw new PaymentNotCancellableException(String.valueOf(getId()),
+                    this.status == PaymentStatus.COMPLETED ? "un paiement effectué ne peut pas être annulé" : "il est déjà annulé");
+        }
+        if (reason == null || reason.isBlank()) {
+            throw new PaymentValidationException("Le motif d'annulation est obligatoire");
+        }
+        String updatedNotes = (this.notes != null ? this.notes + " " : "") + "Annulé: " + reason;
+        if (updatedNotes.length() > 1000) {
+            throw new PaymentValidationException("Le motif est trop long pour les notes du paiement");
         }
         this.status = PaymentStatus.CANCELLED;
-        this.notes = (this.notes != null ? this.notes + " " : "") + "Annulé: " + reason;
+        this.notes = updatedNotes;
         this.setUpdatedAt(LocalDateTime.now());
         this.setUpdatedBy(userId);
     }

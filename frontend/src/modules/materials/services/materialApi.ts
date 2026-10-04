@@ -4,6 +4,7 @@ import type { UpdateMaterialRequest } from '../types/UpdateMaterialRequest';
 import type { MaterialSearchRequest } from '../types/MaterialSearchRequest';
 import type { MaterialFilterRequest } from '../types/MaterialFilterRequest';
 import type { ReorderRecommendation, ManualReorderResponse } from '../types/Material';
+import type { MaterialListItem } from '../types/MaterialListItem';
 
 const BASE_URL = '/masterdata/materials';
 
@@ -13,6 +14,16 @@ export const materialApi = {
   getById: (id: string) => axiosClient.get(`${BASE_URL}/${id}`),
   getByCode: (code: string) => axiosClient.get(`${BASE_URL}/code/${code}`),
   getAll: (page = 0, size = 10) => axiosClient.get(`${BASE_URL}/list`, { params: { page, size } }),
+  /**
+   * Every material as a plain array, for selection lists. `/list` is paginated and answers a page
+   * object ({ content, ... }), so callers must not treat its `data` as an array.
+   */
+  getAllForSelection: async (): Promise<MaterialListItem[]> => {
+    const res = await axiosClient.get(`${BASE_URL}/list`, { params: { page: 0, size: 1000 } });
+    const data = res.data;
+    if (Array.isArray(data)) return data;
+    return Array.isArray(data?.content) ? data.content : [];
+  },
   update: (id: string, data: UpdateMaterialRequest) => axiosClient.put(`${BASE_URL}/${id}`, data),
   delete: (id: string) => axiosClient.delete(`${BASE_URL}/${id}`),
   

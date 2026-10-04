@@ -34,7 +34,7 @@ public class PaymentMapper implements BaseMapper<Payment, CreatePaymentInput, Up
                 .currencyCode(currencyCode)
                 .notes(request.getNotes())
                 .internalNotes(request.getInternalNotes())
-                .lines(toLineEntities(request.getLines(), currencyCode))
+                .lines(toLineEntities(request.getLines(), currencyCode, request.getSupplierId()))
                 .createdBy(request.getUserId())
                 .build();
     }
@@ -89,12 +89,12 @@ public class PaymentMapper implements BaseMapper<Payment, CreatePaymentInput, Up
         return response;
     }
 
-    private List<PaymentLine> toLineEntities(List<CreatePaymentLineInput> lines, String currencyCode) {
+    private List<PaymentLine> toLineEntities(List<CreatePaymentLineInput> lines, String currencyCode, String supplierId) {
         if (lines == null) return new ArrayList<>();
-        return lines.stream().map(line -> toLineEntity(line, currencyCode)).collect(Collectors.toList());
+        return lines.stream().map(line -> toLineEntity(line, currencyCode, supplierId)).collect(Collectors.toList());
     }
 
-    private PaymentLine toLineEntity(CreatePaymentLineInput line, String currencyCode) {
+    private PaymentLine toLineEntity(CreatePaymentLineInput line, String currencyCode, String paymentSupplierId) {
         if (line == null) return null;
         
         com.materia.backend.common.domain.enums.CurrencyCode currencyEnum = com.materia.backend.common.domain.enums.CurrencyCode.valueOf(currencyCode);
@@ -103,7 +103,8 @@ public class PaymentMapper implements BaseMapper<Payment, CreatePaymentInput, Up
         return PaymentLine.builder()
                 .invoiceId(line.getInvoiceId())
                 .invoiceCode(line.getInvoiceCode())
-                .supplierId(line.getSupplierId())
+                // The service replaces these with the invoice's own supplier and code.
+                .supplierId(line.getSupplierId() != null ? line.getSupplierId() : paymentSupplierId)
                 .supplierName(line.getSupplierName())
                 .amount(lineAmount)
                 .currencyCode(currencyCode)

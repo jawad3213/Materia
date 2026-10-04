@@ -3,14 +3,12 @@ package com.materia.backend.contexts.invoice.infrastructure.adapters.in.web.dtos
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
+/** Cancels an invoice. The person cancelling is the authenticated user, not a field of the request. */
 public class InvoiceCancelWebRequest {
 
     @NotBlank(message = "Reason is mandatory")
     @Size(max = 1000, message = "Reason must not exceed 1000 characters")
     private String reason;
-
-    @NotBlank(message = "User ID is mandatory")
-    private String userId;
 
     public String getReason() {
         return reason;
@@ -18,13 +16,5 @@ public class InvoiceCancelWebRequest {
 
     public void setReason(String reason) {
         this.reason = reason;
-    }
-
-    public String getUserId() {
-        return userId;
-    }
-
-    public void setUserId(String userId) {
-        this.userId = userId;
     }
 }

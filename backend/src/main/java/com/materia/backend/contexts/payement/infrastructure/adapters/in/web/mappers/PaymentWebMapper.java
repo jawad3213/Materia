@@ -36,7 +36,6 @@ public class PaymentWebMapper {
         appRequest.setCurrencyCode(webRequest.getCurrencyCode());
         appRequest.setNotes(webRequest.getNotes());
         appRequest.setInternalNotes(webRequest.getInternalNotes());
-        appRequest.setUserId(webRequest.getUserId());
         
         if (webRequest.getLines() != null) {
             appRequest.setLines(webRequest.getLines().stream()
@@ -71,7 +70,6 @@ public class PaymentWebMapper {
         UpdatePaymentInput appRequest = new UpdatePaymentInput();
         appRequest.setNotes(webRequest.getNotes());
         appRequest.setInternalNotes(webRequest.getInternalNotes());
-        appRequest.setUserId(webRequest.getUserId());
 
         return appRequest;
     }

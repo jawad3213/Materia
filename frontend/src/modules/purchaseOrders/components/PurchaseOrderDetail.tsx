@@ -17,12 +17,15 @@ import {
 } from "../../../shared/components/ui/table";
 import useAuth from "../../auth/hooks/useAuth";
 import usePurchaseOrderPermissions from "../hooks/usePurchaseOrder";
+import useInvoicePermissions from "../../invoices/hooks/useInvoice";
+import { INVOICEABLE_ORDER_STATUSES } from "../../invoices/utils/invoiceLine";
 
 export default function PurchaseOrderDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
   const permissions = usePurchaseOrderPermissions();
+  const invoicePermissions = useInvoicePermissions();
 
   const [order, setOrder] = useState<PurchaseOrder | null>(null);
   const [loading, setLoading] = useState(true);
@@ -386,6 +389,14 @@ export default function PurchaseOrderDetail() {
                 Tout Réceptionner
               </Button>
             </>
+          )}
+
+          {invoicePermissions.canRecord && INVOICEABLE_ORDER_STATUSES.includes(order.status) && (
+            <Link to={`/invoices/create?purchaseOrderId=${order.id}`}>
+              <Button size="sm" variant="outline" disabled={actionLoading}>
+                Facturer
+              </Button>
+            </Link>
           )}
 
           {permissions.canTrackDelivery(order) && (

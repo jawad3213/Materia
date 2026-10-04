@@ -36,4 +36,10 @@ public interface RequisitionUseCase extends BaseUseCase<CreateRequisitionInput, 
     RequisitionOutput revertConversion(UUID id, String purchaseOrderId, String userId);
 
     RequisitionOutput cancel(UUID id, String userId, String reason);
+
+    /**
+     * Records goods accepted and rejected on a validated receipt against the requisition line they were
+     * ordered for, so the requester sees what arrived. Quantities accumulate and are capped at the line quantity.
+     */
+    RequisitionOutput recordReceipt(UUID requisitionId, UUID requisitionLineId, int accepted, int rejected);
 }

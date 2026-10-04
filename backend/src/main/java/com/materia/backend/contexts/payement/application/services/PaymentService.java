@@ -8,6 +8,14 @@ import com.materia.backend.contexts.payement.application.mappers.PaymentMapper;
 import com.materia.backend.contexts.payement.domain.entities.Payment;
 import com.materia.backend.contexts.payement.domain.entities.PaymentLine;
 import com.materia.backend.contexts.payement.domain.enums.PaymentStatus;
+import com.materia.backend.contexts.payement.domain.exceptions.PaymentAmountMismatchException;
+import com.materia.backend.contexts.payement.domain.exceptions.PaymentRuleViolationException;
+import com.materia.backend.contexts.payement.domain.exceptions.PaymentSupplierMismatchException;
+import com.materia.backend.contexts.invoice.application.dtos.InvoiceOutput;
+import com.materia.backend.contexts.invoice.domain.enums.InvoiceStatus;
+import com.materia.backend.contexts.invoice.domain.enums.InvoiceType;
+import com.materia.backend.contexts.invoice.domain.exceptions.InvoiceNotFoundException;
+import com.materia.backend.contexts.invoice.domain.ports.in.InvoiceUseCase;
 import com.materia.backend.contexts.payement.domain.exceptions.PaymentNotFoundException;
 import com.materia.backend.contexts.payement.domain.exceptions.PaymentNotModifiableException;
 import com.materia.backend.contexts.payement.domain.exceptions.PaymentValidationException;
@@ -21,6 +29,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.math.BigDecimal;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -30,12 +43,15 @@ public class PaymentService extends AbstractCrudApplicationService<
     private final PaymentPort paymentPort;
     private final PaymentMapper paymentMapper;
     private final PaymentCodeGeneratorService codeGeneratorService;
+    private final InvoiceUseCase invoiceUseCase;
 
-    public PaymentService(PaymentPort paymentPort, PaymentMapper paymentMapper, PaymentCodeGeneratorService codeGeneratorService) {
+    public PaymentService(PaymentPort paymentPort, PaymentMapper paymentMapper, PaymentCodeGeneratorService codeGeneratorService,
+                          InvoiceUseCase invoiceUseCase) {
         super(paymentPort, paymentMapper);
         this.paymentPort = paymentPort;
         this.paymentMapper = paymentMapper;
         this.codeGeneratorService = codeGeneratorService;
+        this.invoiceUseCase = invoiceUseCase;
     }
 
     @Override
@@ -43,10 +59,10 @@ public class PaymentService extends AbstractCrudApplicationService<
     @Transactional
     public PaymentOutput create(CreatePaymentInput request) {
         Payment payment = paymentMapper.toEntity(request);
-        if (payment.getPaymentCode() == null) {
-            payment.setPaymentCode(codeGeneratorService.generateCode());
-        }
+        payment.setPaymentCode(codeGeneratorService.generateCode());
         normalizeLines(payment.getLines(), payment.getCurrencyCode());
+        matchInvoices(payment);
+        payment.recalculateTotal();
         return toResponse(saveEntity(payment));
     }
 
@@ -79,7 +95,8 @@ public class PaymentService extends AbstractCrudApplicationService<
     @Transactional
     public void delete(UUID id) {
         Payment payment = getPaymentById(id);
-        if (!payment.isModifiable()) {
+        // A prepared payment is cancelled (leaving a trail), not deleted.
+        if (payment.getStatus() != PaymentStatus.DRAFT) {
             throw new PaymentNotModifiableException(payment.getId().toString(), payment.getStatus().name());
         }
         paymentPort.deleteById(id);
@@ -123,6 +140,7 @@ public class PaymentService extends AbstractCrudApplicationService<
     @Transactional
     public PaymentOutput prepare(UUID id, String userId) {
         Payment payment = getPaymentById(id);
+        matchInvoices(payment);
         payment.prepare(userId);
         return toResponse(saveEntity(payment));
     }
@@ -131,13 +149,14 @@ public class PaymentService extends AbstractCrudApplicationService<
     @Transactional
     public PaymentOutput complete(UUID id, String userId, String bankReference, String transactionId, String paymentMethod) {
         Payment payment = getPaymentById(id);
+        // Invoices may have changed since the payment was prepared: check them again first.
+        matchInvoices(payment);
         payment.markAsCompleted(userId, bankReference, transactionId, paymentMethod);
-        
-        // Mark all lines as paid when the payment is completed
-        if (payment.getLines() != null) {
-            payment.getLines().forEach(PaymentLine::markAsPaid);
+        // Each invoice records its share through its own rules (verified, within the balance, same currency).
+        // Everything runs in this transaction, so one refused invoice leaves every invoice and the payment unchanged.
+        for (PaymentLine line : payment.getLines()) {
+            invoiceUseCase.pay(UUID.fromString(line.getInvoiceId()), userId, line.getAmount().getAmount().doubleValue());
         }
-        
         return toResponse(saveEntity(payment));
     }
 
@@ -147,6 +166,76 @@ public class PaymentService extends AbstractCrudApplicationService<
         Payment payment = getPaymentById(id);
         payment.cancel(userId, reason);
         return toResponse(saveEntity(payment));
+    }
+
+    /**
+     * Checks every line against its invoice: verified, a standard invoice of the payment's supplier and
+     * currency, listed once, and paying no more than its outstanding balance less what other open
+     * (draft or prepared) payments already set aside for it. Invoice code and supplier come from the invoice.
+     */
+    private void matchInvoices(Payment payment) {
+        Map<String, BigDecimal> reserved = reservedByOtherOpenPayments(payment);
+        Set<String> seen = new HashSet<>();
+        String supplierName = null;
+        for (PaymentLine line : payment.getLines()) {
+            if (!seen.add(line.getInvoiceId())) {
+                throw new PaymentValidationException("La facture " + line.getInvoiceId() + " figure deux fois dans le paiement");
+            }
+            InvoiceOutput invoice = loadInvoice(line.getInvoiceId());
+            if (invoice.getStatus() != InvoiceStatus.VERIFIED) {
+                throw new PaymentRuleViolationException(
+                        "La facture " + invoice.getInvoiceCode() + " n'est pas vérifiée (statut " + invoice.getStatus() + ")");
+            }
+            if (invoice.getInvoiceType() == InvoiceType.CREDIT_NOTE) {
+                throw new PaymentRuleViolationException("L'avoir " + invoice.getInvoiceCode() + " ne se paie pas");
+            }
+            if (!invoice.getSupplierId().equals(payment.getSupplierId())) {
+                throw new PaymentSupplierMismatchException(
+                        "La facture " + invoice.getInvoiceCode() + " appartient à un autre fournisseur");
+            }
+            if (!invoice.getCurrencyCode().equalsIgnoreCase(payment.getCurrencyCode())) {
+                throw new PaymentRuleViolationException("La facture " + invoice.getInvoiceCode()
+                        + " est en " + invoice.getCurrencyCode() + ", le paiement en " + payment.getCurrencyCode());
+            }
+            BigDecimal total = invoice.getTotalAmountWithTax() != null ? invoice.getTotalAmountWithTax().getAmount() : BigDecimal.ZERO;
+            BigDecimal paid = invoice.getPaidAmount() != null ? invoice.getPaidAmount().getAmount() : BigDecimal.ZERO;
+            BigDecimal available = total.subtract(paid).subtract(reserved.getOrDefault(line.getInvoiceId(), BigDecimal.ZERO));
+            if (line.getAmount().getAmount().compareTo(available) > 0) {
+                throw new PaymentAmountMismatchException("Le montant pour la facture " + invoice.getInvoiceCode() + " ("
+                        + line.getAmount().getAmount().stripTrailingZeros().toPlainString() + ") dépasse ce qui reste à payer ("
+                        + available.max(BigDecimal.ZERO).stripTrailingZeros().toPlainString() + ")");
+            }
+            line.setInvoiceCode(invoice.getInvoiceCode());
+            line.setSupplierId(invoice.getSupplierId());
+            line.setSupplierName(invoice.getSupplierName());
+            if (supplierName == null) supplierName = invoice.getSupplierName();
+        }
+        if (supplierName != null) payment.setSupplierName(supplierName);
+    }
+
+    private InvoiceOutput loadInvoice(String invoiceId) {
+        try {
+            return invoiceUseCase.getById(UUID.fromString(invoiceId));
+        } catch (IllegalArgumentException | InvoiceNotFoundException e) {
+            throw new PaymentValidationException("Facture introuvable : " + invoiceId);
+        }
+    }
+
+    /** Amount per invoice already set aside by the supplier's other draft or prepared payments. */
+    private Map<String, BigDecimal> reservedByOtherOpenPayments(Payment payment) {
+        Map<String, BigDecimal> reserved = new HashMap<>();
+        for (Payment other : paymentPort.findBySupplierId(payment.getSupplierId())) {
+            if (other.getId().equals(payment.getId())
+                    || (other.getStatus() != PaymentStatus.DRAFT && other.getStatus() != PaymentStatus.PENDING)) {
+                continue;
+            }
+            for (PaymentLine line : other.getLines()) {
+                if (line.getAmount() != null) {
+                    reserved.merge(line.getInvoiceId(), line.getAmount().getAmount(), BigDecimal::add);
+                }
+            }
+        }
+        return reserved;
     }
 
     private Payment getPaymentById(UUID id) {

@@ -12,12 +12,12 @@ public class CreatePaymentLineWebRequest {
     
     private String invoiceCode;
     
-    @NotBlank(message = "Le fournisseur est obligatoire")
     private String supplierId;
     
     private String supplierName;
     
     @NotNull(message = "Le montant est obligatoire")
+    @jakarta.validation.constraints.DecimalMin(value = "0.01", message = "Le montant doit être positif")
     private BigDecimal amount;
     
     private String notes;

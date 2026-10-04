@@ -23,10 +23,10 @@ export function deriveQualityStatus(line: Pick<ReceiptLineDraft, "received" | "r
 }
 
 export function lineError(line: ReceiptLineDraft): string | null {
-  if (line.received < 0 || line.rejected < 0) return "Les quantités ne peuvent pas être négatives.";
-  if (line.received > line.remaining) return `Maximum ${line.remaining} restant à recevoir.`;
-  if (line.rejected > line.received) return "Le rejeté ne peut pas dépasser le reçu.";
-  if (line.rejected > 0 && !line.rejectionReason.trim()) return "Motif de rejet obligatoire.";
+  if (line.received < 0 || line.rejected < 0) return "Quantities cannot be negative.";
+  if (line.received > line.remaining) return `At most ${line.remaining} left to receive.`;
+  if (line.rejected > line.received) return "Rejected cannot exceed received.";
+  if (line.rejected > 0 && !line.rejectionReason.trim()) return "A rejection reason is required.";
   return null;
 }
 

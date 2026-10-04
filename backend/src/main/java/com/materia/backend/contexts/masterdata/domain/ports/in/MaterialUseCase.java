@@ -29,6 +29,12 @@ public interface MaterialUseCase extends BaseUseCase<CreateMaterialInput, Materi
 
     com.materia.backend.contexts.masterData.application.dtos.material.ManualReorderOutput triggerReorder(UUID id, Integer quantity, String reason);
 
+    /** One-click reorder requested by a user, who becomes the requisition's requester. */
+    default com.materia.backend.contexts.masterData.application.dtos.material.ManualReorderOutput triggerReorder(
+            UUID id, Integer quantity, String reason, String requesterId) {
+        return triggerReorder(id, quantity, reason);
+    }
+
     com.materia.backend.common.application.PageResponse<com.materia.backend.contexts.masterData.application.dtos.material.MaterialListOutput> getAllList(int page, int size);
 
     com.materia.backend.common.application.PageResponse<com.materia.backend.contexts.masterData.application.dtos.material.MaterialListOutput> searchAdvancedList(

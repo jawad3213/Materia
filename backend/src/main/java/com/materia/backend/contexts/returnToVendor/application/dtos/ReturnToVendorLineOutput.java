@@ -2,6 +2,7 @@ package com.materia.backend.contexts.returnToVendor.application.dtos;
 
 import com.materia.backend.common.application.BaseOutput;
 
+import java.math.BigDecimal;
 import java.util.UUID;
 
 public class ReturnToVendorLineOutput extends BaseOutput {
@@ -9,6 +10,10 @@ public class ReturnToVendorLineOutput extends BaseOutput {
     private UUID id;
     private Integer lineNumber;
     private String goodsReceiptLineId;
+    private String purchaseOrderLineId;
+    private String materialId;
+    private BigDecimal unitPrice;
+    private BigDecimal lineValue;
     private String materialCode;
     private String materialName;
     private String unitOfMeasure;
@@ -55,4 +60,15 @@ public class ReturnToVendorLineOutput extends BaseOutput {
     public void setCreditNote(boolean creditNote) { this.creditNote = creditNote; }
     public String getNotes() { return notes; }
     public void setNotes(String notes) { this.notes = notes; }
+    public String getPurchaseOrderLineId() { return purchaseOrderLineId; }
+    public void setPurchaseOrderLineId(String purchaseOrderLineId) { this.purchaseOrderLineId = purchaseOrderLineId; }
+
+    public String getMaterialId() { return materialId; }
+    public void setMaterialId(String materialId) { this.materialId = materialId; }
+
+    public BigDecimal getUnitPrice() { return unitPrice; }
+    public void setUnitPrice(BigDecimal unitPrice) { this.unitPrice = unitPrice; }
+
+    public BigDecimal getLineValue() { return lineValue; }
+    public void setLineValue(BigDecimal lineValue) { this.lineValue = lineValue; }
 }

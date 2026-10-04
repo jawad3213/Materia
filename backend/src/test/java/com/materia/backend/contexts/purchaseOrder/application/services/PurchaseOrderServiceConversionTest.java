@@ -55,6 +55,7 @@ class PurchaseOrderServiceConversionTest {
 
     private PurchaseOrderService service;
     private final UUID requisitionId = UUID.randomUUID();
+    private static final UUID REQUISITION_LINE_ID = UUID.randomUUID();
 
     @BeforeEach
     void setUp() {
@@ -69,11 +70,16 @@ class PurchaseOrderServiceConversionTest {
         out.setRequisitionCode(code);
         out.setStatus(status);
         out.setPurchaseOrderId(purchaseOrderId);
+        com.materia.backend.contexts.purchaseRequisition.domain.entities.RequisitionLine line =
+                new com.materia.backend.contexts.purchaseRequisition.domain.entities.RequisitionLine("MAT-1", 3);
+        line.setId(REQUISITION_LINE_ID);
+        out.setLines(new ArrayList<>(List.of(line)));
         return out;
     }
 
     private CreatePurchaseOrderInput createFromRequisition(String clientCode) {
         PurchaseOrderLineInput line = new PurchaseOrderLineInput();
+        line.setRequisitionLineId(REQUISITION_LINE_ID);
         line.setMaterialCode("MAT-1");
         line.setQuantity(3);
         line.setUnitPrice(Money.of("4.00", CurrencyCode.MAD));

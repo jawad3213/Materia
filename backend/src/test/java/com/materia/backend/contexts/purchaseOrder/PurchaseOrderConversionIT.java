@@ -66,9 +66,12 @@ class PurchaseOrderConversionIT extends AbstractIntegrationTest {
     }
 
     private CreatePurchaseOrderInput fromRequisition(UUID requisitionId) {
+        // An order from a requisition orders the requisition's own lines.
+        var requested = requisitions.findById(requisitionId).orElseThrow().getLines().get(0);
         PurchaseOrderLineInput line = new PurchaseOrderLineInput();
-        line.setMaterialCode("MAT-1");
-        line.setQuantity(3);
+        line.setRequisitionLineId(requested.getId());
+        line.setMaterialCode(requested.getMaterialCode());
+        line.setQuantity(requested.getQuantity());
         line.setUnitPrice(Money.of("4.00", CurrencyCode.MAD));
         CreatePurchaseOrderInput input = new CreatePurchaseOrderInput();
         input.setRequisitionId(requisitionId);

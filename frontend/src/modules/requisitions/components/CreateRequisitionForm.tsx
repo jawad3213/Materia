@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import useAuth from "../../auth/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { requisitionApi } from "../services/requisitionApi";
 import { materialApi } from "../../materials/services/materialApi";
@@ -62,6 +63,8 @@ interface CreateRequisitionFormProps {
 }
 
 export default function CreateRequisitionForm({ requisitionId }: CreateRequisitionFormProps = {}) {
+  // The requester defaults to the signed-in user; the backend records them as the creator.
+  const { user } = useAuth();
   const navigate = useNavigate();
   const isEditMode = Boolean(requisitionId);
   const [isLoadingExisting, setIsLoadingExisting] = useState(false);
@@ -93,7 +96,7 @@ export default function CreateRequisitionForm({ requisitionId }: CreateRequisiti
     title: "",
     description: "",
     justification: "",
-    requesterName: "Ahmed Bennani",
+    requesterName: user?.name || "",
     requiredDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
       .toISOString()
       .split("T")[0],
@@ -180,7 +183,7 @@ export default function CreateRequisitionForm({ requisitionId }: CreateRequisiti
             title: req.title || "",
             description: req.description || "",
             justification: req.justification || "",
-            requesterName: req.requesterName || "Ahmed Bennani",
+            requesterName: req.requesterName || "",
             requiredDate: req.requiredDate || "",
             currencyCode: reqCurr,
           });
@@ -486,7 +489,7 @@ export default function CreateRequisitionForm({ requisitionId }: CreateRequisiti
       const effectiveTitle =
         formData.title.trim() ||
         `Draft Requisition - ${new Date().toLocaleDateString()}`;
-      const effectiveRequester = formData.requesterName.trim() || "Ahmed Bennani";
+      const effectiveRequester = formData.requesterName.trim() || user?.name || "";
 
       const sourceLines = isDraft
         ? lines.filter((l) => Boolean(l.materialId || l.materialCode))
@@ -499,7 +502,9 @@ export default function CreateRequisitionForm({ requisitionId }: CreateRequisiti
         requesterName: effectiveRequester,
         requiredDate: formData.requiredDate ? formData.requiredDate.trim() : undefined,
         currencyCode: formData.currencyCode.trim() || "MAD",
-        createdBy: effectiveRequester,
+        // Asking for oneself links the requisition to the account; a name typed for someone else stays a name.
+        requesterId: effectiveRequester === user?.name ? user?.id : undefined,
+        createdBy: user?.id,
         status: isDraft ? "DRAFT" : "SUBMITTED",
         lines: sourceLines.map((l) => {
           const matId =

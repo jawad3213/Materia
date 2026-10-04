@@ -117,7 +117,11 @@ public class InvoiceWebMapper implements BaseWebMapper<
 
         InvoiceLineInput line = new InvoiceLineInput();
         BeanUtils.copyProperties(webLine, line, "unitPrice", "taxAmount", "quantityInvoiced");
-        line.setQuantityInvoiced(webLine.getQuantityInvoiced() != null ? webLine.getQuantityInvoiced().intValue() : null);
+        if (webLine.getQuantityInvoiced() != null
+                && webLine.getQuantityInvoiced().stripTrailingZeros().scale() > 0) {
+            throw new IllegalArgumentException("Invoiced quantities must be whole numbers");
+        }
+        line.setQuantityInvoiced(webLine.getQuantityInvoiced() != null ? webLine.getQuantityInvoiced().intValueExact() : null);
         line.setUnitPrice(toMoney(webLine.getUnitPrice(), defaultCurrencyCode, defaultCurrencyCode));
         line.setTaxAmount(toMoney(webLine.getTaxAmount(), defaultCurrencyCode, defaultCurrencyCode));
         return line;

@@ -21,6 +21,15 @@ public class ReturnToVendorLineJpaEntity extends BaseJpaEntity {
     @Column(name = "goods_receipt_line_id", length = 100)
     private String goodsReceiptLineId;
 
+    @Column(name = "purchase_order_line_id", length = 100)
+    private String purchaseOrderLineId;
+
+    @Column(name = "material_id", length = 100)
+    private String materialId;
+
+    @Column(name = "unit_price", precision = 19, scale = 4)
+    private java.math.BigDecimal unitPrice;
+
     @Column(name = "material_code", length = 100)
     private String materialCode;
 
@@ -101,4 +110,12 @@ public class ReturnToVendorLineJpaEntity extends BaseJpaEntity {
 
     public String getNotes() { return notes; }
     public void setNotes(String notes) { this.notes = notes; }
+    public String getPurchaseOrderLineId() { return purchaseOrderLineId; }
+    public void setPurchaseOrderLineId(String purchaseOrderLineId) { this.purchaseOrderLineId = purchaseOrderLineId; }
+
+    public String getMaterialId() { return materialId; }
+    public void setMaterialId(String materialId) { this.materialId = materialId; }
+
+    public java.math.BigDecimal getUnitPrice() { return unitPrice; }
+    public void setUnitPrice(java.math.BigDecimal unitPrice) { this.unitPrice = unitPrice; }
 }

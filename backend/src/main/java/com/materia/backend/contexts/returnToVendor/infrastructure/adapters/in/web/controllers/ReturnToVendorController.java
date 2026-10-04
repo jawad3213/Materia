@@ -1,20 +1,19 @@
 package com.materia.backend.contexts.returnToVendor.infrastructure.adapters.in.web.controllers;
 
-import com.materia.backend.contexts.returnToVendor.application.dtos.CreateReturnToVendorInput;
-import com.materia.backend.contexts.returnToVendor.application.dtos.ReturnToVendorLineInput;
-import com.materia.backend.contexts.returnToVendor.application.dtos.ReturnToVendorOutput;
-import com.materia.backend.contexts.returnToVendor.application.dtos.UpdateReturnToVendorInput;
-import com.materia.backend.contexts.returnToVendor.domain.enums.ResolutionType;
 import com.materia.backend.contexts.returnToVendor.domain.enums.ReturnStatus;
 import com.materia.backend.contexts.returnToVendor.domain.ports.in.ReturnToVendorUseCase;
+import com.materia.backend.contexts.returnToVendor.infrastructure.adapters.in.web.dtos.returnToVendor.CancelReturnToVendorWebRequest;
 import com.materia.backend.contexts.returnToVendor.infrastructure.adapters.in.web.dtos.returnToVendor.CreateReturnToVendorWebRequest;
-import com.materia.backend.contexts.returnToVendor.infrastructure.adapters.in.web.dtos.returnToVendor.ReturnToVendorLineWebRequest;
+import com.materia.backend.contexts.returnToVendor.infrastructure.adapters.in.web.dtos.returnToVendor.ResolveReturnToVendorWebRequest;
 import com.materia.backend.contexts.returnToVendor.infrastructure.adapters.in.web.dtos.returnToVendor.ReturnToVendorWebResponse;
 import com.materia.backend.contexts.returnToVendor.infrastructure.adapters.in.web.dtos.returnToVendor.UpdateReturnToVendorWebRequest;
 import com.materia.backend.contexts.returnToVendor.infrastructure.adapters.in.web.mappers.ReturnToVendorWebMapper;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -30,154 +29,125 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * REST controller for return to vendor operations.
+ * Returns to vendor. Permissions follow Role.java ({@code return:read} / {@code return:write}); the acting user
+ * is always the authenticated principal, never a request parameter.
  */
 @RestController
 @RequestMapping("/api/v1/return-to-vendors")
 public class ReturnToVendorController {
 
-    private final ReturnToVendorUseCase returnToVendorUseCase;
+    private final ReturnToVendorUseCase useCase;
     private final ReturnToVendorWebMapper webMapper;
 
-    public ReturnToVendorController(ReturnToVendorUseCase returnToVendorUseCase,
-                                    ReturnToVendorWebMapper webMapper) {
-        this.returnToVendorUseCase = returnToVendorUseCase;
+    public ReturnToVendorController(ReturnToVendorUseCase useCase, ReturnToVendorWebMapper webMapper) {
+        this.useCase = useCase;
         this.webMapper = webMapper;
     }
 
     @PostMapping
-    public ResponseEntity<ReturnToVendorWebResponse> create(
-            @Valid @RequestBody CreateReturnToVendorWebRequest webRequest) {
-        CreateReturnToVendorInput input = webMapper.toAppCreateRequest(webRequest);
-        ReturnToVendorOutput output = returnToVendorUseCase.create(input);
+    @PreAuthorize("hasAuthority('return:write')")
+    public ResponseEntity<ReturnToVendorWebResponse> create(@Valid @RequestBody CreateReturnToVendorWebRequest request,
+                                                            Authentication authentication) {
+        var output = useCase.create(webMapper.toCreateInput(request, principal(authentication)));
         return new ResponseEntity<>(webMapper.toWebResponse(output), HttpStatus.CREATED);
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('return:read')")
     public ResponseEntity<ReturnToVendorWebResponse> getById(@PathVariable UUID id) {
-        ReturnToVendorOutput output = returnToVendorUseCase.getById(id);
-        return ResponseEntity.ok(webMapper.toWebResponse(output));
+        return ResponseEntity.ok(webMapper.toWebResponse(useCase.getById(id)));
     }
 
     @GetMapping("/code/{code}")
+    @PreAuthorize("hasAuthority('return:read')")
     public ResponseEntity<ReturnToVendorWebResponse> getByCode(@PathVariable String code) {
-        ReturnToVendorOutput output = returnToVendorUseCase.getByCode(code);
-        return ResponseEntity.ok(webMapper.toWebResponse(output));
+        return ResponseEntity.ok(webMapper.toWebResponse(useCase.getByCode(code)));
     }
 
     @GetMapping
+    @PreAuthorize("hasAuthority('return:read')")
     public ResponseEntity<List<ReturnToVendorWebResponse>> getAll() {
-        List<ReturnToVendorOutput> outputs = returnToVendorUseCase.getAll();
-        return ResponseEntity.ok(webMapper.toWebResponseList(outputs));
+        return ResponseEntity.ok(webMapper.toWebResponseList(useCase.getAll()));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<ReturnToVendorWebResponse> update(
-            @PathVariable UUID id,
-            @Valid @RequestBody UpdateReturnToVendorWebRequest webRequest) {
-        UpdateReturnToVendorInput input = webMapper.toAppUpdateRequest(webRequest);
-        ReturnToVendorOutput output = returnToVendorUseCase.update(id, input);
+    @PreAuthorize("hasAuthority('return:write')")
+    public ResponseEntity<ReturnToVendorWebResponse> update(@PathVariable UUID id,
+                                                            @Valid @RequestBody UpdateReturnToVendorWebRequest request,
+                                                            Authentication authentication) {
+        var output = useCase.update(id, webMapper.toUpdateInput(request, principal(authentication)));
         return ResponseEntity.ok(webMapper.toWebResponse(output));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(
-            @PathVariable UUID id,
-            @RequestParam String userId) {
-        returnToVendorUseCase.delete(id, userId);
+    @PreAuthorize("hasAuthority('return:write')")
+    public ResponseEntity<Void> delete(@PathVariable UUID id, Authentication authentication) {
+        useCase.delete(id, principal(authentication));
         return ResponseEntity.noContent().build();
     }
 
-    // ============================================================
-    // QUERY ENDPOINTS
-    // ============================================================
+    // ---- Queries ----
 
     @GetMapping("/goods-receipt/{goodsReceiptId}")
-    public ResponseEntity<List<ReturnToVendorWebResponse>> getByGoodsReceiptId(
-            @PathVariable String goodsReceiptId) {
-        List<ReturnToVendorOutput> outputs = returnToVendorUseCase.getByGoodsReceiptId(goodsReceiptId);
-        return ResponseEntity.ok(webMapper.toWebResponseList(outputs));
+    @PreAuthorize("hasAuthority('return:read')")
+    public ResponseEntity<List<ReturnToVendorWebResponse>> getByGoodsReceiptId(@PathVariable String goodsReceiptId) {
+        return ResponseEntity.ok(webMapper.toWebResponseList(useCase.getByGoodsReceiptId(goodsReceiptId)));
     }
 
     @GetMapping("/purchase-order/{purchaseOrderId}")
-    public ResponseEntity<List<ReturnToVendorWebResponse>> getByPurchaseOrderId(
-            @PathVariable String purchaseOrderId) {
-        List<ReturnToVendorOutput> outputs = returnToVendorUseCase.getByPurchaseOrderId(purchaseOrderId);
-        return ResponseEntity.ok(webMapper.toWebResponseList(outputs));
+    @PreAuthorize("hasAuthority('return:read')")
+    public ResponseEntity<List<ReturnToVendorWebResponse>> getByPurchaseOrderId(@PathVariable String purchaseOrderId) {
+        return ResponseEntity.ok(webMapper.toWebResponseList(useCase.getByPurchaseOrderId(purchaseOrderId)));
     }
 
     @GetMapping("/supplier/{supplierId}")
-    public ResponseEntity<List<ReturnToVendorWebResponse>> getBySupplierId(
-            @PathVariable String supplierId) {
-        List<ReturnToVendorOutput> outputs = returnToVendorUseCase.getBySupplierId(supplierId);
-        return ResponseEntity.ok(webMapper.toWebResponseList(outputs));
+    @PreAuthorize("hasAuthority('return:read')")
+    public ResponseEntity<List<ReturnToVendorWebResponse>> getBySupplierId(@PathVariable String supplierId) {
+        return ResponseEntity.ok(webMapper.toWebResponseList(useCase.getBySupplierId(supplierId)));
     }
 
     @GetMapping("/status/{status}")
-    public ResponseEntity<List<ReturnToVendorWebResponse>> getByStatus(
-            @PathVariable ReturnStatus status) {
-        List<ReturnToVendorOutput> outputs = returnToVendorUseCase.getByStatus(status);
-        return ResponseEntity.ok(webMapper.toWebResponseList(outputs));
+    @PreAuthorize("hasAuthority('return:read')")
+    public ResponseEntity<List<ReturnToVendorWebResponse>> getByStatus(@PathVariable ReturnStatus status) {
+        return ResponseEntity.ok(webMapper.toWebResponseList(useCase.getByStatus(status)));
     }
 
     @GetMapping("/search")
-    public ResponseEntity<List<ReturnToVendorWebResponse>> search(
-            @RequestParam String keyword) {
-        List<ReturnToVendorOutput> outputs = returnToVendorUseCase.search(keyword);
-        return ResponseEntity.ok(webMapper.toWebResponseList(outputs));
+    @PreAuthorize("hasAuthority('return:read')")
+    public ResponseEntity<List<ReturnToVendorWebResponse>> search(@RequestParam String keyword) {
+        return ResponseEntity.ok(webMapper.toWebResponseList(useCase.search(keyword)));
     }
 
-    // ============================================================
-    // LINE MANAGEMENT ENDPOINTS
-    // ============================================================
-
-    @PostMapping("/{id}/lines")
-    public ResponseEntity<ReturnToVendorWebResponse> addLine(
-            @PathVariable UUID id,
-            @Valid @RequestBody ReturnToVendorLineWebRequest lineRequest,
-            @RequestParam String userId) {
-        ReturnToVendorLineInput lineInput = webMapper.toLineInput(lineRequest);
-        ReturnToVendorOutput output = returnToVendorUseCase.addLine(id, lineInput, userId);
-        return ResponseEntity.ok(webMapper.toWebResponse(output));
-    }
-
-    @DeleteMapping("/{id}/lines/{lineIndex}")
-    public ResponseEntity<ReturnToVendorWebResponse> removeLine(
-            @PathVariable UUID id,
-            @PathVariable int lineIndex,
-            @RequestParam String userId) {
-        ReturnToVendorOutput output = returnToVendorUseCase.removeLine(id, lineIndex, userId);
-        return ResponseEntity.ok(webMapper.toWebResponse(output));
-    }
-
-    // ============================================================
-    // STATUS TRANSITION ENDPOINTS
-    // ============================================================
+    // ---- Status transitions ----
 
     @PatchMapping("/{id}/submit")
-    public ResponseEntity<ReturnToVendorWebResponse> submit(
-            @PathVariable UUID id,
-            @RequestParam String userId) {
-        ReturnToVendorOutput output = returnToVendorUseCase.submit(id, userId);
-        return ResponseEntity.ok(webMapper.toWebResponse(output));
+    @PreAuthorize("hasAuthority('return:write')")
+    public ResponseEntity<ReturnToVendorWebResponse> submit(@PathVariable UUID id, Authentication authentication) {
+        return ResponseEntity.ok(webMapper.toWebResponse(useCase.submit(id, principal(authentication))));
     }
 
     @PatchMapping("/{id}/resolve")
-    public ResponseEntity<ReturnToVendorWebResponse> resolve(
-            @PathVariable UUID id,
-            @RequestParam String userId,
-            @RequestParam ResolutionType resolutionType,
-            @RequestParam String reference) {
-        ReturnToVendorOutput output = returnToVendorUseCase.resolve(id, userId, resolutionType, reference);
+    @PreAuthorize("hasAuthority('return:write')")
+    public ResponseEntity<ReturnToVendorWebResponse> resolve(@PathVariable UUID id,
+                                                             @Valid @RequestBody ResolveReturnToVendorWebRequest request,
+                                                             Authentication authentication) {
+        var output = useCase.resolve(id, principal(authentication), request.resolutionType(), request.reference(),
+                request.supplierResponse());
         return ResponseEntity.ok(webMapper.toWebResponse(output));
     }
 
     @PatchMapping("/{id}/cancel")
-    public ResponseEntity<ReturnToVendorWebResponse> cancel(
-            @PathVariable UUID id,
-            @RequestParam String userId,
-            @RequestParam String reason) {
-        ReturnToVendorOutput output = returnToVendorUseCase.cancel(id, userId, reason);
-        return ResponseEntity.ok(webMapper.toWebResponse(output));
+    @PreAuthorize("hasAuthority('return:write')")
+    public ResponseEntity<ReturnToVendorWebResponse> cancel(@PathVariable UUID id,
+                                                            @Valid @RequestBody CancelReturnToVendorWebRequest request,
+                                                            Authentication authentication) {
+        return ResponseEntity.ok(webMapper.toWebResponse(useCase.cancel(id, principal(authentication), request.reason())));
+    }
+
+    private static String principal(Authentication authentication) {
+        if (authentication == null || authentication.getName() == null || authentication.getName().isBlank()) {
+            throw new AccessDeniedException("An authenticated user is required");
+        }
+        return authentication.getName();
     }
 }

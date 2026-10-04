@@ -40,6 +40,9 @@ public class ReturnToVendorJpaEntity extends BaseJpaEntity {
     @Column(name = "supplier_code", length = 100)
     private String supplierCode;
 
+    @Column(name = "currency_code", length = 3)
+    private String currencyCode;
+
     @Column(name = "status", length = 50)
     private String status;
 
@@ -147,4 +150,6 @@ public class ReturnToVendorJpaEntity extends BaseJpaEntity {
 
     public List<ReturnToVendorLineJpaEntity> getLines() { return lines; }
     public void setLines(List<ReturnToVendorLineJpaEntity> lines) { this.lines = lines; }
+    public String getCurrencyCode() { return currencyCode; }
+    public void setCurrencyCode(String currencyCode) { this.currencyCode = currencyCode; }
 }

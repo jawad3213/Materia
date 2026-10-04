@@ -6,18 +6,18 @@ export type ReceiptStatus = "DRAFT" | "IN_PROGRESS" | "COMPLETED" | "PARTIAL" | 
 export type QualityStatus = "ACCEPTED" | "REJECTED" | "UNDER_REVIEW" | "PARTIAL";
 
 export const RECEIPT_STATUS_LABELS: Record<ReceiptStatus, string> = {
-  DRAFT: "Brouillon",
-  IN_PROGRESS: "En cours",
-  COMPLETED: "Terminée",
-  PARTIAL: "Avec écarts",
-  CANCELLED: "Annulée",
+  DRAFT: "Draft",
+  IN_PROGRESS: "In progress",
+  COMPLETED: "Completed",
+  PARTIAL: "With discrepancies",
+  CANCELLED: "Cancelled",
 };
 
 export const QUALITY_STATUS_LABELS: Record<QualityStatus, string> = {
-  ACCEPTED: "Conforme",
-  REJECTED: "Non conforme",
-  UNDER_REVIEW: "À contrôler",
-  PARTIAL: "Partiellement conforme",
+  ACCEPTED: "Accepted",
+  REJECTED: "Rejected",
+  UNDER_REVIEW: "Under review",
+  PARTIAL: "Partly accepted",
 };
 
 /** Receipts that can still be edited, validated or cancelled (backend ReceiptStatus.isModifiable). */

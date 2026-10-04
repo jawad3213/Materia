@@ -5,19 +5,9 @@ import GoodsReceiptForm from "../components/GoodsReceiptForm";
 export default function CreateGoodsReceiptPage() {
   return (
     <>
-      <PageMeta
-        title="Nouvelle Réception | Materia Procurement"
-        description="Enregistrez les quantités reçues et rejetées pour une commande fournisseur."
-      />
-      <PageBreadcrumb
-        pageTitle="Nouvelle Réception"
-        parentName="Réceptions"
-        parentUrl="/goods-receipts"
-      />
-
-      <div className="mt-6">
-        <GoodsReceiptForm />
-      </div>
+      <PageMeta title="Create Goods Receipt | Materia Dashboard" description="Record received and rejected quantities for a purchase order" />
+      <PageBreadcrumb pageTitle="Create Goods Receipt" parentName="Goods Receipts" parentUrl="/goods-receipts" />
+      <GoodsReceiptForm />
     </>
   );
 }

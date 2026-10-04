@@ -26,9 +26,9 @@ public interface InvoiceUseCase extends BaseUseCase<CreateInvoiceInput, InvoiceO
 
     InvoiceOutput submit(UUID id, String userId);
 
-    InvoiceOutput verify(UUID id, String userId, String userName);
+    InvoiceOutput verify(UUID id, String userId);
 
-    InvoiceOutput pay(UUID id, String userId, String userName, Double amount);
+    InvoiceOutput pay(UUID id, String userId, Double amount);
 
     InvoiceOutput cancel(UUID id, String userId, String reason);
 }

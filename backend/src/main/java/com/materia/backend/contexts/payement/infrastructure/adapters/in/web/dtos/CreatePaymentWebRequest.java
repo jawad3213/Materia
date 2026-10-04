@@ -14,12 +14,10 @@ public class CreatePaymentWebRequest {
     @NotBlank(message = "Le fournisseur est obligatoire")
     private String supplierId;
     
-    @NotBlank(message = "Le nom du fournisseur est obligatoire")
     private String supplierName;
     
     private String supplierCode;
     
-    @NotNull(message = "Le montant total est obligatoire")
     private BigDecimal totalAmount;
     
     private String currencyCode;
@@ -30,8 +28,6 @@ public class CreatePaymentWebRequest {
     @Valid
     private List<CreatePaymentLineWebRequest> lines = new ArrayList<>();
     
-    @NotBlank(message = "L'ID de l'utilisateur est obligatoire")
-    private String userId;
 
     public String getSupplierId() { return supplierId; }
     public void setSupplierId(String supplierId) { this.supplierId = supplierId; }
@@ -57,6 +53,4 @@ public class CreatePaymentWebRequest {
     public List<CreatePaymentLineWebRequest> getLines() { return lines; }
     public void setLines(List<CreatePaymentLineWebRequest> lines) { this.lines = lines; }
 
-    public String getUserId() { return userId; }
-    public void setUserId(String userId) { this.userId = userId; }
 }

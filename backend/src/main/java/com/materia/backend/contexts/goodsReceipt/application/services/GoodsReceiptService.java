@@ -21,6 +21,7 @@ import com.materia.backend.contexts.goodsReceipt.domain.exceptions.GoodsReceiptV
 import com.materia.backend.contexts.goodsReceipt.domain.ports.in.GoodsReceiptUseCase;
 import com.materia.backend.contexts.goodsReceipt.domain.ports.out.GoodsReceiptEventPublisher;
 import com.materia.backend.contexts.goodsReceipt.domain.ports.out.GoodsReceiptRepository;
+import com.materia.backend.contexts.goodsReceipt.domain.ports.out.ReplacedReturnQuantities;
 import com.materia.backend.contexts.goodsReceipt.domain.valueObjects.ReceiptCode;
 import com.materia.backend.contexts.masterData.domain.entities.Material;
 import com.materia.backend.contexts.masterData.domain.ports.out.MaterialRepository;
@@ -62,6 +63,8 @@ public class GoodsReceiptService implements GoodsReceiptUseCase {
     private final PurchaseOrderRepository purchaseOrderRepository;
     private final MaterialRepository materialRepository;
     private final PurchaseOrderEventPublisher purchaseOrderEventPublisher;
+    private final com.materia.backend.contexts.purchaseRequisition.domain.ports.in.RequisitionUseCase requisitionUseCase;
+    private ReplacedReturnQuantities replacedReturnQuantities = ReplacedReturnQuantities.NONE;
 
     public GoodsReceiptService(GoodsReceiptRepository goodsReceiptRepository,
                                GoodsReceiptMapper goodsReceiptMapper,
@@ -70,6 +73,20 @@ public class GoodsReceiptService implements GoodsReceiptUseCase {
                                PurchaseOrderRepository purchaseOrderRepository,
                                MaterialRepository materialRepository,
                                PurchaseOrderEventPublisher purchaseOrderEventPublisher) {
+        this(goodsReceiptRepository, goodsReceiptMapper, eventPublisher, codeGenerator, purchaseOrderRepository,
+                materialRepository, purchaseOrderEventPublisher, null);
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public GoodsReceiptService(GoodsReceiptRepository goodsReceiptRepository,
+                               GoodsReceiptMapper goodsReceiptMapper,
+                               GoodsReceiptEventPublisher eventPublisher,
+                               GoodsReceiptCodeGeneratorService codeGenerator,
+                               PurchaseOrderRepository purchaseOrderRepository,
+                               MaterialRepository materialRepository,
+                               PurchaseOrderEventPublisher purchaseOrderEventPublisher,
+                               com.materia.backend.contexts.purchaseRequisition.domain.ports.in.RequisitionUseCase requisitionUseCase) {
+        this.requisitionUseCase = requisitionUseCase;
         this.goodsReceiptRepository = goodsReceiptRepository;
         this.goodsReceiptMapper = goodsReceiptMapper;
         this.eventPublisher = eventPublisher;
@@ -77,6 +94,12 @@ public class GoodsReceiptService implements GoodsReceiptUseCase {
         this.purchaseOrderRepository = purchaseOrderRepository;
         this.materialRepository = materialRepository;
         this.purchaseOrderEventPublisher = purchaseOrderEventPublisher;
+    }
+
+    /** Goods sent back for replacement are expected again; optional so the receipt context works without returns. */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setReplacedReturnQuantities(ReplacedReturnQuantities replacedReturnQuantities) {
+        this.replacedReturnQuantities = replacedReturnQuantities != null ? replacedReturnQuantities : ReplacedReturnQuantities.NONE;
     }
 
     @Override
@@ -232,6 +255,7 @@ public class GoodsReceiptService implements GoodsReceiptUseCase {
         goodsReceipt.recalculateTotals();
         goodsReceipt.complete(userId);
         applyAcceptedStock(goodsReceipt, userId);
+        recordOnRequisition(purchaseOrder, goodsReceipt);
         GoodsReceipt saved = goodsReceiptRepository.save(goodsReceipt);
         updatePurchaseOrderDeliveryStatus(purchaseOrder, saved, userId);
 
@@ -447,7 +471,18 @@ public class GoodsReceiptService implements GoodsReceiptUseCase {
         }
     }
 
+    /**
+     * What earlier receipts delivered per purchase-order line. Goods sent back and being replaced by the supplier
+     * no longer count: the replacement is still to be received.
+     */
     private Map<String, Integer> receivedQuantitiesByPurchaseOrderLine(String purchaseOrderId, UUID excludedReceiptId) {
+        Map<String, Integer> received = new HashMap<>(deliveredQuantitiesByPurchaseOrderLine(purchaseOrderId, excludedReceiptId));
+        replacedReturnQuantities.byPurchaseOrderLine(purchaseOrderId).forEach((lineId, replaced) ->
+                received.computeIfPresent(lineId, (id, quantity) -> Math.max(0, quantity - replaced)));
+        return received;
+    }
+
+    private Map<String, Integer> deliveredQuantitiesByPurchaseOrderLine(String purchaseOrderId, UUID excludedReceiptId) {
         return goodsReceiptRepository.findByPurchaseOrderId(purchaseOrderId).stream()
                 .filter(receipt -> !receipt.getId().equals(excludedReceiptId))
                 .filter(receipt -> receipt.getStatus() == ReceiptStatus.COMPLETED
@@ -460,20 +495,77 @@ public class GoodsReceiptService implements GoodsReceiptUseCase {
                 ));
     }
 
+    /**
+     * Accepted goods enter stock. Everything received (accepted or rejected) is no longer on order: the order
+     * counts it as received, so the material's stock on order is reduced by it.
+     */
     private void applyAcceptedStock(GoodsReceipt goodsReceipt, String userId) {
         for (GoodsReceiptLine line : goodsReceipt.getLines()) {
             int acceptedQuantity = line.getQuantityAccepted() != null ? line.getQuantityAccepted() : 0;
+            int receivedQuantity = line.getQuantityReceived() != null ? line.getQuantityReceived() : 0;
             if (acceptedQuantity <= 0) {
+                if (receivedQuantity > 0) {
+                    findMaterialIfPresent(line).ifPresent(material -> {
+                        if (releaseOnOrder(material, receivedQuantity)) {
+                            material.setUpdatedBy(userId);
+                            materialRepository.save(material);
+                        }
+                    });
+                }
                 continue;
             }
 
             Material material = findMaterial(line);
             int stockBefore = material.getCurrentStock() != null ? material.getCurrentStock() : 0;
             material.increaseStock(acceptedQuantity, "Goods receipt " + goodsReceipt.getReceiptCode().getValue());
+            releaseOnOrder(material, receivedQuantity);
             material.setUpdatedBy(userId);
             Material savedMaterial = materialRepository.save(material);
             line.setStockBefore(stockBefore);
             line.setStockAfter(savedMaterial.getCurrentStock());
+        }
+    }
+
+    /** Reduces the material's stock on order by up to {@code quantity}; true when something changed. */
+    private static boolean releaseOnOrder(Material material, int quantity) {
+        int onOrder = material.getStockOnOrder() != null ? material.getStockOnOrder() : 0;
+        int released = Math.min(onOrder, quantity);
+        if (released <= 0) return false;
+        material.reduceStockOnOrder(released);
+        return true;
+    }
+
+    private java.util.Optional<Material> findMaterialIfPresent(GoodsReceiptLine line) {
+        java.util.Optional<Material> byId = line.getMaterialId() != null
+                ? materialRepository.findById(line.getMaterialId()) : java.util.Optional.empty();
+        if (byId != null && byId.isPresent()) return byId;
+        java.util.Optional<Material> byCode = line.getMaterialCode() != null
+                ? materialRepository.findByCode(line.getMaterialCode()) : java.util.Optional.empty();
+        return byCode != null ? byCode : java.util.Optional.empty();
+    }
+
+    /**
+     * Tells the requisition behind the order what arrived: accepted and rejected quantities, per requisition line,
+     * so the requester can follow the delivery of what they asked for.
+     */
+    private void recordOnRequisition(PurchaseOrder purchaseOrder, GoodsReceipt goodsReceipt) {
+        if (requisitionUseCase == null || purchaseOrder.getRequisitionId() == null) {
+            return;
+        }
+        Map<String, UUID> requisitionLineByOrderLine = new HashMap<>();
+        for (PurchaseOrderLine orderLine : purchaseOrder.getLines()) {
+            if (orderLine.getRequisitionLineId() != null) {
+                requisitionLineByOrderLine.put(orderLine.getId().toString(), orderLine.getRequisitionLineId());
+            }
+        }
+        for (GoodsReceiptLine line : goodsReceipt.getLines()) {
+            UUID requisitionLineId = requisitionLineByOrderLine.get(line.getPurchaseOrderLineId());
+            if (requisitionLineId == null) continue;
+            int accepted = line.getQuantityAccepted() != null ? line.getQuantityAccepted() : 0;
+            int rejected = line.getQuantityRejected() != null ? line.getQuantityRejected() : 0;
+            if (accepted + rejected > 0) {
+                requisitionUseCase.recordReceipt(purchaseOrder.getRequisitionId(), requisitionLineId, accepted, rejected);
+            }
         }
     }
 

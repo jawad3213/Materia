@@ -12,6 +12,7 @@ export interface RequisitionListItem {
   status: RequisitionStatus;
   requesterId: string;
   requesterName: string;
+  createdBy?: string;
   requiredDate?: string;
   submittedDate?: string;
   approvedDate?: string;
