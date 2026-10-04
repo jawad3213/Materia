@@ -33,6 +33,9 @@ build/
 !**/src/test/**/build/
 
 # Ignored resources
-src/main/resources/db/
+# Flyway migrations are tracked: every environment needs them to build its schema.
+# The users migration seeds default accounts with password hashes; it stays local until
+# those accounts are created another way.
+src/main/resources/db/migration/V20260922_01__create_users_table.sql
 src/main/resources/META-INF/
 
