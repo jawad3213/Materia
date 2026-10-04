@@ -11,6 +11,19 @@ import com.materia.backend.contexts.auth.domain.exceptions.TokenExpiredException
 import com.materia.backend.contexts.auth.domain.exceptions.UserAlreadyExistsException;
 import com.materia.backend.contexts.auth.domain.exceptions.UserNotFoundException;
 import com.materia.backend.contexts.goodsReceipt.domain.exceptions.GoodsReceiptBusinessException;
+import com.materia.backend.contexts.invoice.domain.exceptions.InvoiceAlreadyExistsException;
+import com.materia.backend.contexts.invoice.domain.exceptions.InvoiceAlreadyPaidException;
+import com.materia.backend.contexts.invoice.domain.exceptions.InvoiceAlreadyVerifiedException;
+import com.materia.backend.contexts.invoice.domain.exceptions.InvoiceCancellationException;
+import com.materia.backend.contexts.invoice.domain.exceptions.InvoiceLineValidationException;
+import com.materia.backend.contexts.invoice.domain.exceptions.InvoiceNotFoundException;
+import com.materia.backend.contexts.invoice.domain.exceptions.InvoiceNotModifiableException;
+import com.materia.backend.contexts.invoice.domain.exceptions.InvoiceNotPayableException;
+import com.materia.backend.contexts.invoice.domain.exceptions.InvoiceNotVerifiableException;
+import com.materia.backend.contexts.invoice.domain.exceptions.InvoicePurchaseOrderMismatchException;
+import com.materia.backend.contexts.invoice.domain.exceptions.InvoiceRuleViolationException;
+import com.materia.backend.contexts.invoice.domain.exceptions.InvoiceSupplierMismatchException;
+import com.materia.backend.contexts.invoice.domain.exceptions.InvoiceValidationException;
 import com.materia.backend.contexts.purchaseOrder.domain.exceptions.PurchaseOrderBusinessException;
 import com.materia.backend.contexts.purchaseOrder.domain.exceptions.PurchaseOrderNotFoundException;
 import com.materia.backend.contexts.purchaseOrder.domain.exceptions.PurchaseOrderValidationException;
@@ -93,6 +106,29 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 request,
                 null
         );
+    }
+
+    @ExceptionHandler(InvoiceNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleInvoiceNotFoundException(InvoiceNotFoundException ex, WebRequest request) {
+        log.error("Invoice not found: {}", ex.getMessage());
+        return buildErrorResponse(HttpStatus.NOT_FOUND, "Invoice Not Found", "INVOICE_NOT_FOUND", ex.getMessage(), request, null);
+    }
+
+    @ExceptionHandler({InvoiceValidationException.class, InvoiceLineValidationException.class})
+    public ResponseEntity<ErrorResponse> handleInvoiceValidationException(RuntimeException ex, WebRequest request) {
+        log.error("Invoice validation error: {}", ex.getMessage());
+        return buildErrorResponse(HttpStatus.BAD_REQUEST, "Invoice Validation Error", "INVOICE_VALIDATION_ERROR",
+                ex.getMessage(), request, null);
+    }
+
+    /** Invoice operations refused by a business rule answer 409, like purchase orders and goods receipts. */
+    @ExceptionHandler({InvoiceRuleViolationException.class, InvoiceNotModifiableException.class,
+            InvoiceNotVerifiableException.class, InvoiceNotPayableException.class, InvoiceCancellationException.class,
+            InvoiceAlreadyPaidException.class, InvoiceAlreadyVerifiedException.class, InvoiceAlreadyExistsException.class,
+            InvoiceSupplierMismatchException.class, InvoicePurchaseOrderMismatchException.class})
+    public ResponseEntity<ErrorResponse> handleInvoiceRuleViolation(RuntimeException ex, WebRequest request) {
+        log.error("Invoice rule violation: {}", ex.getMessage());
+        return buildErrorResponse(HttpStatus.CONFLICT, "Invoice Error", "INVOICE_RULE_VIOLATION", ex.getMessage(), request, null);
     }
 
     @ExceptionHandler(PurchaseOrderNotFoundException.class)

@@ -49,7 +49,6 @@ public class UpdateInvoiceWebRequest {
     @Valid
     private List<InvoiceLineWebRequest> lines = new ArrayList<>();
 
-    @NotBlank(message = "Updated by is mandatory")
     private String updatedBy;
 
     // Getters and Setters

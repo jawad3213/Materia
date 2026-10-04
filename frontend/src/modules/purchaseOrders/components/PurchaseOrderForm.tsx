@@ -163,14 +163,17 @@ export default function PurchaseOrderForm({ purchaseOrderId }: PurchaseOrderForm
 
   useEffect(() => {
     let cancelled = false;
-    Promise.allSettled([supplierApi.getAllUnpaginated(), materialApi.getAll()]).then(
+    Promise.allSettled([supplierApi.getAllUnpaginated(), materialApi.getAllForSelection()]).then(
       ([supRes, matRes]) => {
         if (cancelled) return;
-        if (supRes.status === "fulfilled" && supRes.value?.data) {
+        if (supRes.status === "fulfilled" && Array.isArray(supRes.value?.data)) {
           setSuppliers(supRes.value.data);
         }
-        if (matRes.status === "fulfilled" && matRes.value?.data) {
-          setMaterials(matRes.value.data);
+        if (matRes.status === "fulfilled") {
+          // Only materials that can still be ordered are offered on a new line.
+          setMaterials(matRes.value.filter((m) => !m.status || m.status === "ACTIVE"));
+        } else {
+          console.error("Failed to load materials:", matRes.reason);
         }
       }
     );

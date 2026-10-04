@@ -191,7 +191,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         'category:read', 'category:write',
         'material:read', 'supplier:read', 'supplier:write',
         'requisition:read', 'requisition:write', 'requisition:validate', 'requisition:convert',
-        'order:read', 'order:write', 'order:cancel', 'receipt:read'
+        'order:read', 'order:write', 'order:cancel', 'receipt:read',
+        'invoice:read', 'invoice:write', 'payment:read'
       ],
       RECEIVER: [
         'category:read', 'material:read', 'material:stock:read', 'material:stock:write',

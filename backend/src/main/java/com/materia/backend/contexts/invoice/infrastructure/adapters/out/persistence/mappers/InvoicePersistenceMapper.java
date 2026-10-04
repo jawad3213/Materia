@@ -22,6 +22,8 @@ public class InvoicePersistenceMapper {
 
         InvoiceJpaEntity entity = new InvoiceJpaEntity();
         entity.setId(domain.getId());
+        // Without the stored version, Spring Data treats every save as an insert of a new invoice.
+        entity.setVersion(domain.getVersion());
         entity.setInvoiceCode(domain.getInvoiceCode() != null ? domain.getInvoiceCode().getValue() : null);
         entity.setPurchaseOrderId(domain.getPurchaseOrderId());
         entity.setPurchaseOrderCode(domain.getPurchaseOrderCode());
@@ -122,6 +124,7 @@ public class InvoicePersistenceMapper {
             } catch (Exception e) {}
         }
         
+        domain.setVersion(entity.getVersion());
         domain.setCreatedBy(entity.getCreatedBy());
         domain.setCreatedAt(entity.getCreatedAt());
         domain.setUpdatedBy(entity.getUpdatedBy());
@@ -148,6 +151,7 @@ public class InvoicePersistenceMapper {
         if (domain == null) return null;
         InvoiceLineJpaEntity entity = new InvoiceLineJpaEntity();
         entity.setId(domain.getId());
+        entity.setVersion(domain.getVersion());
         entity.setLineNumber(domain.getLineNumber());
         entity.setPurchaseOrderLineId(domain.getPurchaseOrderLineId());
         entity.setGoodsReceiptLineId(domain.getGoodsReceiptLineId());
@@ -194,8 +198,13 @@ public class InvoicePersistenceMapper {
                 .notes(entity.getNotes())
                 .build();
         
-        // Since builder recalculates things, the values should mostly align. 
-        // We'll trust the domain builder to reconstruct derived values correctly.
+        // The builder recomputes the discrepancy against the received quantity only; the stored values
+        // are the three-way match result (which also accounts for earlier invoices), so they win.
+        domain.setVersion(entity.getVersion());
+        domain.setCurrencyCode(entity.getCurrencyCode());
+        domain.setQuantityDiscrepancy(entity.getQuantityDiscrepancy());
+        domain.setHasQuantityDiscrepancy(entity.isHasQuantityDiscrepancy());
+        domain.setDiscrepancyNotes(entity.getDiscrepancyNotes());
         return domain;
     }
 }

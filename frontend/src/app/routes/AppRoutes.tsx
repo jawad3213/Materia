@@ -5,6 +5,7 @@ import SuppliersRoutes from '../../modules/suppliers/SuppliersRoutes';
 import RequisitionsRoutes from '../../modules/requisitions/RequisitionsRoutes';
 import PurchaseOrdersRoutes from '../../modules/purchaseOrders/PurchaseOrdersRoutes';
 import GoodsReceiptsRoutes from '../../modules/goodsReceipts/GoodsReceiptsRoutes';
+import InvoicesRoutes from '../../modules/invoices/InvoicesRoutes';
 import UsersRoutes from '../../modules/users/UsersRoutes';
 import DashboardPage from '../../modules/dashboard/pages/DashboardPage';
 import ProfilePage from '../../modules/userProfile/pages/ProfilePage';
@@ -152,6 +153,16 @@ export default function AppRoutes() {
           element={
             <RoleGuard allowedRoles={['ADMIN', 'PURCHASER', 'RECEIVER']}>
               <GoodsReceiptsRoutes />
+            </RoleGuard>
+          }
+        />
+
+        {/* Invoices: purchasers record and submit, administrators verify and pay */}
+        <Route
+          path="/invoices/*"
+          element={
+            <RoleGuard allowedRoles={['ADMIN', 'PURCHASER']}>
+              <InvoicesRoutes />
             </RoleGuard>
           }
         />

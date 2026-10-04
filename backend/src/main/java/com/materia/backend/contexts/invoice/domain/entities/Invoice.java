@@ -3,6 +3,11 @@ package com.materia.backend.contexts.invoice.domain.entities;
 import com.materia.backend.common.domain.BaseEntity;
 import com.materia.backend.contexts.invoice.domain.enums.InvoiceStatus;
 import com.materia.backend.contexts.invoice.domain.enums.InvoiceType;
+import com.materia.backend.contexts.invoice.domain.exceptions.InvoiceCancellationException;
+import com.materia.backend.contexts.invoice.domain.exceptions.InvoiceNotPayableException;
+import com.materia.backend.contexts.invoice.domain.exceptions.InvoiceNotVerifiableException;
+import com.materia.backend.contexts.invoice.domain.exceptions.InvoiceRuleViolationException;
+import com.materia.backend.contexts.invoice.domain.exceptions.InvoiceValidationException;
 import com.materia.backend.contexts.invoice.domain.valueObjects.InvoiceCode;
 import com.materia.backend.common.domain.valueObjects.Money;
 
@@ -299,9 +304,11 @@ public class Invoice extends BaseEntity {
         public Builder updatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; return this; }
         
         public Invoice build() {
+            if (this.currencyCode == null) this.currencyCode = "MAD";
+            // Totals are derived from the lines, so they are computed before the required-field check.
+            calculateTotals();
             validateRequiredFields();
             validateLines();
-            calculateTotals();
             
             if (this.id == null) this.id = UUID.randomUUID();
             
@@ -364,10 +371,19 @@ public class Invoice extends BaseEntity {
                 return;
             }
             
-            Money total = Money.zero("MAD");
-            Money totalTax = Money.zero("MAD");
-            
-            for (InvoiceLine line : this.lines) {
+            Money[] totals = sumLines(this.lines, this.currencyCode);
+            this.totalAmount = totals[0];
+            this.totalTaxAmount = totals[1];
+            this.totalAmountWithTax = totals[0].add(totals[1]);
+        }
+    }
+
+    /** Sums line totals and taxes in the invoice currency: {total, tax}. */
+    private static Money[] sumLines(List<InvoiceLine> lines, String currencyCode) {
+        Money total = Money.zero(currencyCode);
+        Money totalTax = Money.zero(currencyCode);
+        if (lines != null) {
+            for (InvoiceLine line : lines) {
                 if (line.getLineTotal() != null) {
                     total = total.add(line.getLineTotal());
                 }
@@ -375,11 +391,42 @@ public class Invoice extends BaseEntity {
                     totalTax = totalTax.add(line.getTaxAmount());
                 }
             }
-            
-            this.totalAmount = total;
-            this.totalTaxAmount = totalTax;
-            this.totalAmountWithTax = total.add(totalTax);
         }
+        return new Money[]{total, totalTax};
+    }
+
+    /** Recomputes every line total and the invoice totals after the lines changed. */
+    public void recalculateTotals() {
+        if (this.lines != null) {
+            this.lines.forEach(InvoiceLine::recalculateTotals);
+        }
+        Money[] totals = sumLines(this.lines, this.currencyCode != null ? this.currencyCode : "MAD");
+        this.totalAmount = totals[0];
+        this.totalTaxAmount = totals[1];
+        this.totalAmountWithTax = totals[0].add(totals[1]);
+    }
+
+    /**
+     * Rolls the lines' three-way match results up to the invoice: it has a discrepancy when any
+     * line does, and the summary lists each line's reasons (truncated to the column size).
+     */
+    public void refreshDiscrepancies() {
+        StringBuilder summary = new StringBuilder();
+        boolean any = false;
+        if (this.lines != null) {
+            for (InvoiceLine line : this.lines) {
+                if (line.isHasQuantityDiscrepancy() || line.getDiscrepancyNotes() != null) {
+                    any = true;
+                    if (line.getDiscrepancyNotes() != null) {
+                        if (summary.length() > 0) summary.append(" ");
+                        summary.append("Ligne ").append(line.getLineNumber()).append(" : ").append(line.getDiscrepancyNotes());
+                    }
+                }
+            }
+        }
+        this.hasDiscrepancy = any;
+        String text = summary.toString();
+        this.discrepancySummary = text.isEmpty() ? null : (text.length() > 1000 ? text.substring(0, 997) + "..." : text);
     }
     
     // ============================================================
@@ -391,7 +438,7 @@ public class Invoice extends BaseEntity {
      */
     public void submit(String userId) {
         if (status != InvoiceStatus.DRAFT) {
-            throw new IllegalStateException("Seule une facture en brouillon peut être soumise");
+            throw new InvoiceRuleViolationException("Seule une facture en brouillon peut être soumise");
         }
         this.status = InvoiceStatus.SUBMITTED;
         this.setUpdatedAt(LocalDateTime.now());
@@ -403,7 +450,7 @@ public class Invoice extends BaseEntity {
      */
     public void verify(String userId, String userName) {
         if (status != InvoiceStatus.SUBMITTED) {
-            throw new IllegalStateException("Seule une facture soumise peut être vérifiée");
+            throw new InvoiceNotVerifiableException(String.valueOf(getId()), String.valueOf(status));
         }
         this.status = InvoiceStatus.VERIFIED;
         this.isVerified = true;
@@ -415,31 +462,74 @@ public class Invoice extends BaseEntity {
     }
     
     /**
-     * Payer la facture (VERIFIED → PAID)
+     * Records a payment against a verified invoice. Payments accumulate: the invoice stays VERIFIED
+     * (partially paid) until the amounts paid reach the total with tax, and then becomes PAID.
+     * Paying more than the outstanding balance is refused. The last payer is recorded.
      */
     public void pay(String userId, String userName, Money amount) {
         if (status != InvoiceStatus.VERIFIED) {
-            throw new IllegalStateException("Seule une facture vérifiée peut être payée");
+            throw new InvoiceNotPayableException(String.valueOf(getId()), String.valueOf(status));
         }
-        this.status = InvoiceStatus.PAID;
-        this.paidAmount = amount;
+        if (amount == null || !amount.isPositive()) {
+            throw new InvoiceValidationException("amount", "Le montant payé doit être positif");
+        }
+        if (currencyCode != null && !currencyCode.equalsIgnoreCase(amount.getCurrencyCode())) {
+            throw new InvoiceValidationException("amount", "Le paiement doit être dans la devise de la facture (" + currencyCode + ")");
+        }
+        Money outstanding = getOutstandingAmount();
+        if (amount.getAmount().compareTo(outstanding.getAmount()) > 0) {
+            throw new InvoiceValidationException("amount", "Le paiement (" + amount.getAmount().stripTrailingZeros().toPlainString()
+                    + ") dépasse le reste à payer (" + outstanding.getAmount().stripTrailingZeros().toPlainString() + ")");
+        }
+        this.paidAmount = this.paidAmount != null ? this.paidAmount.add(amount) : amount;
         this.paidAt = LocalDateTime.now();
         this.paidBy = userId;
         this.paidByName = userName;
-        this.paymentDate = LocalDate.now();
+        if (getOutstandingAmount().getAmount().signum() <= 0) {
+            this.status = InvoiceStatus.PAID;
+            this.paymentDate = LocalDate.now();
+        }
         this.setUpdatedAt(LocalDateTime.now());
         this.setUpdatedBy(userId);
     }
-    
+
+    /** What remains to be paid: total with tax minus the payments recorded, never below zero. */
+    public Money getOutstandingAmount() {
+        String currency = currencyCode != null ? currencyCode : "MAD";
+        Money total = totalAmountWithTax != null ? totalAmountWithTax : Money.zero(currency);
+        if (paidAmount == null) {
+            return total;
+        }
+        java.math.BigDecimal remaining = total.getAmount().subtract(paidAmount.getAmount());
+        return remaining.signum() > 0 ? total.subtract(paidAmount) : Money.zero(currency);
+    }
+
+    /** A verified invoice that has received some, but not all, of its payment. */
+    public boolean isPartiallyPaid() {
+        return status == InvoiceStatus.VERIFIED && paidAmount != null && paidAmount.isPositive();
+    }
+
     /**
      * Annuler la facture
      */
     public void cancel(String userId, String reason) {
-        if (status == InvoiceStatus.PAID) {
-            throw new IllegalStateException("Une facture payée ne peut pas être annulée");
+        if (status == InvoiceStatus.PAID || status == InvoiceStatus.CANCELLED) {
+            throw new InvoiceCancellationException(String.valueOf(getId()),
+                    status == InvoiceStatus.PAID ? "une facture payée ne peut pas être annulée" : "elle est déjà annulée");
+        }
+        if (isPartiallyPaid()) {
+            throw new InvoiceCancellationException(String.valueOf(getId()),
+                    "des paiements ont déjà été enregistrés");
+        }
+        if (reason == null || reason.isBlank()) {
+            throw new InvoiceValidationException("reason", "Le motif d'annulation est obligatoire");
+        }
+        String updatedNotes = (this.notes != null ? this.notes + " " : "") + "Annulée: " + reason;
+        if (updatedNotes.length() > 1000) {
+            throw new InvoiceValidationException("reason", "Le motif est trop long pour les notes de la facture");
         }
         this.status = InvoiceStatus.CANCELLED;
-        this.notes = (this.notes != null ? this.notes + " " : "") + "Annulée: " + reason;
+        this.notes = updatedNotes;
         this.setUpdatedAt(LocalDateTime.now());
         this.setUpdatedBy(userId);
     }

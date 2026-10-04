@@ -20,6 +20,7 @@ import MaterialFilters from "./MaterialFilters";
 import MaterialInfoModal from "./MaterialInfoModal";
 import StockStatCards, { type StockFilterType } from "./StockStatCards";
 import ReorderRecommendationModal from "./ReorderRecommendationModal";
+import useAuth from "../../auth/hooks/useAuth";
 
 const colorClasses: Record<string, string> = {
   red: "bg-red-50 text-red-500 dark:bg-red-500/15 dark:text-red-500",
@@ -32,6 +33,8 @@ const colorClasses: Record<string, string> = {
 const colors = ["red", "orange", "purple", "green", "blue"];
 
 export default function MaterialListTable() {
+  const { hasPermission } = useAuth();
+  const canReadStock = hasPermission("material:stock:read");
   const [materials, setMaterials] = useState<MaterialListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedMaterials, setSelectedMaterials] = useState<string[]>([]);
@@ -74,8 +77,8 @@ export default function MaterialListTable() {
   const activeFiltersCount = [filterCategoryId, filterMaterialType, filterStatus].filter(Boolean).length;
 
   useEffect(() => {
-    fetchStockCounts();
-  }, [refreshTrigger]);
+    if (canReadStock) fetchStockCounts();
+  }, [refreshTrigger, canReadStock]);
 
   const fetchStockCounts = async () => {
     try {
@@ -336,11 +339,13 @@ export default function MaterialListTable() {
   return (
     <>
       {/* 4 Stock Filter Stat Cards (Global database counts & quick filter) */}
-      <StockStatCards
-        activeFilter={activeStockFilter}
-        onSelectFilter={handleSelectStockFilter}
-        counts={stockCounts}
-      />
+      {canReadStock && (
+        <StockStatCards
+          activeFilter={activeStockFilter}
+          onSelectFilter={handleSelectStockFilter}
+          counts={stockCounts}
+        />
+      )}
 
       <div className="rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
       {/* Header */}

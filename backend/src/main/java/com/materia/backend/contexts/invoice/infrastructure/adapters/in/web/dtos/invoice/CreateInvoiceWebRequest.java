@@ -57,7 +57,6 @@ public class CreateInvoiceWebRequest {
     @Valid
     private List<InvoiceLineWebRequest> lines = new ArrayList<>();
 
-    @NotBlank(message = "Created by is mandatory")
     private String createdBy;
 
     // Getters and Setters

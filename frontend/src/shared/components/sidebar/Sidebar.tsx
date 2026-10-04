@@ -128,6 +128,10 @@ const menuSections: MenuSection[] = [
         title: 'Invoices',
         icon: DollarLineIcon,
         path: '/invoices',
+        submenu: [
+          { title: 'Invoices List', path: '/invoices' },
+          { title: 'Record Invoice', path: '/invoices/create' },
+        ],
       },
       {
         title: 'Payments',

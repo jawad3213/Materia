@@ -187,6 +187,46 @@ public class InvoiceLine extends BaseEntity {
     public boolean hasDiscrepancy() {
         return hasQuantityDiscrepancy;
     }
+
+    /** Line total = unit price × invoiced quantity; total with tax adds the tax amount when present. */
+    public void recalculateTotals() {
+        if (unitPrice != null && quantityInvoiced != null) {
+            this.lineTotal = unitPrice.multiply(quantityInvoiced);
+            this.lineTotalWithTax = taxAmount != null ? lineTotal.add(taxAmount) : lineTotal;
+        }
+    }
+
+    /**
+     * Records the three-way match against the purchase order and its receipts.
+     *
+     * @param ordered        quantity on the purchase-order line
+     * @param received       quantity accepted on validated receipts
+     * @param billable       what this invoice may still bill (received minus already invoiced, or for a
+     *                       credit note, what was invoiced)
+     * @param orderUnitPrice the purchase-order unit price, or null when unknown
+     */
+    public void recordMatch(int ordered, int received, int billable, Money orderUnitPrice) {
+        this.quantityOrdered = ordered;
+        this.quantityReceived = received;
+        int invoiced = quantityInvoiced != null ? quantityInvoiced : 0;
+        int excess = invoiced - Math.max(0, billable);
+        this.hasQuantityDiscrepancy = excess > 0;
+        this.quantityDiscrepancy = Math.max(0, excess);
+
+        StringBuilder notes = new StringBuilder();
+        if (excess > 0) {
+            notes.append("Quantité facturée (").append(invoiced).append(") supérieure à la quantité facturable (")
+                    .append(Math.max(0, billable)).append(").");
+        }
+        if (orderUnitPrice != null && unitPrice != null && invoiced > 0
+                && unitPrice.getAmount().compareTo(orderUnitPrice.getAmount()) != 0) {
+            if (notes.length() > 0) notes.append(" ");
+            notes.append("Prix unitaire (").append(unitPrice.getAmount().stripTrailingZeros().toPlainString())
+                    .append(") différent de la commande (")
+                    .append(orderUnitPrice.getAmount().stripTrailingZeros().toPlainString()).append(").");
+        }
+        this.discrepancyNotes = notes.length() > 0 ? notes.toString() : null;
+    }
     
     // ============================================================
     // EQUALS & HASHCODE
