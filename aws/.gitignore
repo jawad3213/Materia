@@ -9,9 +9,13 @@
 crash.log
 crash.*.log
 
-# Exclude all .tfvars files with secrets (keep .example.tfvars)
+# Exclude all .tfvars files with secrets (keep .example files)
 *.tfvars
+*.tfvars.json
+*.auto.tfvars
+*.auto.tfvars.json
 !*.example.tfvars
+!*.tfvars.example
 !terraform.tfvars.example
 
 # Ignore override files
