@@ -54,6 +54,12 @@ public class ReorderService {
             log.warn("❌ Pas de quantité de réapprovisionnement calculée pour {}", event.getMaterialCode());
             return;
         }
+
+        // A requisition already in progress covers it: do not raise a second one.
+        if (hasOpenRequisition(material)) {
+            log.info("⏭️ Demande déjà en cours pour {}, pas de nouvelle demande", event.getMaterialCode());
+            return;
+        }
         
         // 3. Créer une demande d'achat automatique
         String requisitionId = requisitionService.createRequisitionFromReorder(
@@ -63,9 +69,8 @@ public class ReorderService {
                 reorderQuantity.isUrgent()
         );
 
-        // 4. Mettre à jour le stock en commande
-        material.addStockOnOrder(reorderQuantity.getQuantity());
-        materialRepository.save(material);
+        // Stock on order is recorded by the purchase order created from this requisition, not here:
+        // a requisition is a request, and counting it would never be undone if it were rejected or cancelled.
 
         // 5. Publier l'événement métier
         eventPublisher.publishEvent(new MaterialReorderedEvent(
@@ -105,6 +110,12 @@ public class ReorderService {
 
     @Transactional
     public String triggerManualReorder(UUID materialId, Integer customQuantity, String customReason) {
+        return triggerManualReorder(materialId, customQuantity, customReason, null);
+    }
+
+    /** One-click reorder requested by a user, who becomes the requisition's requester. */
+    @Transactional
+    public String triggerManualReorder(UUID materialId, Integer customQuantity, String customReason, String requesterId) {
         Material material = materialRepository.findById(materialId)
                 .orElseThrow(() -> new com.materia.backend.contexts.masterData.domain.exceptions.MaterialNotFoundException(materialId.toString()));
 
@@ -133,12 +144,9 @@ public class ReorderService {
                 material,
                 quantity,
                 reason,
-                isUrgent
+                isUrgent,
+                requesterId
         );
-
-        // Mettre à jour le stock en commande sur le matériau
-        material.addStockOnOrder(quantity);
-        materialRepository.save(material);
 
         // Publier l'événement métier
         eventPublisher.publishEvent(new MaterialReorderedEvent(
@@ -189,7 +197,9 @@ public class ReorderService {
         List<Material> activeMaterials = materialRepository.findByStatus(MaterialStatus.ACTIVE);
         
         // 2. Filtrer ceux qui nécessitent un réapprovisionnement
-        List<Material> materialsToReorder = stockDomainService.getMaterialsNeedingReorder(activeMaterials);
+        List<Material> materialsToReorder = stockDomainService.getMaterialsNeedingReorder(activeMaterials).stream()
+                .filter(m -> !hasOpenRequisition(m))
+                .collect(Collectors.toList());
         
         if (materialsToReorder.isEmpty()) {
             log.info("✅ Aucun matériau à réapprovisionner");
@@ -199,8 +209,9 @@ public class ReorderService {
         log.info("🔔 {} matériaux à réapprovisionner", materialsToReorder.size());
         
         // 3. Grouper par fournisseur
+        // groupingBy refuses a null key, so materials without a supplier are grouped under "" (F-020).
         var groupedBySupplier = materialsToReorder.stream()
-                .collect(Collectors.groupingBy(Material::getSupplierId));
+                .collect(Collectors.groupingBy(m -> m.getSupplierId() != null ? m.getSupplierId() : ""));
         
         // 4. Pour chaque fournisseur, créer une demande groupée
         for (var entry : groupedBySupplier.entrySet()) {
@@ -238,9 +249,6 @@ public class ReorderService {
                     reorderQuantity.getReason(),
                     reorderQuantity.isUrgent()
             );
-            material.addStockOnOrder(reorderQuantity.getQuantity());
-            materialRepository.save(material);
-
             eventPublisher.publishEvent(new MaterialReorderedEvent(
                     material.getId(),
                     material.getCode() != null ? material.getCode().getValue() : null,
@@ -254,6 +262,11 @@ public class ReorderService {
         }
     }
     
+    private boolean hasOpenRequisition(Material material) {
+        return requisitionService.hasOpenRequisitionFor(
+                material.getId(), material.getCode() != null ? material.getCode().getValue() : null);
+    }
+
     private void createGroupedRequisition(String supplierId, List<Material> materials) {
         // Créer une demande groupée pour un fournisseur
         log.info("📦 Création d'une demande groupée pour le fournisseur {}", supplierId);

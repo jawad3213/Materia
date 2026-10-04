@@ -111,6 +111,7 @@ public class InvoiceWebResponse {
     public String getCurrencyCode() { return currencyCode; }
     public void setCurrencyCode(String currencyCode) { this.currencyCode = currencyCode; }
 
+    @com.fasterxml.jackson.annotation.JsonProperty("isVerified")
     public boolean isVerified() { return isVerified; }
     public void setVerified(boolean verified) { isVerified = verified; }
 

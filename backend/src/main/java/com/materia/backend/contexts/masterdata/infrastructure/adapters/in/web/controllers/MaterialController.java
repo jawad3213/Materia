@@ -110,10 +110,12 @@ public class MaterialController {
     @PostMapping("/{id}/reorder")
     public ResponseEntity<com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.dtos.material.ManualReorderWebResponse> triggerReorder(
             @PathVariable UUID id,
-            @RequestBody(required = false) com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.dtos.material.ManualReorderWebRequest request) {
+            @RequestBody(required = false) com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.dtos.material.ManualReorderWebRequest request,
+            org.springframework.security.core.Authentication authentication) {
         Integer qty = request != null ? request.getQuantity() : null;
         String reason = request != null ? request.getReason() : null;
-        var response = materialUseCase.triggerReorder(id, qty, reason);
+        var response = materialUseCase.triggerReorder(id, qty, reason,
+                authentication != null ? authentication.getName() : null);
         return ResponseEntity.ok(webMapper.toManualReorderWebResponse(response));
     }
 

@@ -820,6 +820,11 @@ public class Requisition extends BaseEntity {
                     "Only submitted requisitions can be approved"
             );
         }
+        // Segregation of duties: whoever asked for the goods cannot also approve the request.
+        if (approverId != null && (approverId.equals(this.requesterId) || approverId.equals(getCreatedBy()))) {
+            throw new com.materia.backend.contexts.purchaseRequisition.domain.exceptions.RequisitionBusinessException(
+                    "A requisition cannot be approved by its requester", "REQUISITION_SELF_APPROVAL");
+        }
         this.status = RequisitionStatus.APPROVED;
         this.approverId = approverId;
         this.approverName = approverName;

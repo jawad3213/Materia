@@ -112,6 +112,12 @@ public class RequisitionPersistenceMapper {
     private RequisitionLineJpaEntity toLineJpaEntity(RequisitionLine domain, RequisitionJpaEntity parent) {
         RequisitionLineJpaEntity jpa = new RequisitionLineJpaEntity();
         jpa.setId(domain.getId());
+        fillLine(jpa, domain, parent);
+        return jpa;
+    }
+
+    /** Copies every line field from the domain; shared by new lines and lines updated in place. */
+    private void fillLine(RequisitionLineJpaEntity jpa, RequisitionLine domain, RequisitionJpaEntity parent) {
         jpa.setRequisition(parent);
         jpa.setLineNumber(domain.getLineNumber());
         jpa.setMaterialCode(domain.getMaterialCode());
@@ -136,7 +142,33 @@ public class RequisitionPersistenceMapper {
         jpa.setStorageLocation(domain.getStorageLocation());
         jpa.setBatchNumber(domain.getBatchNumber());
         jpa.setExpiryDate(domain.getExpiryDate());
-        return jpa;
+    }
+
+    /**
+     * Brings the stored lines in line with the domain: existing lines (same id) are updated in place so they
+     * keep their version, new lines are added, and lines no longer present are removed (orphan removal).
+     * Without this, any change to the lines of a saved requisition was silently lost.
+     */
+    private void syncLines(RequisitionJpaEntity jpa, List<RequisitionLine> domainLines) {
+        java.util.Map<java.util.UUID, RequisitionLineJpaEntity> stored = new java.util.HashMap<>();
+        for (RequisitionLineJpaEntity line : jpa.getLines()) {
+            stored.put(line.getId(), line);
+        }
+        List<RequisitionLineJpaEntity> synced = new ArrayList<>();
+        if (domainLines != null) {
+            for (RequisitionLine domain : domainLines) {
+                if (domain == null) continue;
+                RequisitionLineJpaEntity current = domain.getId() != null ? stored.get(domain.getId()) : null;
+                if (current != null) {
+                    fillLine(current, domain, jpa);
+                    synced.add(current);
+                } else {
+                    synced.add(toLineJpaEntity(domain, jpa));
+                }
+            }
+        }
+        jpa.getLines().clear();
+        jpa.getLines().addAll(synced);
     }
 
     private List<RequisitionLine> toDomainLines(List<RequisitionLineJpaEntity> lines) {
@@ -204,6 +236,7 @@ public class RequisitionPersistenceMapper {
         jpa.setPurchaseOrderCode(domain.getPurchaseOrderCode());
         jpa.setUpdatedAt(domain.getUpdatedAt() != null ? domain.getUpdatedAt() : java.time.LocalDateTime.now());
         jpa.setUpdatedBy(domain.getUpdatedBy());
+        syncLines(jpa, domain.getLines());
     }
 
     private Money toMoney(BigDecimal amount, String currencyCode) {

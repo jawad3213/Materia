@@ -50,6 +50,7 @@ public class PurchaseOrderService extends AbstractCrudApplicationService<
     private final RequisitionUseCase requisitionUseCase;
     private final PurchaseOrderEventPublisher eventPublisher;
     private final ReceiverDirectory receiverDirectory;
+    private final com.materia.backend.contexts.purchaseOrder.domain.ports.out.OnOrderStock onOrderStock;
 
     public PurchaseOrderService(PurchaseOrderRepository purchaseOrderRepository,
                                 PurchaseOrderMapper purchaseOrderMapper,
@@ -58,7 +59,21 @@ public class PurchaseOrderService extends AbstractCrudApplicationService<
                                 RequisitionUseCase requisitionUseCase,
                                 PurchaseOrderEventPublisher eventPublisher,
                                 ReceiverDirectory receiverDirectory) {
+        this(purchaseOrderRepository, purchaseOrderMapper, codeGenerator, goodsReceiptUseCase, requisitionUseCase,
+                eventPublisher, receiverDirectory, com.materia.backend.contexts.purchaseOrder.domain.ports.out.OnOrderStock.NONE);
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public PurchaseOrderService(PurchaseOrderRepository purchaseOrderRepository,
+                                PurchaseOrderMapper purchaseOrderMapper,
+                                PurchaseOrderCodeGeneratorService codeGenerator,
+                                GoodsReceiptUseCase goodsReceiptUseCase,
+                                RequisitionUseCase requisitionUseCase,
+                                PurchaseOrderEventPublisher eventPublisher,
+                                ReceiverDirectory receiverDirectory,
+                                com.materia.backend.contexts.purchaseOrder.domain.ports.out.OnOrderStock onOrderStock) {
         super(purchaseOrderRepository, purchaseOrderMapper);
+        this.onOrderStock = onOrderStock;
         this.purchaseOrderRepository = purchaseOrderRepository;
         this.purchaseOrderMapper = purchaseOrderMapper;
         this.codeGenerator = codeGenerator;
@@ -80,10 +95,14 @@ public class PurchaseOrderService extends AbstractCrudApplicationService<
         UUID requisitionId = purchaseOrder.getRequisitionId();
         if (requisitionId != null) {
             RequisitionOutput requisition = requisitionUseCase.getById(requisitionId);
+            checkAgainstRequisition(purchaseOrder, requisition);
             purchaseOrder.setRequisitionCode(requisition.getRequisitionCode());
         }
 
         PurchaseOrder saved = saveEntity(purchaseOrder);
+        // Ordered quantities are on order until received, released if the order is withdrawn.
+        saved.getLines().stream().filter(java.util.Objects::nonNull)
+                .forEach(line -> onOrderStock.add(line.getMaterialId(), line.getMaterialCode(), value(line.getQuantity())));
         if (requisitionId != null) {
             // Same transaction: if the requisition is not approved (or already converted), the order is rolled back.
             requisitionUseCase.convert(requisitionId, saved.getId().toString(),
@@ -133,6 +152,9 @@ public class PurchaseOrderService extends AbstractCrudApplicationService<
         }
         UUID requisitionId = purchaseOrder.getRequisitionId();
         String requisitionCode = purchaseOrder.getRequisitionCode();
+        // A draft has no receipt: its whole quantity is on order. Release the old lines, add the new ones below.
+        purchaseOrder.getLines().stream().filter(java.util.Objects::nonNull)
+                .forEach(line -> onOrderStock.release(line.getMaterialId(), line.getMaterialCode(), value(line.getQuantity())));
 
         purchaseOrderMapper.updateEntity(purchaseOrder, request);
         purchaseOrder.setRequisitionId(requisitionId);
@@ -141,6 +163,8 @@ public class PurchaseOrderService extends AbstractCrudApplicationService<
         purchaseOrder.recalculateTotals();
         purchaseOrder.setUpdatedAt(LocalDateTime.now());
         purchaseOrder.setUpdatedBy(request.getUserId());
+        purchaseOrder.getLines().stream().filter(java.util.Objects::nonNull)
+                .forEach(line -> onOrderStock.add(line.getMaterialId(), line.getMaterialCode(), value(line.getQuantity())));
         return toResponse(saveEntity(purchaseOrder));
     }
 
@@ -158,6 +182,7 @@ public class PurchaseOrderService extends AbstractCrudApplicationService<
             throw new PurchaseOrderNotModifiableException();
         }
         releaseRequisition(purchaseOrder, userId);
+        releaseOnOrder(purchaseOrder);
         purchaseOrderRepository.deleteById(id);
     }
 
@@ -234,6 +259,7 @@ public class PurchaseOrderService extends AbstractCrudApplicationService<
         PurchaseOrder purchaseOrder = getPurchaseOrderById(id);
         purchaseOrder.reject(userId, reason);
         releaseRequisition(purchaseOrder, userId);
+        releaseOnOrder(purchaseOrder);
         return toResponse(saveEntity(purchaseOrder));
     }
 
@@ -268,6 +294,7 @@ public class PurchaseOrderService extends AbstractCrudApplicationService<
         PurchaseOrder purchaseOrder = getPurchaseOrderById(id);
         purchaseOrder.cancel(userId, reason);
         releaseRequisition(purchaseOrder, userId);
+        releaseOnOrder(purchaseOrder);
         return toResponse(saveEntity(purchaseOrder));
     }
 
@@ -276,6 +303,8 @@ public class PurchaseOrderService extends AbstractCrudApplicationService<
     public PurchaseOrderOutput complete(UUID id, String userId) {
         PurchaseOrder purchaseOrder = getPurchaseOrderById(id);
         purchaseOrder.complete(userId);
+        // Closing short: what will never arrive is no longer on order.
+        releaseOnOrder(purchaseOrder);
         return toResponse(saveEntity(purchaseOrder));
     }
 
@@ -298,6 +327,89 @@ public class PurchaseOrderService extends AbstractCrudApplicationService<
         if ("CONVERTED".equals(requisition.getStatus()) && orderId.equals(requisition.getPurchaseOrderId())) {
             requisitionUseCase.revertConversion(purchaseOrder.getRequisitionId(), orderId, userId);
         }
+    }
+
+    /** Releases each line's quantity not yet received (from validated receipts) from the stock on order. */
+    private void releaseOnOrder(PurchaseOrder purchaseOrder) {
+        java.util.Map<String, Integer> received = new java.util.HashMap<>();
+        for (var receipt : goodsReceiptUseCase.getByPurchaseOrderId(purchaseOrder.getId().toString())) {
+            if (!"COMPLETED".equals(receipt.getStatus()) && !"PARTIAL".equals(receipt.getStatus())) continue;
+            for (var line : receipt.getLines()) {
+                if (line.getPurchaseOrderLineId() == null) continue;
+                received.merge(line.getPurchaseOrderLineId(), value(line.getQuantityReceived()), Integer::sum);
+            }
+        }
+        for (PurchaseOrderLine line : purchaseOrder.getLines()) {
+            if (line == null) continue;
+            int remaining = value(line.getQuantity()) - received.getOrDefault(line.getId().toString(), 0);
+            onOrderStock.release(line.getMaterialId(), line.getMaterialCode(), remaining);
+        }
+    }
+
+    /**
+     * An order created from a requisition must order exactly what was requested: every requisition line once,
+     * the same material, no more than the requested quantity, in the requisition's currency, from the one
+     * supplier the requisition names (a requisition that mixes suppliers must be split before ordering).
+     */
+    private void checkAgainstRequisition(PurchaseOrder order, RequisitionOutput requisition) {
+        String code = requisition.getRequisitionCode();
+        if (requisition.getCurrencyCode() != null && order.getCurrencyCode() != null
+                && !requisition.getCurrencyCode().equalsIgnoreCase(order.getCurrencyCode())) {
+            throw new com.materia.backend.contexts.purchaseOrder.domain.exceptions.PurchaseOrderRequisitionMismatchException(
+                    "The order must be in the requisition's currency (" + requisition.getCurrencyCode() + ")");
+        }
+        java.util.Set<UUID> suppliers = new java.util.HashSet<>();
+        for (var line : requisition.getLines()) {
+            if (line.getSupplierId() != null) suppliers.add(line.getSupplierId());
+        }
+        if (suppliers.size() > 1) {
+            throw new com.materia.backend.contexts.purchaseOrder.domain.exceptions.PurchaseOrderRequisitionMismatchException(
+                    "Requisition " + code + " names several suppliers: split it into one requisition per supplier before ordering");
+        }
+        if (suppliers.size() == 1 && !suppliers.contains(order.getSupplierId())) {
+            throw new com.materia.backend.contexts.purchaseOrder.domain.exceptions.PurchaseOrderRequisitionMismatchException(
+                    "Requisition " + code + " is for another supplier");
+        }
+        java.util.Map<UUID, com.materia.backend.contexts.purchaseRequisition.domain.entities.RequisitionLine> requested =
+                new java.util.HashMap<>();
+        for (var line : requisition.getLines()) {
+            requested.put(line.getId(), line);
+        }
+        java.util.Set<UUID> ordered = new java.util.HashSet<>();
+        for (PurchaseOrderLine line : order.getLines()) {
+            var requestedLine = line.getRequisitionLineId() != null ? requested.get(line.getRequisitionLineId()) : null;
+            if (requestedLine == null) {
+                throw new com.materia.backend.contexts.purchaseOrder.domain.exceptions.PurchaseOrderRequisitionMismatchException(
+                        "Line " + line.getLineNumber() + " (" + line.getMaterialCode() + ") is not a line of requisition " + code);
+            }
+            if (!ordered.add(requestedLine.getId())) {
+                throw new com.materia.backend.contexts.purchaseOrder.domain.exceptions.PurchaseOrderRequisitionMismatchException(
+                        "A requisition line is ordered twice (" + requestedLine.getMaterialCode() + ")");
+            }
+            if (requestedLine.getMaterialCode() == null
+                    || !requestedLine.getMaterialCode().trim().equalsIgnoreCase(String.valueOf(line.getMaterialCode()).trim())) {
+                throw new com.materia.backend.contexts.purchaseOrder.domain.exceptions.PurchaseOrderRequisitionMismatchException(
+                        "Line " + line.getLineNumber() + " orders " + line.getMaterialCode() + " but the requisition asked for "
+                                + requestedLine.getMaterialCode());
+            }
+            if (value(line.getQuantity()) > value(requestedLine.getQuantity())) {
+                throw new com.materia.backend.contexts.purchaseOrder.domain.exceptions.PurchaseOrderRequisitionMismatchException(
+                        "Line " + line.getLineNumber() + " orders " + line.getQuantity() + " " + line.getMaterialCode()
+                                + ", more than the " + requestedLine.getQuantity() + " requested");
+            }
+        }
+        if (ordered.size() != requested.size()) {
+            String missing = requested.values().stream()
+                    .filter(l -> !ordered.contains(l.getId()))
+                    .map(com.materia.backend.contexts.purchaseRequisition.domain.entities.RequisitionLine::getMaterialCode)
+                    .collect(java.util.stream.Collectors.joining(", "));
+            throw new com.materia.backend.contexts.purchaseOrder.domain.exceptions.PurchaseOrderRequisitionMismatchException(
+                    "Every requisition line must be ordered (a requisition converts once); missing: " + missing);
+        }
+    }
+
+    private static int value(Integer quantity) {
+        return quantity != null ? quantity : 0;
     }
 
     private PurchaseOrder getPurchaseOrderById(UUID id) {

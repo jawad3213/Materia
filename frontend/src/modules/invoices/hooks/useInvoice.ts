@@ -8,13 +8,14 @@ import { isPartiallyPaid } from "../utils/invoiceLine";
  * (`invoice:validate`) and pay them (`payment:write`).
  */
 export default function useInvoicePermissions() {
-  const { hasPermission } = useAuth();
+  const { hasPermission, user } = useAuth();
+  const isAdmin = user?.role === "ADMIN";
   const canWrite = hasPermission("invoice:write");
   const canValidate = hasPermission("invoice:validate");
   const canPayInvoices = hasPermission("payment:write");
 
   return {
-    canRecord: canWrite,
+    canRecord: isAdmin && canWrite,
     canSubmit: (invoice: Invoice) => canWrite && invoice.status === "DRAFT",
     canVerify: (invoice: Invoice) => canValidate && invoice.status === "SUBMITTED",
     canPay: (invoice: Invoice) => canPayInvoices && invoice.status === "VERIFIED",

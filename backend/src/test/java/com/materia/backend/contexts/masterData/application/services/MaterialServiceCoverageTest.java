@@ -156,7 +156,7 @@ class MaterialServiceCoverageTest {
     @DisplayName("manual reorder: the reported quantity is the requested one, else the EOQ, else 100")
     void manualReorder_reportedQuantity() {
         Material m = stored(aMaterial().build());
-        when(reorderService.triggerManualReorder(any(), any(), any())).thenReturn("req-7");
+        when(reorderService.triggerManualReorder(any(), any(), any(), any())).thenReturn("req-7");
 
         assertEquals(12, service.triggerReorder(m.getId(), 12, "x").getQuantity());
         m.setEconomicOrderQuantity(40);

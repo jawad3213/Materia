@@ -1,94 +1,76 @@
 import QualityStatusBadge from "./QualityStatusBadge";
 import { deriveQualityStatus, lineError, type ReceiptLineDraft } from "../utils/receiptLine";
+import Label from "../../../shared/components/form/Label";
+import Input from "../../../shared/components/form/input/InputField";
 
 interface GoodsReceiptLineProps {
   line: ReceiptLineDraft;
   onChange: (line: ReceiptLineDraft) => void;
 }
 
-const INPUT =
-  "w-full rounded-lg border border-gray-200 dark:border-white/[0.1] bg-white dark:bg-gray-800 px-2 py-1.5 text-xs text-gray-800 dark:text-white focus:border-brand-500 focus:outline-none";
-
+/** One order line being received: quantities, batch, location and, when goods are rejected, the reason. */
 export default function GoodsReceiptLine({ line, onChange }: GoodsReceiptLineProps) {
   const error = lineError(line);
   const toQuantity = (value: string) => Math.max(0, Math.floor(Number(value) || 0));
 
   return (
-    <div className="p-4 rounded-xl border border-gray-100 dark:border-white/[0.06] space-y-3">
+    <div className="space-y-4 rounded-xl border border-gray-200 p-4 dark:border-white/[0.05]">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <p className="text-xs font-semibold text-gray-900 dark:text-white">
-            <span className="font-mono text-brand-600 dark:text-brand-400">{line.materialCode}</span>
+          <p className="text-sm font-medium text-gray-800 dark:text-white/90">
+            <span className="font-mono text-brand-500">{line.materialCode}</span>
             {line.materialName && ` — ${line.materialName}`}
           </p>
-          <p className="text-[11px] text-gray-500 dark:text-gray-400">
-            Commandé : {line.ordered} {line.unitOfMeasure} • Restant : {line.remaining} {line.unitOfMeasure}
+          <p className="text-theme-xs text-gray-500 dark:text-gray-400">
+            Ordered: {line.ordered} {line.unitOfMeasure} • Remaining: {line.remaining} {line.unitOfMeasure}
           </p>
         </div>
         {line.received > 0 && <QualityStatusBadge status={deriveQualityStatus(line)} />}
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <label className="text-[11px] font-semibold text-gray-600 dark:text-gray-300 space-y-1">
-          <span>Quantité reçue</span>
-          <input
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div>
+          <Label>Quantity Received</Label>
+          <Input
             type="number"
-            min={0}
-            max={line.remaining}
+            min="0"
+            max={String(line.remaining)}
             value={line.received}
             onChange={(e) => onChange({ ...line, received: toQuantity(e.target.value) })}
-            className={INPUT}
           />
-        </label>
-        <label className="text-[11px] font-semibold text-gray-600 dark:text-gray-300 space-y-1">
-          <span>Quantité rejetée</span>
-          <input
+        </div>
+        <div>
+          <Label>Quantity Rejected</Label>
+          <Input
             type="number"
-            min={0}
-            max={line.received}
+            min="0"
+            max={String(line.received)}
             value={line.rejected}
             onChange={(e) => onChange({ ...line, rejected: toQuantity(e.target.value) })}
-            className={INPUT}
           />
-        </label>
-        <label className="text-[11px] font-semibold text-gray-600 dark:text-gray-300 space-y-1">
-          <span>N° de lot</span>
-          <input
-            type="text"
-            maxLength={100}
-            value={line.batchNumber}
-            onChange={(e) => onChange({ ...line, batchNumber: e.target.value })}
-            className={INPUT}
-          />
-        </label>
-        <label className="text-[11px] font-semibold text-gray-600 dark:text-gray-300 space-y-1">
-          <span>Emplacement</span>
-          <input
-            type="text"
-            maxLength={100}
-            value={line.storageLocation}
-            onChange={(e) => onChange({ ...line, storageLocation: e.target.value })}
-            className={INPUT}
-          />
-        </label>
+        </div>
+        <div>
+          <Label>Batch Number</Label>
+          <Input value={line.batchNumber} onChange={(e) => onChange({ ...line, batchNumber: e.target.value })} />
+        </div>
+        <div>
+          <Label>Storage Location</Label>
+          <Input value={line.storageLocation} onChange={(e) => onChange({ ...line, storageLocation: e.target.value })} />
+        </div>
       </div>
 
       {line.rejected > 0 && (
-        <label className="block text-[11px] font-semibold text-gray-600 dark:text-gray-300 space-y-1">
-          <span>
-            Motif du rejet <span className="text-red-500">*</span>
-          </span>
-          <input
-            type="text"
-            maxLength={1000}
+        <div>
+          <Label>Rejection Reason *</Label>
+          <Input
             value={line.rejectionReason}
             onChange={(e) => onChange({ ...line, rejectionReason: e.target.value })}
-            className={INPUT}
+            placeholder="e.g. Damaged packaging"
           />
-        </label>
+        </div>
       )}
 
-      {error && <p className="text-[11px] text-red-600 dark:text-red-400">{error}</p>}
+      {error && <p className="text-theme-xs text-error-500">{error}</p>}
     </div>
   );
 }

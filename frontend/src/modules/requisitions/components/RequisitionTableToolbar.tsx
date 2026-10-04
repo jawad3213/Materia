@@ -2,6 +2,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 import Button from "../../../shared/components/ui/button/Button";
 import RequisitionFilters from "./RequisitionFilters";
+import useAuth from "../../auth/hooks/useAuth";
 
 export interface RequisitionTableToolbarProps {
   searchKeyword: string;
@@ -62,6 +63,9 @@ export default function RequisitionTableToolbar({
   onApplyFilters,
   onClearFilters,
 }: RequisitionTableToolbarProps) {
+  const { user } = useAuth();
+  const isAdmin = user?.role === "ADMIN";
+
   const hasActiveChips =
     activeFiltersCount > 0 ||
     activeStatFilter !== "ALL" ||
@@ -188,36 +192,38 @@ export default function RequisitionTableToolbar({
             </svg>
           </Button>
 
-          {/* Approvals Portal Link (Dedicated Page for Manager Approvals) */}
-          <Link to="/requisitions/approvals">
-            <Button
-              variant="outline"
-              size="sm"
-              className="border-amber-300 text-amber-700 bg-amber-50/60 hover:bg-amber-100 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300"
-            >
-              <span className="flex items-center gap-1.5">
-                <svg
-                  className="size-4 text-amber-600 dark:text-amber-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-                Approvals Portal
-                {pendingReviewCount > 0 && (
-                  <span className="ml-1 px-1.5 py-0.2 rounded-full bg-amber-500 text-white text-[10px] font-bold">
-                    {pendingReviewCount}
-                  </span>
-                )}
-              </span>
-            </Button>
-          </Link>
+          {/* Approvals Portal Link (Dedicated Page for Manager Approvals - ADMIN only) */}
+          {isAdmin && (
+            <Link to="/requisitions/approvals">
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-amber-300 text-amber-700 bg-amber-50/60 hover:bg-amber-100 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300"
+              >
+                <span className="flex items-center gap-1.5">
+                  <svg
+                    className="size-4 text-amber-600 dark:text-amber-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                  Approvals Portal
+                  {pendingReviewCount > 0 && (
+                    <span className="ml-1 px-1.5 py-0.2 rounded-full bg-amber-500 text-white text-[10px] font-bold">
+                      {pendingReviewCount}
+                    </span>
+                  )}
+                </span>
+              </Button>
+            </Link>
+          )}
 
           {/* Create New Requisition */}
           <Link to="/requisitions/create">

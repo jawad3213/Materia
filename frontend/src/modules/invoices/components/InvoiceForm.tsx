@@ -19,10 +19,11 @@ import {
 import Button from "../../../shared/components/ui/button/Button";
 import useAuth from "../../auth/hooks/useAuth";
 import { getApiErrorMessage } from "../../../shared/utils/apiError";
-
-const FIELD =
-  "w-full rounded-xl border border-gray-200 dark:border-white/[0.1] bg-white dark:bg-gray-800 px-3 py-2 text-xs text-gray-800 dark:text-white focus:border-brand-500 focus:outline-none";
-const LABEL = "block text-xs font-semibold text-gray-700 dark:text-gray-300 space-y-1";
+import Label from "../../../shared/components/form/Label";
+import Input from "../../../shared/components/form/input/InputField";
+import TextArea from "../../../shared/components/form/input/TextArea";
+import { FloatingToast, FormCard, FormSection } from "../../../shared/components/page/DetailParts";
+import { SELECT_CLASS } from "../../../shared/components/page/pageStyles";
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -33,6 +34,7 @@ export default function InvoiceForm() {
   const initialOrderId = searchParams.get("purchaseOrderId") || "";
 
   const [orders, setOrders] = useState<PurchaseOrder[]>([]);
+  const [loadingOrders, setLoadingOrders] = useState(true);
   const [selectedOrderId, setSelectedOrderId] = useState(initialOrderId);
   const [order, setOrder] = useState<PurchaseOrder | null>(null);
   const [lines, setLines] = useState<InvoiceLineDraft[]>([]);
@@ -52,7 +54,12 @@ export default function InvoiceForm() {
       .then((res) => {
         if (!cancelled) setOrders(res.data.filter((o) => INVOICEABLE_ORDER_STATUSES.includes(o.status)));
       })
-      .catch((err) => console.error("Failed to load purchase orders:", err));
+      .catch((err) => {
+        if (!cancelled) setError(getApiErrorMessage(err, "Could not load purchase orders."));
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingOrders(false);
+      });
     return () => {
       cancelled = true;
     };
@@ -70,7 +77,7 @@ export default function InvoiceForm() {
         if (cancelled) return;
         const loaded = orderRes.data;
         if (!INVOICEABLE_ORDER_STATUSES.includes(loaded.status)) {
-          setError("Cette commande n'a encore rien reçu : elle ne peut pas être facturée.");
+          setError("This order has not received anything yet, so it cannot be invoiced.");
           return;
         }
         setOrder(loaded);
@@ -78,7 +85,7 @@ export default function InvoiceForm() {
         setDueDate(defaultDueDate(invoiceDate, loaded.paymentDelayDays));
       })
       .catch((err) => {
-        if (!cancelled) setError(getApiErrorMessage(err, "Impossible de charger la commande."));
+        if (!cancelled) setError(getApiErrorMessage(err, "Could not load the purchase order."));
       })
       .finally(() => {
         if (!cancelled) setLoadingOrder(false);
@@ -110,19 +117,19 @@ export default function InvoiceForm() {
     setError(null);
 
     if (!externalReference.trim()) {
-      setError("Saisissez le numéro de facture du fournisseur.");
+      setError("Enter the supplier's invoice number.");
       return;
     }
     if (billed.length === 0) {
-      setError("Saisissez au moins une quantité facturée.");
+      setError("Enter at least one invoiced quantity.");
       return;
     }
     if (lines.some((l) => lineError(l))) {
-      setError("Corrigez les lignes signalées avant d'enregistrer.");
+      setError("Fix the highlighted lines before saving.");
       return;
     }
     if (dueDate && dueDate < invoiceDate) {
-      setError("L'échéance ne peut pas précéder la date de facture.");
+      setError("The due date cannot be before the invoice date.");
       return;
     }
 
@@ -156,136 +163,180 @@ export default function InvoiceForm() {
           await invoiceService.submit(created.data.id);
         } catch (err) {
           navigate(`/invoices/${created.data.id}`, {
-            state: { error: getApiErrorMessage(err, "Facture enregistrée en brouillon, mais la soumission a échoué.") },
+            state: { error: getApiErrorMessage(err, "The invoice was saved as a draft, but submitting it failed.") },
           });
           return;
         }
       }
       navigate(`/invoices/${created.data.id}`);
     } catch (err) {
-      setError(getApiErrorMessage(err, "L'enregistrement de la facture a échoué."));
+      setError(getApiErrorMessage(err, "Saving the invoice failed."));
     } finally {
       setSubmitting(false);
     }
   };
 
+  const currency = order?.currencyCode ?? "MAD";
+  const noOrders = !loadingOrders && orders.length === 0;
+
   return (
-    <div className="space-y-6">
-      {error && (
-        <div className="p-4 rounded-xl bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-400 text-xs border border-red-200 dark:border-red-500/20">
-          {error}
-        </div>
-      )}
+    <>
+      <FloatingToast feedback={error ? { type: "error", text: error } : null} onClose={() => setError(null)} />
 
-      <div className="bg-white dark:bg-gray-900 p-6 rounded-2xl border border-gray-200 dark:border-white/[0.07] shadow-sm space-y-4">
-        <h2 className="text-base font-bold text-gray-900 dark:text-white">Commande facturée</h2>
-        <label className={LABEL}>
-          <span>
-            Commande <span className="text-red-500">*</span>
-          </span>
-          <select value={selectedOrderId} onChange={(e) => handleSelectOrder(e.target.value)} className={FIELD}>
-            <option value="">Choisir une commande réceptionnée...</option>
-            {orders.map((o) => (
-              <option key={o.id} value={o.id}>
-                {o.orderCode} — {o.supplierName}
-              </option>
-            ))}
-          </select>
-        </label>
-        {loadingOrder && <p className="text-xs text-gray-500">Chargement de la commande...</p>}
-        {order && (
-          <p className="text-xs text-gray-500 dark:text-gray-400">
-            Fournisseur : <span className="font-semibold">{order.supplierName}</span> • Devise : {order.currencyCode}
-            {order.paymentTerms && ` • Conditions : ${order.paymentTerms}`}
-          </p>
-        )}
-      </div>
+      <FormCard title="Record Supplier Invoice">
+        <FormSection
+          title="Purchase Order"
+          aside={
+            <Link to="/invoices">
+              <Button variant="outline" size="sm">
+                Cancel
+              </Button>
+            </Link>
+          }
+        >
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+            <div>
+              <Label>Invoiced Order *</Label>
+              <select
+                value={selectedOrderId}
+                onChange={(e) => handleSelectOrder(e.target.value)}
+                className={SELECT_CLASS}
+                disabled={loadingOrders || noOrders}
+              >
+                <option value="">
+                  {loadingOrders ? "Loading purchase orders..." : noOrders ? "No order to invoice" : "Select a purchase order with received goods..."}
+                </option>
+                {orders.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.orderCode} — {o.supplierName}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1.5 text-theme-xs text-gray-500 dark:text-gray-400">
+                {noOrders ? (
+                  <>
+                    Only orders with received goods can be invoiced.{" "}
+                    <Link to="/purchase-orders" className="text-brand-500 hover:underline">
+                      View purchase orders
+                    </Link>
+                  </>
+                ) : (
+                  `${orders.length} order(s) partly or fully received.`
+                )}
+              </p>
+            </div>
 
-      {order && (
-        <>
-          <div className="bg-white dark:bg-gray-900 p-6 rounded-2xl border border-gray-200 dark:border-white/[0.07] shadow-sm grid grid-cols-1 md:grid-cols-2 gap-4">
-            <label className={LABEL}>
-              <span>Type</span>
-              <select value={invoiceType} onChange={(e) => setInvoiceType(e.target.value as InvoiceType)} className={FIELD}>
+            <div className="rounded-xl border border-gray-200 bg-gray-50/60 p-4 dark:border-gray-800 dark:bg-white/[0.02]">
+              {loadingOrder ? (
+                <p className="text-sm text-gray-500">Loading purchase order...</p>
+              ) : order ? (
+                <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+                  <div>
+                    <dt className="text-theme-xs text-gray-500 dark:text-gray-400">Supplier</dt>
+                    <dd className="font-medium text-gray-800 dark:text-white/90">{order.supplierName}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-theme-xs text-gray-500 dark:text-gray-400">Order Date</dt>
+                    <dd className="font-medium text-gray-800 dark:text-white/90">{order.orderDate}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-theme-xs text-gray-500 dark:text-gray-400">Payment Terms</dt>
+                    <dd className="font-medium text-gray-800 dark:text-white/90">{order.paymentTerms || "—"}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-theme-xs text-gray-500 dark:text-gray-400">Order Total</dt>
+                    <dd className="font-medium text-gray-800 dark:text-white/90">{formatAmount(order.grandTotal, order.currencyCode)}</dd>
+                  </div>
+                </dl>
+              ) : (
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  The supplier, currency and payment terms come from the selected order.
+                </p>
+              )}
+            </div>
+          </div>
+        </FormSection>
+
+        <FormSection title="Invoice Details">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+            <div>
+              <Label>Type</Label>
+              <select value={invoiceType} onChange={(e) => setInvoiceType(e.target.value as InvoiceType)} className={SELECT_CLASS}>
                 {(Object.keys(INVOICE_TYPE_LABELS) as InvoiceType[]).map((type) => (
                   <option key={type} value={type}>
                     {INVOICE_TYPE_LABELS[type]}
                   </option>
                 ))}
               </select>
-            </label>
-            <label className={LABEL}>
-              <span>
-                N° facture fournisseur <span className="text-red-500">*</span>
-              </span>
-              <input
-                value={externalReference}
-                maxLength={100}
-                onChange={(e) => setExternalReference(e.target.value)}
-                className={FIELD}
-                placeholder="ex. FA-2026-00123"
-              />
-            </label>
-            <label className={LABEL}>
-              <span>
-                Date de facture <span className="text-red-500">*</span>
-              </span>
-              <input type="date" value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)} className={FIELD} />
-            </label>
-            <label className={LABEL}>
-              <span>Échéance</span>
-              <input type="date" value={dueDate} min={invoiceDate} onChange={(e) => setDueDate(e.target.value)} className={FIELD} />
-            </label>
-            <label className={`${LABEL} md:col-span-2`}>
-              <span>Notes</span>
-              <textarea rows={2} maxLength={1000} value={notes} onChange={(e) => setNotes(e.target.value)} className={FIELD} />
-            </label>
+            </div>
+            <div>
+              <Label>Supplier Invoice Number *</Label>
+              <Input value={externalReference} onChange={(e) => setExternalReference(e.target.value)} placeholder="e.g. FA-2026-00123" />
+            </div>
+            <div>
+              <Label>Invoice Date *</Label>
+              <Input type="date" value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)} />
+            </div>
+            <div>
+              <Label>Due Date</Label>
+              <Input type="date" value={dueDate} min={invoiceDate} onChange={(e) => setDueDate(e.target.value)} hint="Defaults from the order's payment delay." />
+            </div>
+            <div className="md:col-span-2">
+              <Label>Notes</Label>
+              <TextArea rows={2} value={notes} onChange={setNotes} placeholder="Optional remarks" />
+            </div>
           </div>
+        </FormSection>
 
-          <div className="bg-white dark:bg-gray-900 p-6 rounded-2xl border border-gray-200 dark:border-white/[0.07] shadow-sm space-y-3">
-            <div className="flex items-center justify-between">
-              <h2 className="text-base font-bold text-gray-900 dark:text-white">Lignes</h2>
-              {warningCount > 0 && (
-                <span className="text-[11px] text-amber-700 dark:text-amber-400">
-                  {warningCount} écart(s) avec la commande ou les réceptions
-                </span>
-              )}
+        <FormSection
+          title="Invoice Lines"
+          aside={
+            warningCount > 0 ? (
+              <span className="text-theme-xs font-medium text-warning-600 dark:text-orange-400">
+                {warningCount} difference(s) with the order or receipts
+              </span>
+            ) : order ? (
+              <span className="text-theme-xs text-gray-500 dark:text-gray-400">
+                {billed.length} of {lines.length} line(s) billed
+              </span>
+            ) : undefined
+          }
+        >
+          {order && lines.length > 0 ? (
+            <div className="space-y-4">
+              {lines.map((line, index) => (
+                <InvoiceLine key={line.purchaseOrderLineId} line={line} currency={currency} onChange={(l) => updateLine(index, l)} />
+              ))}
             </div>
-            {lines.map((line, index) => (
-              <InvoiceLine
-                key={line.purchaseOrderLineId}
-                line={line}
-                currency={order.currencyCode}
-                onChange={(l) => updateLine(index, l)}
-              />
-            ))}
-          </div>
+          ) : (
+            <div className="rounded-xl border border-dashed border-gray-300 px-6 py-10 text-center text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">
+              {order ? "This order has no line left to invoice." : "Select a purchase order to load its received lines."}
+            </div>
+          )}
+        </FormSection>
 
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-gray-900 p-6 rounded-2xl border border-gray-200 dark:border-white/[0.07] shadow-sm">
-            <div className="text-xs text-gray-700 dark:text-gray-300 space-y-0.5">
-              <p>Total HT : <span className="font-semibold">{formatAmount(totals.totalAmount, order.currencyCode)}</span></p>
-              <p>Taxes : <span className="font-semibold">{formatAmount(totals.totalTaxAmount, order.currencyCode)}</span></p>
-              <p className="text-sm">
-                Total TTC :{" "}
-                <span className="font-bold text-gray-900 dark:text-white">
-                  {formatAmount(totals.totalAmountWithTax, order.currencyCode)}
-                </span>
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Link to="/invoices">
-                <Button size="sm" variant="outline">Annuler</Button>
-              </Link>
-              <Button size="sm" variant="outline" onClick={() => submit(false)} disabled={submitting}>
-                Enregistrer en brouillon
-              </Button>
-              <Button size="sm" onClick={() => submit(true)} disabled={submitting}>
-                Enregistrer et soumettre
-              </Button>
-            </div>
+        <div className="flex flex-col gap-4 border-t border-gray-100 pt-6 dark:border-gray-800 md:flex-row md:items-center md:justify-between">
+          <div className="space-y-0.5 text-sm text-gray-600 dark:text-gray-400">
+            <p>
+              Total excl. tax: <span className="font-medium text-gray-800 dark:text-white/90">{formatAmount(totals.totalAmount, currency)}</span>
+            </p>
+            <p>
+              Tax: <span className="font-medium text-gray-800 dark:text-white/90">{formatAmount(totals.totalTaxAmount, currency)}</span>
+            </p>
+            <p className="text-base">
+              Total incl. tax: <span className="font-semibold text-gray-900 dark:text-white">{formatAmount(totals.totalAmountWithTax, currency)}</span>
+            </p>
           </div>
-        </>
-      )}
-    </div>
+          <div className="flex flex-wrap gap-3">
+            <Button variant="outline" onClick={() => submit(false)} disabled={submitting || !order}>
+              Save as Draft
+            </Button>
+            <Button onClick={() => submit(true)} disabled={submitting || !order}>
+              {submitting ? "Saving..." : "Save and Submit"}
+            </Button>
+          </div>
+        </div>
+      </FormCard>
+    </>
   );
 }

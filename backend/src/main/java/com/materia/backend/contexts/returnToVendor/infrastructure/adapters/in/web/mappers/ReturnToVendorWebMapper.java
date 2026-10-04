@@ -1,165 +1,119 @@
 package com.materia.backend.contexts.returnToVendor.infrastructure.adapters.in.web.mappers;
 
-import com.materia.backend.common.infrastructure.web.BaseWebMapper;
-import com.materia.backend.contexts.returnToVendor.application.dtos.*;
-import com.materia.backend.contexts.returnToVendor.infrastructure.adapters.in.web.dtos.returnToVendor.*;
+import com.materia.backend.contexts.returnToVendor.application.dtos.CreateReturnToVendorInput;
+import com.materia.backend.contexts.returnToVendor.application.dtos.ReturnToVendorLineInput;
+import com.materia.backend.contexts.returnToVendor.application.dtos.ReturnToVendorLineOutput;
+import com.materia.backend.contexts.returnToVendor.application.dtos.ReturnToVendorOutput;
+import com.materia.backend.contexts.returnToVendor.application.dtos.UpdateReturnToVendorInput;
+import com.materia.backend.contexts.returnToVendor.infrastructure.adapters.in.web.dtos.returnToVendor.CreateReturnToVendorWebRequest;
+import com.materia.backend.contexts.returnToVendor.infrastructure.adapters.in.web.dtos.returnToVendor.ReturnToVendorLineWebRequest;
+import com.materia.backend.contexts.returnToVendor.infrastructure.adapters.in.web.dtos.returnToVendor.ReturnToVendorLineWebResponse;
+import com.materia.backend.contexts.returnToVendor.infrastructure.adapters.in.web.dtos.returnToVendor.ReturnToVendorWebResponse;
+import com.materia.backend.contexts.returnToVendor.infrastructure.adapters.in.web.dtos.returnToVendor.UpdateReturnToVendorWebRequest;
 import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Component
-public class ReturnToVendorWebMapper implements BaseWebMapper<
-        CreateReturnToVendorWebRequest, 
-        UpdateReturnToVendorWebRequest, 
-        CreateReturnToVendorInput, 
-        UpdateReturnToVendorInput, 
-        ReturnToVendorWebResponse, 
-        ReturnToVendorOutput> {
+public class ReturnToVendorWebMapper {
 
-    @Override
-    public CreateReturnToVendorInput toAppCreateRequest(CreateReturnToVendorWebRequest webRequest) {
-        if (webRequest == null) {
-            return null;
-        }
-
+    public CreateReturnToVendorInput toCreateInput(CreateReturnToVendorWebRequest request, String userId) {
         CreateReturnToVendorInput input = new CreateReturnToVendorInput();
-        input.setReturnCode(webRequest.getReturnCode());
-        input.setGoodsReceiptId(webRequest.getGoodsReceiptId());
-        input.setGoodsReceiptCode(webRequest.getGoodsReceiptCode());
-        input.setPurchaseOrderId(webRequest.getPurchaseOrderId());
-        input.setPurchaseOrderCode(webRequest.getPurchaseOrderCode());
-        input.setSupplierId(webRequest.getSupplierId());
-        input.setSupplierName(webRequest.getSupplierName());
-        input.setSupplierCode(webRequest.getSupplierCode());
-        input.setReturnDate(webRequest.getReturnDate());
-        input.setReturnReason(webRequest.getReturnReason());
-        input.setRejectionSummary(webRequest.getRejectionSummary());
-        input.setNotes(webRequest.getNotes());
-        input.setInternalNotes(webRequest.getInternalNotes());
-        input.setLines(toLineInputList(webRequest.getLines()));
+        input.setGoodsReceiptId(request.goodsReceiptId());
+        input.setReturnDate(request.returnDate());
+        input.setReturnReason(request.returnReason());
+        input.setRejectionSummary(request.rejectionSummary());
+        input.setNotes(request.notes());
+        input.setInternalNotes(request.internalNotes());
+        input.setLines(toLineInputs(request.lines()));
+        input.setUserId(userId);
         return input;
     }
 
-    @Override
-    public UpdateReturnToVendorInput toAppUpdateRequest(UpdateReturnToVendorWebRequest webRequest) {
-        if (webRequest == null) {
-            return null;
-        }
-
+    public UpdateReturnToVendorInput toUpdateInput(UpdateReturnToVendorWebRequest request, String userId) {
         UpdateReturnToVendorInput input = new UpdateReturnToVendorInput();
-        input.setReturnDate(webRequest.getReturnDate());
-        input.setReturnReason(webRequest.getReturnReason());
-        input.setSupplierResponse(webRequest.getSupplierResponse());
-        input.setRejectionSummary(webRequest.getRejectionSummary());
-        input.setCreditNoteReference(webRequest.getCreditNoteReference());
-        input.setCreditNoteAmount(webRequest.getCreditNoteAmount());
-        input.setReplacementPurchaseOrderReference(webRequest.getReplacementPurchaseOrderReference());
-        input.setReplacementPurchaseOrderCode(webRequest.getReplacementPurchaseOrderCode());
-        input.setNotes(webRequest.getNotes());
-        input.setInternalNotes(webRequest.getInternalNotes());
-        input.setLines(toLineInputList(webRequest.getLines()));
+        input.setReturnDate(request.returnDate());
+        input.setReturnReason(request.returnReason());
+        input.setRejectionSummary(request.rejectionSummary());
+        input.setNotes(request.notes());
+        input.setInternalNotes(request.internalNotes());
+        input.setLines(request.lines() != null ? toLineInputs(request.lines()) : null);
+        input.setUserId(userId);
         return input;
     }
 
-    @Override
-    public ReturnToVendorWebResponse toWebResponse(ReturnToVendorOutput appResponse) {
-        if (appResponse == null) {
-            return null;
-        }
-
-        ReturnToVendorWebResponse response = new ReturnToVendorWebResponse();
-        response.setId(appResponse.getId());
-        response.setReturnCode(appResponse.getReturnCode());
-        response.setGoodsReceiptId(appResponse.getGoodsReceiptId());
-        response.setGoodsReceiptCode(appResponse.getGoodsReceiptCode());
-        response.setPurchaseOrderId(appResponse.getPurchaseOrderId());
-        response.setPurchaseOrderCode(appResponse.getPurchaseOrderCode());
-        response.setSupplierId(appResponse.getSupplierId());
-        response.setSupplierName(appResponse.getSupplierName());
-        response.setSupplierCode(appResponse.getSupplierCode());
-        response.setStatus(appResponse.getStatus());
-        response.setResolutionType(appResponse.getResolutionType());
-        response.setReturnDate(appResponse.getReturnDate());
-        response.setResolutionDate(appResponse.getResolutionDate());
-        response.setReturnReason(appResponse.getReturnReason());
-        response.setSupplierResponse(appResponse.getSupplierResponse());
-        response.setRejectionSummary(appResponse.getRejectionSummary());
-        response.setCreditNoteReference(appResponse.getCreditNoteReference());
-        response.setCreditNoteAmount(appResponse.getCreditNoteAmount());
-        response.setReplacementPurchaseOrderReference(appResponse.getReplacementPurchaseOrderReference());
-        response.setReplacementPurchaseOrderCode(appResponse.getReplacementPurchaseOrderCode());
-        response.setNotes(appResponse.getNotes());
-        response.setInternalNotes(appResponse.getInternalNotes());
-        response.setCreatedBy(appResponse.getCreatedBy());
-        response.setCreatedAt(appResponse.getCreatedAt());
-        response.setUpdatedBy(appResponse.getUpdatedBy());
-        response.setUpdatedAt(appResponse.getUpdatedAt());
-        response.setLines(toLineResponseList(appResponse.getLines()));
-        return response;
+    public ReturnToVendorWebResponse toWebResponse(ReturnToVendorOutput output) {
+        return new ReturnToVendorWebResponse(
+                output.getId(),
+                output.getReturnCode(),
+                output.getGoodsReceiptId(),
+                output.getGoodsReceiptCode(),
+                output.getPurchaseOrderId(),
+                output.getPurchaseOrderCode(),
+                output.getSupplierId(),
+                output.getSupplierName(),
+                output.getSupplierCode(),
+                output.getCurrencyCode(),
+                output.getTotalValue(),
+                output.getTotalQuantity(),
+                output.getStatus(),
+                output.getResolutionType(),
+                output.getReturnDate(),
+                output.getResolutionDate(),
+                output.getReturnReason(),
+                output.getSupplierResponse(),
+                output.getRejectionSummary(),
+                output.getCreditNoteReference(),
+                output.getCreditNoteAmount(),
+                output.getReplacementPurchaseOrderReference(),
+                output.getNotes(),
+                output.getInternalNotes(),
+                output.getCreatedBy(),
+                output.getCreatedAt(),
+                output.getUpdatedBy(),
+                output.getUpdatedAt(),
+                output.getLines() != null ? output.getLines().stream().map(this::toLineResponse).toList() : List.of());
     }
 
-    public ReturnToVendorLineInput toLineInput(ReturnToVendorLineWebRequest request) {
-        if (request == null) {
-            return null;
-        }
-
-        ReturnToVendorLineInput input = new ReturnToVendorLineInput();
-        input.setId(request.getId());
-        input.setLineNumber(request.getLineNumber());
-        input.setGoodsReceiptLineId(request.getGoodsReceiptLineId());
-        input.setMaterialCode(request.getMaterialCode());
-        input.setMaterialName(request.getMaterialName());
-        input.setUnitOfMeasure(request.getUnitOfMeasure());
-        input.setRejectedQuantity(request.getRejectedQuantity());
-        input.setQuantityToReturn(request.getQuantityToReturn());
-        input.setQuantityAlreadyReturned(request.getQuantityAlreadyReturned());
-        input.setRejectionReason(request.getRejectionReason());
-        input.setQualityNotes(request.getQualityNotes());
-        input.setDefectDescription(request.getDefectDescription());
-        input.setReplaced(request.isReplaced());
-        input.setCreditNote(request.isCreditNote());
-        input.setNotes(request.getNotes());
-        return input;
+    public List<ReturnToVendorWebResponse> toWebResponseList(List<ReturnToVendorOutput> outputs) {
+        return outputs.stream().map(this::toWebResponse).toList();
     }
 
-    private ReturnToVendorLineWebResponse toLineResponse(ReturnToVendorLineOutput output) {
-        if (output == null) {
-            return null;
-        }
-
-        ReturnToVendorLineWebResponse response = new ReturnToVendorLineWebResponse();
-        response.setId(output.getId());
-        response.setLineNumber(output.getLineNumber());
-        response.setGoodsReceiptLineId(output.getGoodsReceiptLineId());
-        response.setMaterialCode(output.getMaterialCode());
-        response.setMaterialName(output.getMaterialName());
-        response.setUnitOfMeasure(output.getUnitOfMeasure());
-        response.setRejectedQuantity(output.getRejectedQuantity());
-        response.setQuantityToReturn(output.getQuantityToReturn());
-        response.setQuantityAlreadyReturned(output.getQuantityAlreadyReturned());
-        response.setRemainingQuantity(output.getRemainingQuantity());
-        response.setRejectionReason(output.getRejectionReason());
-        response.setQualityNotes(output.getQualityNotes());
-        response.setDefectDescription(output.getDefectDescription());
-        response.setReplaced(output.isReplaced());
-        response.setCreditNote(output.isCreditNote());
-        response.setNotes(output.getNotes());
-        return response;
+    private ReturnToVendorLineWebResponse toLineResponse(ReturnToVendorLineOutput line) {
+        return new ReturnToVendorLineWebResponse(
+                line.getId(),
+                line.getLineNumber(),
+                line.getGoodsReceiptLineId(),
+                line.getPurchaseOrderLineId(),
+                line.getMaterialId(),
+                line.getMaterialCode(),
+                line.getMaterialName(),
+                line.getUnitOfMeasure(),
+                line.getRejectedQuantity(),
+                line.getQuantityToReturn(),
+                line.getQuantityAlreadyReturned(),
+                line.getRemainingQuantity(),
+                line.getUnitPrice(),
+                line.getLineValue(),
+                line.getRejectionReason(),
+                line.getQualityNotes(),
+                line.getDefectDescription(),
+                line.isReplaced(),
+                line.isCreditNote(),
+                line.getNotes());
     }
 
-    private List<ReturnToVendorLineInput> toLineInputList(List<ReturnToVendorLineWebRequest> lines) {
+    private List<ReturnToVendorLineInput> toLineInputs(List<ReturnToVendorLineWebRequest> lines) {
         if (lines == null) {
-            return new ArrayList<>();
+            return List.of();
         }
-        return lines.stream().map(this::toLineInput).collect(Collectors.toList());
-    }
-
-    private List<ReturnToVendorLineWebResponse> toLineResponseList(List<ReturnToVendorLineOutput> lines) {
-        if (lines == null) {
-            return new ArrayList<>();
-        }
-        return lines.stream().map(this::toLineResponse).collect(Collectors.toList());
+        return lines.stream().map(line -> {
+            ReturnToVendorLineInput input = new ReturnToVendorLineInput(
+                    line.goodsReceiptLineId(), line.quantityToReturn(), line.rejectionReason());
+            input.setDefectDescription(line.defectDescription());
+            input.setQualityNotes(line.qualityNotes());
+            input.setNotes(line.notes());
+            return input;
+        }).toList();
     }
 }

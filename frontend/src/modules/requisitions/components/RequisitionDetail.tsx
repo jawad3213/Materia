@@ -5,6 +5,7 @@ import purchaseOrderService from "../../purchaseOrders/services/purchaseOrderSer
 import type { CreatePurchaseOrderRequest } from "../../purchaseOrders/types";
 import { supplierApi } from "../../suppliers/services/supplierApi";
 import useAuth from "../../auth/hooks/useAuth";
+import { isOwnRequisition } from "../utils/requisitionOwnership";
 import type { Requisition } from "../types";
 import RequisitionStatusBadge from "./RequisitionStatusBadge";
 import RequisitionApprovalModal from "./RequisitionApprovalModal";
@@ -350,8 +351,8 @@ export default function RequisitionDetail() {
   // Soumettre: DRAFT ✅ OUI, others ❌ NON
   const canSubmit = isDraft;
 
-  // Approuver / Rejeter: SUBMITTED ✅ OUI, others ❌ NON
-  const canApprove = isPending;
+  // Approuver / Rejeter: SUBMITTED ✅ OUI, others ❌ NON. The requester or creator cannot approve their own.
+  const canApprove = isPending && !isOwnRequisition(requisition, user?.id);
   const canReject = isPending;
 
   // Convertir: APPROVED ✅ OUI, others ❌ NON
@@ -1125,6 +1126,15 @@ export default function RequisitionDetail() {
                       <span className="text-xs font-semibold text-gray-900 dark:text-white">
                         {line.quantity} {line.unitOfMeasure || "PCS"}
                       </span>
+                      {/* What arrived on validated receipts of the order created from this requisition. */}
+                      {((line.quantityReceived ?? 0) > 0 || (line.quantityRejected ?? 0) > 0) && (
+                        <span className="block text-[11px] text-emerald-700 dark:text-emerald-400">
+                          Reçu : {line.quantityReceived ?? 0}
+                          {(line.quantityRejected ?? 0) > 0 && (
+                            <span className="text-rose-600 dark:text-rose-400"> • Rejeté : {line.quantityRejected}</span>
+                          )}
+                        </span>
+                      )}
                     </TableCell>
                     <TableCell className="px-4 py-3.5 text-xs text-gray-600 dark:text-gray-300">
                       {formatAmount(line.unitPrice, line.currencyCodeLine || line.currencyCode || requisition.currencyCode)}

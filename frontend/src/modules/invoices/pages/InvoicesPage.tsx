@@ -5,13 +5,9 @@ import InvoiceList from "../components/InvoiceList";
 export default function InvoicesPage() {
   return (
     <>
-      <PageMeta
-        title="Factures | Materia Procurement"
-        description="Suivez les factures fournisseurs, leur vérification et leur paiement."
-      />
-      <PageBreadcrumb pageTitle="Factures Fournisseurs" />
-
-      <div className="mt-6">
+      <PageMeta title="Invoices | Materia Dashboard" description="Supplier invoices, their verification and payment" />
+      <PageBreadcrumb pageTitle="Invoices" />
+      <div className="space-y-6">
         <InvoiceList />
       </div>
     </>

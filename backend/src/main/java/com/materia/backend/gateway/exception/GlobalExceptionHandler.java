@@ -12,6 +12,18 @@ import com.materia.backend.contexts.auth.domain.exceptions.UserAlreadyExistsExce
 import com.materia.backend.contexts.auth.domain.exceptions.UserNotFoundException;
 import com.materia.backend.contexts.goodsReceipt.domain.exceptions.GoodsReceiptBusinessException;
 import com.materia.backend.contexts.invoice.domain.exceptions.InvoiceAlreadyExistsException;
+import com.materia.backend.contexts.payement.domain.exceptions.PaymentAlreadyCompletedException;
+import com.materia.backend.contexts.payement.domain.exceptions.PaymentAlreadyExistsException;
+import com.materia.backend.contexts.payement.domain.exceptions.PaymentAmountMismatchException;
+import com.materia.backend.contexts.payement.domain.exceptions.PaymentNoInvoicesException;
+import com.materia.backend.contexts.payement.domain.exceptions.PaymentNotCancellableException;
+import com.materia.backend.contexts.payement.domain.exceptions.PaymentNotCompletableException;
+import com.materia.backend.contexts.payement.domain.exceptions.PaymentNotFoundException;
+import com.materia.backend.contexts.payement.domain.exceptions.PaymentNotModifiableException;
+import com.materia.backend.contexts.payement.domain.exceptions.PaymentNotPreparableException;
+import com.materia.backend.contexts.payement.domain.exceptions.PaymentRuleViolationException;
+import com.materia.backend.contexts.payement.domain.exceptions.PaymentSupplierMismatchException;
+import com.materia.backend.contexts.payement.domain.exceptions.PaymentValidationException;
 import com.materia.backend.contexts.invoice.domain.exceptions.InvoiceAlreadyPaidException;
 import com.materia.backend.contexts.invoice.domain.exceptions.InvoiceAlreadyVerifiedException;
 import com.materia.backend.contexts.invoice.domain.exceptions.InvoiceCancellationException;
@@ -24,6 +36,9 @@ import com.materia.backend.contexts.invoice.domain.exceptions.InvoicePurchaseOrd
 import com.materia.backend.contexts.invoice.domain.exceptions.InvoiceRuleViolationException;
 import com.materia.backend.contexts.invoice.domain.exceptions.InvoiceSupplierMismatchException;
 import com.materia.backend.contexts.invoice.domain.exceptions.InvoiceValidationException;
+import com.materia.backend.contexts.returnToVendor.domain.exceptions.ReturnToVendorBusinessException;
+import com.materia.backend.contexts.returnToVendor.domain.exceptions.ReturnToVendorNotFoundException;
+import com.materia.backend.contexts.returnToVendor.domain.exceptions.ReturnToVendorValidationException;
 import com.materia.backend.contexts.purchaseOrder.domain.exceptions.PurchaseOrderBusinessException;
 import com.materia.backend.contexts.purchaseOrder.domain.exceptions.PurchaseOrderNotFoundException;
 import com.materia.backend.contexts.purchaseOrder.domain.exceptions.PurchaseOrderValidationException;
@@ -108,6 +123,29 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         );
     }
 
+    @ExceptionHandler(PaymentNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handlePaymentNotFoundException(PaymentNotFoundException ex, WebRequest request) {
+        log.error("Payment not found: {}", ex.getMessage());
+        return buildErrorResponse(HttpStatus.NOT_FOUND, "Payment Not Found", "PAYMENT_NOT_FOUND", ex.getMessage(), request, null);
+    }
+
+    @ExceptionHandler({PaymentValidationException.class, PaymentNoInvoicesException.class})
+    public ResponseEntity<ErrorResponse> handlePaymentValidationException(RuntimeException ex, WebRequest request) {
+        log.error("Payment validation error: {}", ex.getMessage());
+        return buildErrorResponse(HttpStatus.BAD_REQUEST, "Payment Validation Error", "PAYMENT_VALIDATION_ERROR",
+                ex.getMessage(), request, null);
+    }
+
+    /** Payment operations refused by a business rule answer 409, like invoices and purchase orders. */
+    @ExceptionHandler({PaymentRuleViolationException.class, PaymentAmountMismatchException.class,
+            PaymentSupplierMismatchException.class, PaymentNotModifiableException.class, PaymentNotPreparableException.class,
+            PaymentNotCompletableException.class, PaymentNotCancellableException.class, PaymentAlreadyCompletedException.class,
+            PaymentAlreadyExistsException.class})
+    public ResponseEntity<ErrorResponse> handlePaymentRuleViolation(RuntimeException ex, WebRequest request) {
+        log.error("Payment rule violation: {}", ex.getMessage());
+        return buildErrorResponse(HttpStatus.CONFLICT, "Payment Error", "PAYMENT_RULE_VIOLATION", ex.getMessage(), request, null);
+    }
+
     @ExceptionHandler(InvoiceNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleInvoiceNotFoundException(InvoiceNotFoundException ex, WebRequest request) {
         log.error("Invoice not found: {}", ex.getMessage());
@@ -129,6 +167,26 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     public ResponseEntity<ErrorResponse> handleInvoiceRuleViolation(RuntimeException ex, WebRequest request) {
         log.error("Invoice rule violation: {}", ex.getMessage());
         return buildErrorResponse(HttpStatus.CONFLICT, "Invoice Error", "INVOICE_RULE_VIOLATION", ex.getMessage(), request, null);
+    }
+
+    @ExceptionHandler(ReturnToVendorNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleReturnToVendorNotFoundException(ReturnToVendorNotFoundException ex, WebRequest request) {
+        log.error("Return to vendor not found: {}", ex.getMessage());
+        return buildErrorResponse(HttpStatus.NOT_FOUND, "Return Not Found", "RETURN_TO_VENDOR_NOT_FOUND", ex.getMessage(), request, null);
+    }
+
+    @ExceptionHandler(ReturnToVendorValidationException.class)
+    public ResponseEntity<ErrorResponse> handleReturnToVendorValidationException(ReturnToVendorValidationException ex, WebRequest request) {
+        log.error("Return to vendor validation error: {}", ex.getMessage());
+        return buildErrorResponse(HttpStatus.BAD_REQUEST, "Return Validation Error", "RETURN_TO_VENDOR_VALIDATION_ERROR",
+                ex.getMessage(), request, null);
+    }
+
+    /** Return operations refused by a business rule (quantities, status, order state) answer 409, like the rest of the chain. */
+    @ExceptionHandler(ReturnToVendorBusinessException.class)
+    public ResponseEntity<ErrorResponse> handleReturnToVendorBusinessException(ReturnToVendorBusinessException ex, WebRequest request) {
+        log.error("Return to vendor rule violation: {}", ex.getMessage());
+        return buildErrorResponse(HttpStatus.CONFLICT, "Return Error", "RETURN_TO_VENDOR_RULE_VIOLATION", ex.getMessage(), request, null);
     }
 
     @ExceptionHandler(PurchaseOrderNotFoundException.class)

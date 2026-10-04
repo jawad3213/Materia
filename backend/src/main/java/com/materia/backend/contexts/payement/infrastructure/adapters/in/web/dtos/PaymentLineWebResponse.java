@@ -44,6 +44,7 @@ public class PaymentLineWebResponse {
     public String getCurrencyCode() { return currencyCode; }
     public void setCurrencyCode(String currencyCode) { this.currencyCode = currencyCode; }
 
+    @com.fasterxml.jackson.annotation.JsonProperty("isPaid")
     public boolean isPaid() { return isPaid; }
     public void setPaid(boolean paid) { this.isPaid = paid; }
 

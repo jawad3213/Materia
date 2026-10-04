@@ -1,23 +1,34 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import invoiceService from "../services/invoiceService";
-import type { Invoice } from "../types/invoice.types";
+import { INVOICE_STATUS_LABELS, INVOICE_TYPE_LABELS, type Invoice } from "../types/invoice.types";
 import InvoiceFilters, { type InvoiceFilterValues } from "./InvoiceFilters";
 import InvoiceStatusBadge, { InvoiceTypeBadge } from "./InvoiceStatusBadge";
 import useInvoicePermissions from "../hooks/useInvoice";
 import { formatAmount, isOverdue, isPartiallyPaid, outstandingAmount } from "../utils/invoiceLine";
-import Button from "../../../shared/components/ui/button/Button";
+import ListCard, { type FilterPill } from "../../../shared/components/page/ListCard";
+import StatFilterCards, { type StatCard } from "../../../shared/components/page/StatFilterCards";
+import { InitialsAvatar, ListFooter, StackedCell, TableStateRow, ViewAction } from "../../../shared/components/page/ListParts";
+import { FloatingToast } from "../../../shared/components/page/DetailParts";
+import { StatIcons } from "../../../shared/components/page/pageIcons";
+import { BODY_CELL, HEAD_CELL } from "../../../shared/components/page/pageStyles";
+import { useClientPagination } from "../../../shared/components/page/useClientPagination";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "../../../shared/components/ui/table";
 import { getApiErrorMessage } from "../../../shared/utils/apiError";
 import { parseAmount } from "../../../shared/utils/moneyUtils";
 
-const HEAD = "px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400";
-const CELL = "px-4 py-3 text-xs text-gray-700 dark:text-gray-300";
+type QuickFilter = "ALL" | "TO_VERIFY" | "TO_PAY" | "OVERDUE";
 
-/**
- * Sums amounts per currency, so totals in different currencies are never added together. By default
- * it sums what is still owed, so partly paid invoices count only for their remaining balance.
- */
+const QUICK_FILTERS: Record<QuickFilter, (i: Invoice) => boolean> = {
+  ALL: () => true,
+  TO_VERIFY: (i) => i.status === "SUBMITTED",
+  TO_PAY: (i) => i.status === "VERIFIED",
+  OVERDUE: (i) => isOverdue(i),
+};
+
+const EMPTY_FILTERS: InvoiceFilterValues = { status: "", type: "" };
+
+/** Sums per currency so amounts in different currencies are never added together; credit notes subtract. */
 function sumByCurrency(invoices: Invoice[], amount: (inv: Invoice) => number = outstandingAmount): string {
   const totals = new Map<string, number>();
   for (const inv of invoices) {
@@ -25,7 +36,7 @@ function sumByCurrency(invoices: Invoice[], amount: (inv: Invoice) => number = o
     totals.set(inv.currencyCode, (totals.get(inv.currencyCode) ?? 0) + sign * amount(inv));
   }
   if (totals.size === 0) return formatAmount(0);
-  return [...totals.entries()].map(([currency, amount]) => formatAmount(amount, currency)).join(" + ");
+  return [...totals.entries()].map(([currency, value]) => formatAmount(value, currency)).join(" + ");
 }
 
 export default function InvoiceList() {
@@ -33,7 +44,11 @@ export default function InvoiceList() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filters, setFilters] = useState<InvoiceFilterValues>({ keyword: "", status: "", overdueOnly: false });
+  const [keyword, setKeyword] = useState("");
+  const [quick, setQuick] = useState<QuickFilter>("ALL");
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [draftFilters, setDraftFilters] = useState<InvoiceFilterValues>(EMPTY_FILTERS);
+  const [filters, setFilters] = useState<InvoiceFilterValues>(EMPTY_FILTERS);
 
   useEffect(() => {
     let cancelled = false;
@@ -43,7 +58,7 @@ export default function InvoiceList() {
         if (!cancelled) setInvoices(res.data);
       })
       .catch((err) => {
-        if (!cancelled) setError(getApiErrorMessage(err, "Impossible de charger les factures."));
+        if (!cancelled) setError(getApiErrorMessage(err, "Could not load invoices."));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -53,141 +68,173 @@ export default function InvoiceList() {
     };
   }, []);
 
-  const summary = useMemo(
-    () => [
-      {
-        label: "À vérifier",
-        value: sumByCurrency(invoices.filter((i) => i.status === "SUBMITTED"), (i) => parseAmount(i.totalAmountWithTax ?? 0)),
-      },
-      { label: "À payer", value: sumByCurrency(invoices.filter((i) => i.status === "VERIFIED")) },
-      { label: "En retard", value: sumByCurrency(invoices.filter((i) => isOverdue(i))), alert: true },
-      { label: "Avec écarts", value: String(invoices.filter((i) => i.hasDiscrepancy && i.status !== "CANCELLED").length) },
-    ],
-    [invoices]
-  );
+  const toVerify = invoices.filter(QUICK_FILTERS.TO_VERIFY);
+  const toPay = invoices.filter(QUICK_FILTERS.TO_PAY);
+  const overdue = invoices.filter(QUICK_FILTERS.OVERDUE);
+  const cards: StatCard<QuickFilter>[] = [
+    { id: "ALL", title: "All Invoices", value: invoices.length, unit: "invoices", subtitle: "Every supplier invoice", tone: "brand", icon: StatIcons.all },
+    {
+      id: "TO_VERIFY",
+      title: "To Verify",
+      value: sumByCurrency(toVerify, (i) => parseAmount(i.totalAmountWithTax ?? 0)),
+      subtitle: `${toVerify.length} submitted`,
+      tone: "blue",
+      icon: StatIcons.pending,
+      badge: toVerify.length,
+    },
+    { id: "TO_PAY", title: "To Pay", value: sumByCurrency(toPay), subtitle: `${toPay.length} verified`, tone: "green", icon: StatIcons.money, badge: toPay.length },
+    { id: "OVERDUE", title: "Overdue", value: sumByCurrency(overdue), subtitle: "Past due date", tone: "red", icon: StatIcons.overdue, badge: overdue.length },
+  ];
 
   const visible = useMemo(() => {
-    const keyword = filters.keyword.trim().toLowerCase();
+    const term = keyword.trim().toLowerCase();
     return invoices
+      .filter(QUICK_FILTERS[quick])
       .filter((i) => !filters.status || i.status === filters.status)
-      .filter((i) => !filters.overdueOnly || isOverdue(i))
+      .filter((i) => !filters.type || i.invoiceType === filters.type)
       .filter(
         (i) =>
-          !keyword ||
+          !term ||
           [i.invoiceCode, i.externalReference, i.purchaseOrderCode, i.supplierName]
             .filter(Boolean)
-            .some((v) => String(v).toLowerCase().includes(keyword))
+            .some((v) => String(v).toLowerCase().includes(term))
       )
       .sort((a, b) => String(b.invoiceDate ?? "").localeCompare(String(a.invoiceDate ?? "")));
-  }, [invoices, filters]);
+  }, [invoices, quick, filters, keyword]);
+
+  const paging = useClientPagination(visible);
+  const pills: FilterPill[] = [
+    ...(filters.status
+      ? [{ label: `Status: ${INVOICE_STATUS_LABELS[filters.status]}`, onRemove: () => setFilters({ ...filters, status: "" }) }]
+      : []),
+    ...(filters.type ? [{ label: `Type: ${INVOICE_TYPE_LABELS[filters.type]}`, onRemove: () => setFilters({ ...filters, type: "" }) }] : []),
+  ];
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-gray-900 p-5 rounded-2xl border border-gray-200 dark:border-white/[0.07] shadow-sm">
-        <div>
-          <h2 className="text-base font-bold text-gray-900 dark:text-white">Factures fournisseurs</h2>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-            Rapprochement commande, réception et facture avant paiement.
-          </p>
-        </div>
-        {permissions.canRecord && (
-          <Link to="/invoices/create">
-            <Button size="sm">Nouvelle facture</Button>
-          </Link>
-        )}
-      </div>
+    <>
+      <FloatingToast feedback={error ? { type: "error", text: error } : null} onClose={() => setError(null)} />
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {summary.map((card) => (
-          <div
-            key={card.label}
-            className="bg-white dark:bg-gray-900 p-4 rounded-2xl border border-gray-200 dark:border-white/[0.07] shadow-sm"
-          >
-            <p className="text-[11px] uppercase tracking-wider text-gray-500">{card.label}</p>
-            <p className={`text-sm font-bold ${card.alert ? "text-rose-600 dark:text-rose-400" : "text-gray-900 dark:text-white"}`}>
-              {loading ? "…" : card.value}
-            </p>
-          </div>
-        ))}
-      </div>
+      <StatFilterCards cards={cards} active={quick} onSelect={setQuick} />
 
-      <InvoiceFilters value={filters} onChange={setFilters} />
-
-      {error && (
-        <div className="p-4 rounded-xl bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-400 text-xs border border-red-200 dark:border-red-500/20">
-          {error}
-        </div>
-      )}
-
-      <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-white/[0.07] overflow-x-auto shadow-sm">
-        <Table>
-          <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
-            <TableRow>
-              <TableCell isHeader className={HEAD}>Facture</TableCell>
-              <TableCell isHeader className={HEAD}>Réf. fournisseur</TableCell>
-              <TableCell isHeader className={HEAD}>Commande</TableCell>
-              <TableCell isHeader className={HEAD}>Fournisseur</TableCell>
-              <TableCell isHeader className={HEAD}>Date / Échéance</TableCell>
-              <TableCell isHeader className={HEAD}>Montant TTC</TableCell>
-              <TableCell isHeader className={HEAD}>Statut</TableCell>
-            </TableRow>
-          </TableHeader>
-          <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
-            {loading && (
+      <ListCard
+        title="Invoices List"
+        search={{ value: keyword, onChange: setKeyword, placeholder: "Search invoices..." }}
+        filter={{
+          activeCount: pills.length,
+          isOpen: isFilterOpen,
+          onToggle: () => {
+            setDraftFilters(filters);
+            setIsFilterOpen(!isFilterOpen);
+          },
+          panel: (
+            <InvoiceFilters
+              isOpen={isFilterOpen}
+              onClose={() => setIsFilterOpen(false)}
+              value={draftFilters}
+              onChange={setDraftFilters}
+              onApply={() => {
+                setFilters(draftFilters);
+                setIsFilterOpen(false);
+              }}
+              onClear={() => {
+                setDraftFilters(EMPTY_FILTERS);
+                setFilters(EMPTY_FILTERS);
+                setIsFilterOpen(false);
+              }}
+            />
+          ),
+        }}
+        action={permissions.canRecord ? { label: "New Invoice", to: "/invoices/create" } : undefined}
+        pills={pills}
+        onClearPills={() => setFilters(EMPTY_FILTERS)}
+        footer={
+          <ListFooter page={paging.page} size={paging.size} total={paging.total} totalPages={paging.totalPages} onPageChange={paging.setPage} />
+        }
+      >
+        <div className="max-w-full overflow-x-auto">
+          <Table>
+            <TableHeader className="border-b border-gray-100 bg-gray-50/50 dark:border-white/[0.05] dark:bg-gray-900/50">
               <TableRow>
-                <TableCell className={CELL} colSpan={7}>Chargement...</TableCell>
+                <TableCell isHeader className={HEAD_CELL}>Invoice</TableCell>
+                <TableCell isHeader className={HEAD_CELL}>Supplier</TableCell>
+                <TableCell isHeader className={HEAD_CELL}>Purchase Order</TableCell>
+                <TableCell isHeader className={HEAD_CELL}>Date / Due</TableCell>
+                <TableCell isHeader className={HEAD_CELL}>Amount</TableCell>
+                <TableCell isHeader className={HEAD_CELL}>Status</TableCell>
+                <TableCell isHeader className={HEAD_CELL}>Action</TableCell>
               </TableRow>
-            )}
-            {!loading && visible.length === 0 && (
-              <TableRow>
-                <TableCell className={`${CELL} text-center text-gray-400`} colSpan={7}>
-                  Aucune facture trouvée.
-                </TableCell>
-              </TableRow>
-            )}
-            {visible.map((inv) => (
-              <TableRow key={inv.id} className="hover:bg-gray-50/60 dark:hover:bg-white/[0.02]">
-                <TableCell className={CELL}>
-                  <Link
-                    to={`/invoices/${inv.id}`}
-                    className="font-mono font-semibold text-brand-600 dark:text-brand-400 hover:underline"
-                  >
-                    {inv.invoiceCode}
-                  </Link>
-                  {inv.invoiceType === "CREDIT_NOTE" && (
-                    <span className="ml-2">
-                      <InvoiceTypeBadge type={inv.invoiceType} />
-                    </span>
-                  )}
-                </TableCell>
-                <TableCell className={`${CELL} font-mono`}>{inv.externalReference || "-"}</TableCell>
-                <TableCell className={`${CELL} font-mono`}>{inv.purchaseOrderCode || "-"}</TableCell>
-                <TableCell className={CELL}>{inv.supplierName}</TableCell>
-                <TableCell className={CELL}>
-                  {inv.invoiceDate}
-                  <span className={`block ${isOverdue(inv) ? "text-rose-600 dark:text-rose-400 font-semibold" : "text-gray-500"}`}>
-                    {inv.dueDate ? `Échéance ${inv.dueDate}` : "Sans échéance"}
-                  </span>
-                </TableCell>
-                <TableCell className={`${CELL} font-semibold whitespace-nowrap`}>
-                  {formatAmount(inv.totalAmountWithTax, inv.currencyCode)}
-                  {inv.hasDiscrepancy && (
-                    <span className="block text-[11px] font-normal text-amber-600 dark:text-amber-400">Écarts détectés</span>
-                  )}
-                </TableCell>
-                <TableCell className={CELL}>
-                  <InvoiceStatusBadge status={inv.status} />
-                  {isPartiallyPaid(inv) && (
-                    <span className="block mt-1 text-[11px] text-indigo-600 dark:text-indigo-400">
-                      Reste {formatAmount(outstandingAmount(inv), inv.currencyCode)}
-                    </span>
-                  )}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
-    </div>
+            </TableHeader>
+            <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
+              {loading ? (
+                <TableStateRow colSpan={7} loading message="Fetching invoices..." />
+              ) : paging.pageItems.length === 0 ? (
+                <TableStateRow colSpan={7} message="No invoices found." />
+              ) : (
+                paging.pageItems.map((inv) => (
+                  <TableRow key={inv.id}>
+                    <TableCell className={BODY_CELL}>
+                      <div className="flex items-center gap-2">
+                        <StackedCell
+                          main={
+                            <Link to={`/invoices/${inv.id}`} className="font-mono hover:text-brand-500">
+                              {inv.invoiceCode}
+                            </Link>
+                          }
+                          sub={inv.externalReference ? `Ref. ${inv.externalReference}` : "No supplier reference"}
+                        />
+                        {inv.invoiceType === "CREDIT_NOTE" && <InvoiceTypeBadge type={inv.invoiceType} />}
+                      </div>
+                    </TableCell>
+                    <TableCell className={BODY_CELL}>
+                      <div className="flex items-center gap-3">
+                        <InitialsAvatar name={inv.supplierName} />
+                        <StackedCell main={inv.supplierName} sub={inv.supplierCode} />
+                      </div>
+                    </TableCell>
+                    <TableCell className={BODY_CELL}>
+                      {inv.purchaseOrderId ? (
+                        <Link to={`/purchase-orders/${inv.purchaseOrderId}`} className="font-mono hover:text-brand-500">
+                          {inv.purchaseOrderCode || "—"}
+                        </Link>
+                      ) : (
+                        "—"
+                      )}
+                    </TableCell>
+                    <TableCell className={BODY_CELL}>
+                      <StackedCell
+                        main={inv.invoiceDate}
+                        sub={
+                          <span className={isOverdue(inv) ? "font-semibold text-error-500" : ""}>
+                            {inv.dueDate ? `Due ${inv.dueDate}` : "No due date"}
+                          </span>
+                        }
+                      />
+                    </TableCell>
+                    <TableCell className={BODY_CELL}>
+                      <StackedCell
+                        main={<span className="whitespace-nowrap">{formatAmount(inv.totalAmountWithTax, inv.currencyCode)}</span>}
+                        sub={
+                          isPartiallyPaid(inv)
+                            ? `${formatAmount(outstandingAmount(inv), inv.currencyCode)} left to pay`
+                            : inv.hasDiscrepancy
+                              ? "Discrepancies found"
+                              : undefined
+                        }
+                      />
+                    </TableCell>
+                    <TableCell className={BODY_CELL}>
+                      <InvoiceStatusBadge status={inv.status} />
+                    </TableCell>
+                    <TableCell className={BODY_CELL}>
+                      <ViewAction to={`/invoices/${inv.id}`} title="View Invoice" />
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </ListCard>
+    </>
   );
 }

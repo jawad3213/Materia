@@ -631,6 +631,22 @@ public class PurchaseOrder extends BaseEntity {
         this.setUpdatedBy(userId);
     }
 
+    /**
+     * Goods sent back to the supplier will be replaced: the order expects them again, so a received or closed
+     * order goes back to partially received and the assigned receiver can receive the replacement.
+     */
+    public void reopenForReplacement(String userId) {
+        if (status != OrderStatus.PARTIALLY_RECEIVED && status != OrderStatus.RECEIVED && status != OrderStatus.COMPLETED) {
+            throw new PurchaseOrderInvalidStatusTransitionException(
+                    "Only a received or closed order can be reopened for a replacement delivery");
+        }
+        this.status = OrderStatus.PARTIALLY_RECEIVED;
+        this.deliveryStatus = DeliveryStatus.PARTIAL;
+        this.receivedDate = null;
+        this.setUpdatedAt(LocalDateTime.now());
+        this.setUpdatedBy(userId);
+    }
+
     /** Closes an order; a partially received order is closed short, accepting the remainder will not arrive. */
     public void complete(String userId) {
         if (status != OrderStatus.PARTIALLY_RECEIVED && status != OrderStatus.RECEIVED) {

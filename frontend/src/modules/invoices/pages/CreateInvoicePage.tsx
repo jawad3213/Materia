@@ -5,15 +5,9 @@ import InvoiceForm from "../components/InvoiceForm";
 export default function CreateInvoicePage() {
   return (
     <>
-      <PageMeta
-        title="Nouvelle Facture | Materia Procurement"
-        description="Saisissez une facture fournisseur à partir d'une commande réceptionnée."
-      />
-      <PageBreadcrumb pageTitle="Nouvelle Facture" parentName="Factures" parentUrl="/invoices" />
-
-      <div className="mt-6">
-        <InvoiceForm />
-      </div>
+      <PageMeta title="Record Invoice | Materia Dashboard" description="Record a supplier invoice from a received purchase order" />
+      <PageBreadcrumb pageTitle="Record Invoice" parentName="Invoices" parentUrl="/invoices" />
+      <InvoiceForm />
     </>
   );
 }

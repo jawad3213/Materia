@@ -7,13 +7,15 @@ import com.materia.backend.contexts.payement.domain.ports.in.PaymentUseCase;
 import com.materia.backend.contexts.payement.infrastructure.adapters.in.web.dtos.CreatePaymentWebRequest;
 import com.materia.backend.contexts.payement.infrastructure.adapters.in.web.dtos.PaymentCancelWebRequest;
 import com.materia.backend.contexts.payement.infrastructure.adapters.in.web.dtos.PaymentCompleteWebRequest;
-import com.materia.backend.contexts.payement.infrastructure.adapters.in.web.dtos.PaymentPrepareWebRequest;
 import com.materia.backend.contexts.payement.infrastructure.adapters.in.web.dtos.PaymentWebResponse;
 import com.materia.backend.contexts.payement.infrastructure.adapters.in.web.dtos.UpdatePaymentWebRequest;
 import com.materia.backend.contexts.payement.infrastructure.adapters.in.web.mappers.PaymentWebMapper;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -29,7 +31,9 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * REST controller for payments.
+ * REST controller for supplier payments. Following Role.java, administrators manage payments
+ * ({@code payment:write}) and purchasers consult them ({@code payment:read}). Payments are the only way
+ * an invoice gets paid; the acting user is always the authenticated principal.
  */
 @RestController
 @RequestMapping("/api/v1/payments")
@@ -47,41 +51,47 @@ public class PaymentController {
     // CRUD ENDPOINTS
     // ============================================================
 
+    @PreAuthorize("hasAuthority('payment:write')")
     @PostMapping
     public ResponseEntity<PaymentWebResponse> createPayment(
-            @Valid @RequestBody CreatePaymentWebRequest webRequest) {
+            @Valid @RequestBody CreatePaymentWebRequest webRequest,
+            Authentication authentication) {
         CreatePaymentInput request = webMapper.toAppCreateRequest(webRequest);
+        request.setUserId(principal(authentication));
         PaymentOutput response = paymentUseCase.create(request);
         return new ResponseEntity<>(webMapper.toWebResponse(response), HttpStatus.CREATED);
     }
 
+    @PreAuthorize("hasAuthority('payment:read')")
     @GetMapping("/{id}")
     public ResponseEntity<PaymentWebResponse> getPaymentById(@PathVariable UUID id) {
-        PaymentOutput response = paymentUseCase.getById(id);
-        return ResponseEntity.ok(webMapper.toWebResponse(response));
+        return ResponseEntity.ok(webMapper.toWebResponse(paymentUseCase.getById(id)));
     }
 
+    @PreAuthorize("hasAuthority('payment:read')")
     @GetMapping("/code/{code}")
     public ResponseEntity<PaymentWebResponse> getPaymentByCode(@PathVariable String code) {
-        PaymentOutput response = paymentUseCase.getByCode(code);
-        return ResponseEntity.ok(webMapper.toWebResponse(response));
+        return ResponseEntity.ok(webMapper.toWebResponse(paymentUseCase.getByCode(code)));
     }
 
+    @PreAuthorize("hasAuthority('payment:read')")
     @GetMapping
     public ResponseEntity<List<PaymentWebResponse>> getAllPayments() {
-        List<PaymentOutput> responses = paymentUseCase.getAll();
-        return ResponseEntity.ok(webMapper.toWebResponseList(responses));
+        return ResponseEntity.ok(webMapper.toWebResponseList(paymentUseCase.getAll()));
     }
 
+    @PreAuthorize("hasAuthority('payment:write')")
     @PutMapping("/{id}")
     public ResponseEntity<PaymentWebResponse> updatePayment(
             @PathVariable UUID id,
-            @Valid @RequestBody UpdatePaymentWebRequest webRequest) {
+            @Valid @RequestBody UpdatePaymentWebRequest webRequest,
+            Authentication authentication) {
         UpdatePaymentInput request = webMapper.toAppUpdateRequest(webRequest);
-        PaymentOutput response = paymentUseCase.update(id, request);
-        return ResponseEntity.ok(webMapper.toWebResponse(response));
+        request.setUserId(principal(authentication));
+        return ResponseEntity.ok(webMapper.toWebResponse(paymentUseCase.update(id, request)));
     }
 
+    @PreAuthorize("hasAuthority('payment:write')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deletePayment(@PathVariable UUID id) {
         paymentUseCase.delete(id);
@@ -92,55 +102,63 @@ public class PaymentController {
     // QUERY ENDPOINTS
     // ============================================================
 
+    @PreAuthorize("hasAuthority('payment:read')")
     @GetMapping("/status/{status}")
     public ResponseEntity<List<PaymentWebResponse>> getPaymentsByStatus(@PathVariable String status) {
-        List<PaymentOutput> responses = paymentUseCase.getByStatus(status);
-        return ResponseEntity.ok(webMapper.toWebResponseList(responses));
+        return ResponseEntity.ok(webMapper.toWebResponseList(paymentUseCase.getByStatus(status)));
     }
 
+    @PreAuthorize("hasAuthority('payment:read')")
     @GetMapping("/supplier/{supplierId}")
     public ResponseEntity<List<PaymentWebResponse>> getPaymentsBySupplierId(@PathVariable String supplierId) {
-        List<PaymentOutput> responses = paymentUseCase.getBySupplierId(supplierId);
-        return ResponseEntity.ok(webMapper.toWebResponseList(responses));
+        return ResponseEntity.ok(webMapper.toWebResponseList(paymentUseCase.getBySupplierId(supplierId)));
     }
 
+    @PreAuthorize("hasAuthority('payment:read')")
     @GetMapping("/search/keyword")
     public ResponseEntity<List<PaymentWebResponse>> searchPaymentsByKeyword(@RequestParam String keyword) {
-        List<PaymentOutput> responses = paymentUseCase.searchByKeyword(keyword);
-        return ResponseEntity.ok(webMapper.toWebResponseList(responses));
+        return ResponseEntity.ok(webMapper.toWebResponseList(paymentUseCase.searchByKeyword(keyword)));
     }
 
     // ============================================================
     // LIFECYCLE ENDPOINTS
     // ============================================================
 
+    @PreAuthorize("hasAuthority('payment:write')")
     @PatchMapping("/{id}/prepare")
-    public ResponseEntity<PaymentWebResponse> preparePayment(
-            @PathVariable UUID id,
-            @Valid @RequestBody PaymentPrepareWebRequest webRequest) {
-        PaymentOutput response = paymentUseCase.prepare(id, webRequest.getUserId());
-        return ResponseEntity.ok(webMapper.toWebResponse(response));
+    public ResponseEntity<PaymentWebResponse> preparePayment(@PathVariable UUID id, Authentication authentication) {
+        return ResponseEntity.ok(webMapper.toWebResponse(paymentUseCase.prepare(id, principal(authentication))));
     }
 
+    @PreAuthorize("hasAuthority('payment:write')")
     @PatchMapping("/{id}/complete")
     public ResponseEntity<PaymentWebResponse> completePayment(
             @PathVariable UUID id,
-            @Valid @RequestBody PaymentCompleteWebRequest webRequest) {
+            @Valid @RequestBody PaymentCompleteWebRequest webRequest,
+            Authentication authentication) {
         PaymentOutput response = paymentUseCase.complete(
                 id,
-                webRequest.getUserId(),
+                principal(authentication),
                 webRequest.getBankReference(),
                 webRequest.getTransactionId(),
-                webRequest.getPaymentMethod()
-        );
+                webRequest.getPaymentMethod());
         return ResponseEntity.ok(webMapper.toWebResponse(response));
     }
 
+    @PreAuthorize("hasAuthority('payment:write')")
     @PatchMapping("/{id}/cancel")
     public ResponseEntity<PaymentWebResponse> cancelPayment(
             @PathVariable UUID id,
-            @Valid @RequestBody PaymentCancelWebRequest webRequest) {
-        PaymentOutput response = paymentUseCase.cancel(id, webRequest.getUserId(), webRequest.getReason());
-        return ResponseEntity.ok(webMapper.toWebResponse(response));
+            @Valid @RequestBody PaymentCancelWebRequest webRequest,
+            Authentication authentication) {
+        return ResponseEntity.ok(webMapper.toWebResponse(
+                paymentUseCase.cancel(id, principal(authentication), webRequest.getReason())));
+    }
+
+    private static String principal(Authentication authentication) {
+        if (authentication == null || authentication.getName() == null || authentication.getName().isBlank()) {
+            throw new AccessDeniedException("An authenticated user is required");
+        }
+        return authentication.getName();
     }
 }

@@ -48,8 +48,13 @@ public class RequisitionController {
     @PreAuthorize("hasAuthority('requisition:write')")
     @PostMapping
     public ResponseEntity<RequisitionWebResponse> createRequisition(
-            @Valid @RequestBody CreateRequisitionWebRequest webRequest) {
+            @Valid @RequestBody CreateRequisitionWebRequest webRequest,
+            Authentication authentication) {
         CreateRequisitionInput request = webMapper.toAppCreateRequest(webRequest);
+        // The creator is the signed-in user (it decides who may not approve the requisition).
+        if (authentication != null && authentication.getName() != null) {
+            request.setUserId(authentication.getName());
+        }
         RequisitionOutput response = requisitionUseCase.create(request);
         return new ResponseEntity<>(webMapper.toWebResponse(response), HttpStatus.CREATED);
     }
@@ -79,8 +84,12 @@ public class RequisitionController {
     @PutMapping("/{id}")
     public ResponseEntity<RequisitionWebResponse> updateRequisition(
             @PathVariable UUID id,
-            @Valid @RequestBody UpdateRequisitionWebRequest webRequest) {
+            @Valid @RequestBody UpdateRequisitionWebRequest webRequest,
+            Authentication authentication) {
         UpdateRequisitionInput request = webMapper.toAppUpdateRequest(webRequest);
+        if (authentication != null && authentication.getName() != null) {
+            request.setUserId(authentication.getName());
+        }
         RequisitionOutput response = requisitionUseCase.update(id, request);
         return ResponseEntity.ok(webMapper.toWebResponse(response));
     }

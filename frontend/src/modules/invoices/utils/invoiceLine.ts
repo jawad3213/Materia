@@ -84,10 +84,10 @@ export function invoiceTotals(lines: InvoiceLineDraft[]) {
 
 /** A value that blocks saving the line. */
 export function lineError(line: InvoiceLineDraft): string | null {
-  if (!Number.isFinite(line.invoiced) || line.invoiced < 0) return "La quantité facturée ne peut pas être négative.";
-  if (!Number.isInteger(line.invoiced)) return "La quantité facturée doit être un nombre entier.";
-  if (!Number.isFinite(line.unitPrice) || line.unitPrice < 0) return "Le prix unitaire ne peut pas être négatif.";
-  if (!Number.isFinite(line.taxAmount) || line.taxAmount < 0) return "La taxe ne peut pas être négative.";
+  if (!Number.isFinite(line.invoiced) || line.invoiced < 0) return "The invoiced quantity cannot be negative.";
+  if (!Number.isInteger(line.invoiced)) return "The invoiced quantity must be a whole number.";
+  if (!Number.isFinite(line.unitPrice) || line.unitPrice < 0) return "The unit price cannot be negative.";
+  if (!Number.isFinite(line.taxAmount) || line.taxAmount < 0) return "The tax amount cannot be negative.";
   return null;
 }
 
@@ -100,11 +100,11 @@ export function lineWarnings(line: InvoiceLineDraft): string[] {
   const billable = Math.max(0, line.received - line.alreadyInvoiced);
   if (line.invoiced > billable) {
     warnings.push(
-      `Quantité facturée (${line.invoiced}) supérieure à la quantité reçue non facturée (${billable}).`
+      `Invoiced quantity (${line.invoiced}) is more than received and not yet invoiced (${billable}).`
     );
   }
   if (line.invoiced > 0 && round2(line.unitPrice) !== round2(line.orderPrice)) {
-    warnings.push(`Prix unitaire différent de la commande (${line.orderPrice}).`);
+    warnings.push(`Unit price differs from the purchase order (${line.orderPrice}).`);
   }
   return warnings;
 }
@@ -119,7 +119,7 @@ export function defaultDueDate(invoiceDate: string, paymentDelayDays?: number | 
 
 export function formatAmount(value: number | string | null | undefined, currency?: string | null): string {
   const amount = parseAmount(value ?? 0);
-  const formatted = amount.toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const formatted = amount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   return currency ? `${formatted} ${currency}` : formatted;
 }
 

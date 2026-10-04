@@ -21,9 +21,6 @@ export const invoiceService = {
 
   verify: (id: string) => axiosClient.patch<Invoice>(`${BASE_URL}/${id}/verify`, {}),
 
-  /** Records a payment; payments accumulate until the invoice total is reached. */
-  pay: (id: string, amount: number) => axiosClient.patch<Invoice>(`${BASE_URL}/${id}/pay`, { amount }),
-
   cancel: (id: string, reason: string) => axiosClient.patch<Invoice>(`${BASE_URL}/${id}/cancel`, { reason }),
 
   delete: (id: string) => axiosClient.delete<void>(`${BASE_URL}/${id}`),

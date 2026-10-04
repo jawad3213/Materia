@@ -2,6 +2,7 @@ package com.materia.backend.contexts.returnToVendor.application.dtos;
 
 import com.materia.backend.common.application.BaseOutput;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -19,6 +20,9 @@ public class ReturnToVendorOutput extends BaseOutput {
     private String supplierId;
     private String supplierName;
     private String supplierCode;
+    private String currencyCode;
+    private BigDecimal totalValue;
+    private Integer totalQuantity;
     private String status;
     private String resolutionType;
     private LocalDate returnDate;
@@ -98,4 +102,12 @@ public class ReturnToVendorOutput extends BaseOutput {
     public void setLines(List<ReturnToVendorLineOutput> lines) {
         this.lines = lines != null ? new ArrayList<>(lines) : new ArrayList<>();
     }
+    public String getCurrencyCode() { return currencyCode; }
+    public void setCurrencyCode(String currencyCode) { this.currencyCode = currencyCode; }
+
+    public BigDecimal getTotalValue() { return totalValue; }
+    public void setTotalValue(BigDecimal totalValue) { this.totalValue = totalValue; }
+
+    public Integer getTotalQuantity() { return totalQuantity; }
+    public void setTotalQuantity(Integer totalQuantity) { this.totalQuantity = totalQuantity; }
 }

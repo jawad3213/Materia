@@ -166,14 +166,34 @@ export default function PurchaseOrderForm({ purchaseOrderId }: PurchaseOrderForm
     Promise.allSettled([supplierApi.getAllUnpaginated(), materialApi.getAllForSelection()]).then(
       ([supRes, matRes]) => {
         if (cancelled) return;
-        if (supRes.status === "fulfilled" && Array.isArray(supRes.value?.data)) {
-          setSuppliers(supRes.value.data);
+        if (supRes.status === "fulfilled") {
+          const rawSup = supRes.value;
+          const supList = Array.isArray(rawSup?.data)
+            ? rawSup.data
+            : Array.isArray((rawSup as any)?.content)
+            ? (rawSup as any).content
+            : Array.isArray(rawSup)
+            ? rawSup
+            : [];
+          setSuppliers(supList);
+        } else {
+          setSuppliers([]);
         }
+
         if (matRes.status === "fulfilled") {
+          const raw = matRes.value;
+          const matList = Array.isArray(raw)
+            ? raw
+            : Array.isArray((raw as any)?.content)
+            ? (raw as any).content
+            : Array.isArray((raw as any)?.data)
+            ? (raw as any).data
+            : [];
           // Only materials that can still be ordered are offered on a new line.
-          setMaterials(matRes.value.filter((m) => !m.status || m.status === "ACTIVE"));
+          setMaterials(matList.filter((m: any) => !m?.status || m?.status === "ACTIVE"));
         } else {
           console.error("Failed to load materials:", matRes.reason);
+          setMaterials([]);
         }
       }
     );
@@ -236,6 +256,13 @@ export default function PurchaseOrderForm({ purchaseOrderId }: PurchaseOrderForm
     }
   };
 
+  /** The quantity requested on the requisition line, the most this order may order for it. */
+  const requestedQuantity = (requisitionLineId?: string) => {
+    if (!originRequisition || !requisitionLineId) return undefined;
+    const requested = originRequisition.lines?.find((rl) => rl.id === requisitionLineId);
+    return requested ? Number(requested.quantity) : undefined;
+  };
+
   const handleAddLine = () => {
     const nextNum = lines.length + 1;
     setLines((prev) => [
@@ -274,7 +301,8 @@ export default function PurchaseOrderForm({ purchaseOrderId }: PurchaseOrderForm
 
         // If material changed, auto-populate code & name
         if (field === "materialId") {
-          const mat = materials.find((m) => m.id === val);
+          const safeMats = Array.isArray(materials) ? materials : [];
+          const mat = safeMats.find((m) => m.id === val);
           if (mat) {
             updated.materialCode = mat.code;
             updated.materialName = mat.name;
@@ -399,6 +427,9 @@ export default function PurchaseOrderForm({ purchaseOrderId }: PurchaseOrderForm
     }
   };
 
+  const safeSuppliers = Array.isArray(suppliers) ? suppliers : [];
+  const safeMaterials = Array.isArray(materials) ? materials : [];
+
   return (
     <div className="max-w-5xl mx-auto space-y-6">
       {/* Header */}
@@ -493,7 +524,7 @@ export default function PurchaseOrderForm({ purchaseOrderId }: PurchaseOrderForm
                 className="w-full rounded-xl border border-gray-200 dark:border-white/[0.1] bg-white dark:bg-gray-800 px-3 py-2 text-xs text-gray-800 dark:text-white focus:border-brand-500 focus:outline-none"
               >
                 <option value="">Sélectionnez un fournisseur...</option>
-                {suppliers.map((s) => (
+                {safeSuppliers.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.name} ({s.code || "Sans code"})
                   </option>
@@ -593,9 +624,16 @@ export default function PurchaseOrderForm({ purchaseOrderId }: PurchaseOrderForm
               </span>
               Articles & Lignes de Commande
             </h3>
-            <Button type="button" variant="outline" size="sm" onClick={handleAddLine}>
-              + Ajouter une Ligne
-            </Button>
+            {/* An order from a requisition orders exactly its lines (the backend checks it): no extra lines. */}
+            {originRequisition ? (
+              <span className="text-[11px] text-gray-500 dark:text-gray-400">
+                Lignes de la demande : quantités réductibles, articles fixes.
+              </span>
+            ) : (
+              <Button type="button" variant="outline" size="sm" onClick={handleAddLine}>
+                + Ajouter une Ligne
+              </Button>
+            )}
           </div>
 
           <div className="overflow-x-auto">
@@ -625,13 +663,14 @@ export default function PurchaseOrderForm({ purchaseOrderId }: PurchaseOrderForm
                       <td className="py-2 px-2">
                         <select
                           value={l.materialId || ""}
+                          disabled={!!originRequisition}
                           onChange={(e) =>
                             handleLineChange(l.tempId, "materialId", e.target.value)
                           }
                           className="w-full rounded-lg border border-gray-200 dark:border-white/[0.1] bg-white dark:bg-gray-800 p-2 text-xs text-gray-800 dark:text-white focus:border-brand-500 focus:outline-none"
                         >
                           <option value="">Sélectionner un catalogue...</option>
-                          {materials.map((m) => (
+                          {safeMaterials.map((m) => (
                             <option key={m.id} value={m.id}>
                               {m.name} ({m.code})
                             </option>
@@ -659,6 +698,7 @@ export default function PurchaseOrderForm({ purchaseOrderId }: PurchaseOrderForm
                           type="number"
                           required
                           min="1"
+                          max={requestedQuantity(l.requisitionLineId)}
                           value={l.quantity}
                           onChange={(e) =>
                             handleLineChange(l.tempId, "quantity", parseInt(e.target.value) || 0)
@@ -689,7 +729,7 @@ export default function PurchaseOrderForm({ purchaseOrderId }: PurchaseOrderForm
 
                       {/* Remove Button */}
                       <td className="py-2 pl-2 text-center">
-                        {lines.length > 1 && (
+                        {lines.length > 1 && !originRequisition && (
                           <button
                             type="button"
                             onClick={() => handleRemoveLine(l.tempId)}

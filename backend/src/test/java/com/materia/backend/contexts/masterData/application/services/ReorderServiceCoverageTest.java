@@ -7,7 +7,6 @@ import com.materia.backend.contexts.masterData.domain.events.MaterialBelowReorde
 import com.materia.backend.contexts.masterData.domain.events.MaterialReorderedEvent;
 import com.materia.backend.contexts.purchaseRequisition.application.services.RequisitionService;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -44,6 +43,7 @@ class ReorderServiceCoverageTest {
     void setUp() {
         reorder = new ReorderService(materials, stock, notifications, requisitions, events);
         when(requisitions.createRequisitionFromReorder(any(), anyInt(), anyString(), anyBoolean())).thenReturn("req-1");
+        when(requisitions.createRequisitionFromReorder(any(), anyInt(), anyString(), anyBoolean(), any())).thenReturn("req-1");
     }
 
     private Material stored(Material m) {
@@ -84,7 +84,7 @@ class ReorderServiceCoverageTest {
                 2, 20, 5, null, StockStatus.CRITICAL));
 
         verify(requisitions).createRequisitionFromReorder(eq(m), anyInt(), anyString(), eq(true));
-        assertTrue(m.getStockOnOrder() > 0);
+        assertEquals(0, m.getStockOnOrder(), "stock on order is recorded by the purchase order, not the requisition");
         verify(events).publishEvent(any(MaterialReorderedEvent.class));
         verify(notifications).sendAlert(anyString(), contains("automatique"), contains("OUI"));
     }
@@ -98,7 +98,7 @@ class ReorderServiceCoverageTest {
 
         assertEquals("req-1", reorder.triggerManualReorder(m.getId(), null, "Customer rush"));
 
-        verify(requisitions).createRequisitionFromReorder(eq(m), eq(100), eq("Customer rush"), eq(false));
+        verify(requisitions).createRequisitionFromReorder(eq(m), eq(100), eq("Customer rush"), eq(false), isNull());
     }
 
     @Test
@@ -107,12 +107,12 @@ class ReorderServiceCoverageTest {
         Material withEoq = stored(aMaterial().stock(50).reorderPoint(20).build());
         withEoq.setEconomicOrderQuantity(40);
         reorder.triggerManualReorder(withEoq.getId(), 0, " ");
-        verify(requisitions).createRequisitionFromReorder(eq(withEoq), eq(40), contains("manuel"), eq(false));
+        verify(requisitions).createRequisitionFromReorder(eq(withEoq), eq(40), contains("manuel"), eq(false), isNull());
 
         Material noEoq = stored(aMaterial().stock(50).reorderPoint(20).build());
         noEoq.setEconomicOrderQuantity(null);
         reorder.triggerManualReorder(noEoq.getId(), null, null);
-        verify(requisitions).createRequisitionFromReorder(eq(noEoq), eq(100), anyString(), eq(false));
+        verify(requisitions).createRequisitionFromReorder(eq(noEoq), eq(100), anyString(), eq(false), isNull());
     }
 
     @Test
@@ -122,10 +122,11 @@ class ReorderServiceCoverageTest {
 
         reorder.triggerManualReorder(m.getId(), 12, null);
 
-        verify(requisitions).createRequisitionFromReorder(eq(m), eq(12), contains("manuel"), eq(true));
+        verify(requisitions).createRequisitionFromReorder(eq(m), eq(12), contains("manuel"), eq(true), isNull());
         ArgumentCaptor<MaterialReorderedEvent> event = ArgumentCaptor.forClass(MaterialReorderedEvent.class);
         verify(events).publishEvent(event.capture());
-        assertEquals(12, m.getStockOnOrder());
+        assertEquals(12, event.getValue().getReorderQuantity());
+        assertEquals(0, m.getStockOnOrder(), "stock on order is recorded by the purchase order, not the requisition");
     }
 
     // ---- Nightly ----
@@ -156,7 +157,6 @@ class ReorderServiceCoverageTest {
     }
 
     @Test
-    @Disabled("F-020: Collectors.groupingBy rejects a null supplier id, so one supplier-less material crashes the whole nightly job")
     @DisplayName("F-020: a material without a supplier gets its own requisition during the nightly check")
     void nightly_materialWithoutSupplier_getsOwnRequisition() {
         Material lone = aMaterial().stock(15).reorderPoint(20).safety(5).build();
@@ -169,14 +169,29 @@ class ReorderServiceCoverageTest {
     }
 
     @Test
-    @DisplayName("F-020 observation: a material without a supplier currently makes the nightly job fail")
-    void nightly_materialWithoutSupplier_observedFailure() {
-        Material lone = aMaterial().stock(15).reorderPoint(20).safety(5).build();
-        lone.setSupplierId(null);
-        when(materials.findByStatus(MaterialStatus.ACTIVE)).thenReturn(List.of(lone));
+    @DisplayName("automatic reorder: a material with a requisition already in progress gets no second one, by event or at night")
+    void openRequisition_preventsASecondOne() {
+        Material m = stored(aMaterial().stock(2).reorderPoint(20).safety(5).build());
+        when(requisitions.hasOpenRequisitionFor(eq(m.getId()), any())).thenReturn(true);
+        when(materials.findByStatus(MaterialStatus.ACTIVE)).thenReturn(List.of(m));
 
-        assertThrows(NullPointerException.class, () -> reorder.nightlyReorderCheck(),
-                "F-020 appears fixed: re-enable nightly_materialWithoutSupplier_getsOwnRequisition");
+        reorder.onMaterialBelowReorderPoint(new MaterialBelowReorderPointEvent(m.getId(), "MAT-1", "Bolts",
+                2, 20, 5, null, StockStatus.CRITICAL));
+        reorder.nightlyReorderCheck();
+
+        verify(requisitions, never()).createRequisitionFromReorder(any(), anyInt(), anyString(), anyBoolean());
+        verify(requisitions, never()).createGroupedRequisition(any(), any());
+    }
+
+    @Test
+    @DisplayName("manual reorder: the user who clicked becomes the requester, even when a requisition is already in progress")
+    void manualReorder_requesterIsTheUser() {
+        Material m = stored(aMaterial().stock(10).reorderPoint(20).safety(5).build());
+        when(requisitions.hasOpenRequisitionFor(any(), any())).thenReturn(true);
+
+        reorder.triggerManualReorder(m.getId(), 12, "rush", "user-7");
+
+        verify(requisitions).createRequisitionFromReorder(eq(m), eq(12), eq("rush"), anyBoolean(), eq("user-7"));
     }
 
     // ---- Stock domain service ----

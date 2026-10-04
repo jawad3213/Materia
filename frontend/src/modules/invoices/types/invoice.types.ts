@@ -6,16 +6,16 @@ export type InvoiceStatus = "DRAFT" | "SUBMITTED" | "VERIFIED" | "PAID" | "CANCE
 export type InvoiceType = "STANDARD" | "CREDIT_NOTE";
 
 export const INVOICE_STATUS_LABELS: Record<InvoiceStatus, string> = {
-  DRAFT: "Brouillon",
-  SUBMITTED: "Soumise",
-  VERIFIED: "Vérifiée",
-  PAID: "Payée",
-  CANCELLED: "Annulée",
+  DRAFT: "Draft",
+  SUBMITTED: "Submitted",
+  VERIFIED: "Verified",
+  PAID: "Paid",
+  CANCELLED: "Cancelled",
 };
 
 export const INVOICE_TYPE_LABELS: Record<InvoiceType, string> = {
-  STANDARD: "Facture",
-  CREDIT_NOTE: "Avoir",
+  STANDARD: "Invoice",
+  CREDIT_NOTE: "Credit Note",
 };
 
 /** Invoices that can still be edited (backend InvoiceStatus.isModifiable). */

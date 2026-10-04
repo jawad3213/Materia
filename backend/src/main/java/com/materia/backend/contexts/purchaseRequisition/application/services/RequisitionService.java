@@ -22,6 +22,7 @@ import com.materia.backend.contexts.purchaseRequisition.domain.exceptions.Requis
 import com.materia.backend.contexts.purchaseRequisition.domain.exceptions.RequisitionNotFoundException;
 import com.materia.backend.contexts.purchaseRequisition.domain.enums.RequisitionStatus;
 import com.materia.backend.contexts.purchaseRequisition.domain.ports.in.RequisitionUseCase;
+import com.materia.backend.contexts.purchaseRequisition.domain.ports.out.RequesterDirectory;
 import com.materia.backend.contexts.purchaseRequisition.domain.ports.out.RequisitionRepository;
 import com.materia.backend.contexts.purchaseRequisition.domain.valueObjects.RequisitionSearchFilter;
 import org.springframework.stereotype.Service;
@@ -46,17 +47,33 @@ public class RequisitionService implements RequisitionUseCase {
     private final RequisitionMapper mapper;
     private final RequisitionCodeGeneratorService codeGenerator;
     private final ExchangeRateService exchangeRateService;
+    private final RequesterDirectory requesterDirectory;
+
+    /** Requester recorded on requisitions raised by the automatic replenishment (no user involved). */
+    public static final String SYSTEM_REQUESTER_ID = "SYSTEM";
+    public static final String SYSTEM_REQUESTER_NAME = "Réapprovisionnement automatique";
 
     public RequisitionService(RequisitionRepository requisitionRepository,
                               MaterialRepository materialRepository,
                               RequisitionMapper mapper,
                               RequisitionCodeGeneratorService codeGenerator,
                               ExchangeRateService exchangeRateService) {
+        this(requisitionRepository, materialRepository, mapper, codeGenerator, exchangeRateService, null);
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public RequisitionService(RequisitionRepository requisitionRepository,
+                              MaterialRepository materialRepository,
+                              RequisitionMapper mapper,
+                              RequisitionCodeGeneratorService codeGenerator,
+                              ExchangeRateService exchangeRateService,
+                              RequesterDirectory requesterDirectory) {
         this.requisitionRepository = requisitionRepository;
         this.materialRepository = materialRepository;
         this.mapper = mapper;
         this.codeGenerator = codeGenerator;
         this.exchangeRateService = exchangeRateService;
+        this.requesterDirectory = requesterDirectory;
     }
 
     @Override
@@ -234,7 +251,7 @@ public class RequisitionService implements RequisitionUseCase {
     @Transactional
     public RequisitionOutput approve(UUID id, String approverId, String approverName, String notes) {
         Requisition requisition = getEntityById(id);
-        requisition.approve(approverId, approverName, notes);
+        requisition.approve(approverId, nameOf(approverId, approverName), notes);
         return mapper.toResponse(requisitionRepository.save(requisition));
     }
 
@@ -242,7 +259,7 @@ public class RequisitionService implements RequisitionUseCase {
     @Transactional
     public RequisitionOutput reject(UUID id, String approverId, String approverName, String reason) {
         Requisition requisition = getEntityById(id);
-        requisition.reject(approverId, approverName, reason);
+        requisition.reject(approverId, nameOf(approverId, approverName), reason);
         return mapper.toResponse(requisitionRepository.save(requisition));
     }
 
@@ -345,9 +362,21 @@ public class RequisitionService implements RequisitionUseCase {
         return codeGenerator.generateCode();
     }
 
+    /** A requisition raised by the automatic replenishment: the requester is the system. */
     @Transactional
     public String createRequisitionFromReorder(Material material, int quantity, String reason, boolean isUrgent) {
+        return createRequisitionFromReorder(material, quantity, reason, isUrgent, null);
+    }
+
+    /**
+     * A replenishment requisition. A user who asked for it (one-click reorder) is its requester, named from
+     * their account; without one, the system is. The database requires a requester on every requisition.
+     */
+    @Transactional
+    public String createRequisitionFromReorder(Material material, int quantity, String reason, boolean isUrgent,
+                                               String requesterId) {
         Requisition requisition = new Requisition();
+        applyRequester(requisition, requesterId);
         requisition.setTitle((isUrgent ? "[URGENT] " : "") + "Reorder for " + material.getName());
         requisition.setDescription("Auto-generated reorder requisition: " + reason);
         requisition.setJustification(reason != null && !reason.isBlank() ? reason : "Automated stock reorder");
@@ -368,6 +397,7 @@ public class RequisitionService implements RequisitionUseCase {
     @Transactional
     public String createGroupedRequisition(String supplierId, List<RequisitionLine> lines) {
         Requisition requisition = new Requisition();
+        applyRequester(requisition, null);
         requisition.setTitle("Grouped replenishment for supplier " + supplierId);
         requisition.setDescription("Auto-generated grouped replenishment requisition for supplier: " + supplierId);
         requisition.setJustification("Nightly automated stock replenishment");
@@ -384,5 +414,66 @@ public class RequisitionService implements RequisitionUseCase {
         
         Requisition saved = requisitionRepository.save(requisition);
         return saved.getRequisitionCode() != null ? saved.getRequisitionCode().getValue() : saved.getId().toString();
+    }
+
+    /** The account name of a user, when the caller only knows their id (the controller passes the principal). */
+    private String nameOf(String userId, String givenName) {
+        if (requesterDirectory == null || userId == null || (givenName != null && !givenName.equals(userId))) {
+            return givenName;
+        }
+        return requesterDirectory.displayName(userId);
+    }
+
+    private void applyRequester(Requisition requisition, String requesterId) {
+        boolean byUser = requesterId != null && !requesterId.isBlank();
+        String id = byUser ? requesterId : SYSTEM_REQUESTER_ID;
+        String name = byUser
+                ? (requesterDirectory != null ? requesterDirectory.displayName(requesterId) : requesterId)
+                : SYSTEM_REQUESTER_NAME;
+        requisition.setRequesterId(id);
+        requisition.setRequesterName(name);
+        requisition.setCreatedBy(id);
+    }
+
+    /**
+     * Whether a requisition still in progress (draft, submitted or approved) already asks for this material,
+     * so the automatic replenishment does not raise a second one. Once converted, the order counts as stock on order.
+     */
+    @Transactional(readOnly = true)
+    public boolean hasOpenRequisitionFor(UUID materialId, String materialCode) {
+        for (RequisitionStatus status : List.of(RequisitionStatus.DRAFT, RequisitionStatus.SUBMITTED, RequisitionStatus.APPROVED)) {
+            for (Requisition requisition : requisitionRepository.findByStatus(status)) {
+                if (requisition.getLines() == null) continue;
+                for (RequisitionLine line : requisition.getLines()) {
+                    boolean sameId = materialId != null && materialId.equals(line.getMaterialId());
+                    boolean sameCode = materialCode != null && materialCode.equals(line.getMaterialCode());
+                    if (sameId || sameCode) return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    @Override
+    @Transactional
+    public RequisitionOutput recordReceipt(UUID requisitionId, UUID requisitionLineId, int accepted, int rejected) {
+        Requisition requisition = getEntityById(requisitionId);
+        RequisitionLine line = requisition.getLines().stream()
+                .filter(l -> requisitionLineId != null && requisitionLineId.equals(l.getId()))
+                .findFirst()
+                .orElse(null);
+        if (line == null || line.getQuantity() == null) {
+            return mapper.toResponse(requisition);
+        }
+        int quantity = line.getQuantity();
+        int received = Math.min(quantity, value(line.getQuantityReceived()) + Math.max(0, accepted));
+        int refused = Math.min(quantity - received, value(line.getQuantityRejected()) + Math.max(0, rejected));
+        line.receiveQuantity(received, refused);
+        requisition.setUpdatedAt(LocalDateTime.now());
+        return mapper.toResponse(requisitionRepository.save(requisition));
+    }
+
+    private static int value(Integer quantity) {
+        return quantity != null ? quantity : 0;
     }
 }

@@ -11,7 +11,7 @@ export default function InvoicesRoutes() {
       <Route
         path="create"
         element={
-          <RoleGuard allowedRoles={["ADMIN", "PURCHASER"]}>
+          <RoleGuard allowedRoles={["ADMIN"]} fallbackPath="/invoices">
             <CreateInvoicePage />
           </RoleGuard>
         }

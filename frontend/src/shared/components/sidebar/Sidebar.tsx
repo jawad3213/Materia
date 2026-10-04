@@ -98,7 +98,7 @@ const menuSections: MenuSection[] = [
         submenu: [
           { title: 'Requisitions List', path: '/requisitions' },
           { title: 'Create Requisition', path: '/requisitions/create' },
-          { title: 'Approvals Portal', path: '/requisitions/approvals' },
+          { title: 'Approvals Portal', path: '/requisitions/approvals', roles: ['ADMIN'] },
         ],
       },
       {
@@ -118,6 +118,17 @@ const menuSections: MenuSection[] = [
         path: '/goods-receipts',
         roles: ['ADMIN', 'PURCHASER', 'RECEIVER'],
       },
+      {
+        title: 'Vendor Returns',
+        menuKey: 'returns',
+        icon: ArrowRightIcon,
+        path: '/returns',
+        roles: ['ADMIN', 'PURCHASER', 'RECEIVER'],
+        submenu: [
+          { title: 'Returns List', path: '/returns' },
+          { title: 'New Return', path: '/returns/create' },
+        ],
+      },
     ],
   },
   {
@@ -126,22 +137,23 @@ const menuSections: MenuSection[] = [
     items: [
       {
         title: 'Invoices',
+        menuKey: 'invoices',
         icon: DollarLineIcon,
         path: '/invoices',
         submenu: [
           { title: 'Invoices List', path: '/invoices' },
-          { title: 'Record Invoice', path: '/invoices/create' },
+          { title: 'Record Invoice', path: '/invoices/create', roles: ['ADMIN'] },
         ],
       },
       {
         title: 'Payments',
+        menuKey: 'payments',
         icon: CheckCircleIcon,
         path: '/payments',
-      },
-      {
-        title: 'Vendor Returns',
-        icon: ArrowRightIcon,
-        path: '/returns',
+        submenu: [
+          { title: 'Payments List', path: '/payments' },
+          { title: 'New Payment', path: '/payments/create', roles: ['ADMIN'] },
+        ],
       },
     ],
   },

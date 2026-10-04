@@ -9,6 +9,10 @@ import { deriveQualityStatus, lineError, toDrafts, type ReceiptLineDraft } from 
 import Button from "../../../shared/components/ui/button/Button";
 import useAuth from "../../auth/hooks/useAuth";
 import { getApiErrorMessage } from "../../../shared/utils/apiError";
+import Label from "../../../shared/components/form/Label";
+import TextArea from "../../../shared/components/form/input/TextArea";
+import { FloatingToast, FormCard, FormSection } from "../../../shared/components/page/DetailParts";
+import { SELECT_CLASS } from "../../../shared/components/page/pageStyles";
 
 export default function GoodsReceiptForm() {
   const navigate = useNavigate();
@@ -53,18 +57,18 @@ export default function GoodsReceiptForm() {
         if (cancelled) return;
         const loaded = orderRes.data;
         if (!RECEIVABLE_STATUSES.includes(loaded.status)) {
-          setError("Cette commande n'est pas prête pour la réception.");
+          setError("This order is not ready for receipt.");
           return;
         }
         if (loaded.assignedTo !== user?.id) {
-          setError("Vous n'êtes pas assigné à la réception de cette commande.");
+          setError("You are not assigned to receive this order.");
           return;
         }
         setOrder(loaded);
         setLines(toDrafts(loaded, receiptsRes.data));
       })
       .catch((err) => {
-        if (!cancelled) setError(getApiErrorMessage(err, "Impossible de charger la commande."));
+        if (!cancelled) setError(getApiErrorMessage(err, "Could not load the purchase order."));
       })
       .finally(() => {
         if (!cancelled) setLoadingOrder(false);
@@ -91,11 +95,11 @@ export default function GoodsReceiptForm() {
 
     const received = lines.filter((l) => l.received > 0);
     if (received.length === 0) {
-      setError("Saisissez au moins une quantité reçue.");
+      setError("Enter at least one received quantity.");
       return;
     }
     if (lines.some((l) => lineError(l))) {
-      setError("Corrigez les lignes signalées avant d'enregistrer.");
+      setError("Fix the highlighted lines before saving.");
       return;
     }
 
@@ -124,7 +128,7 @@ export default function GoodsReceiptForm() {
             state: {
               error: getApiErrorMessage(
                 completeErr,
-                "La réception a été enregistrée en brouillon mais n'a pas pu être validée."
+                "The receipt was saved as a draft but could not be validated."
               ),
             },
           });
@@ -134,43 +138,30 @@ export default function GoodsReceiptForm() {
       navigate(`/goods-receipts/${created.data.id}`);
     } catch (err) {
       console.error("Failed to save goods receipt:", err);
-      setError(getApiErrorMessage(err, "Échec de l'enregistrement de la réception."));
+      setError(getApiErrorMessage(err, "Saving the goods receipt failed."));
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      <div className="flex items-center justify-between bg-white dark:bg-gray-900 p-6 rounded-2xl border border-gray-200 dark:border-white/[0.07] shadow-sm">
-        <div>
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white">Nouvelle réception</h2>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            Saisissez les quantités reçues et rejetées. La validation met à jour le stock et la commande.
-          </p>
-        </div>
-        <Link to={order ? `/purchase-orders/${order.id}` : "/goods-receipts"}>
-          <Button variant="outline" size="sm">
-            Annuler
-          </Button>
-        </Link>
-      </div>
+    <>
+      <FloatingToast feedback={error ? { type: "error", text: error } : null} onClose={() => setError(null)} />
 
-      {error && (
-        <div className="p-4 rounded-xl bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-400 text-xs border border-red-200 dark:border-red-500/20">
-          {error}
-        </div>
-      )}
-
-      <div className="bg-white dark:bg-gray-900 p-6 rounded-2xl border border-gray-200 dark:border-white/[0.07] shadow-sm space-y-4">
-        <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 space-y-1.5">
-          <span>Commande à réceptionner</span>
-          <select
-            value={selectedOrderId}
-            onChange={(e) => handleSelectOrder(e.target.value)}
-            className="w-full rounded-xl border border-gray-200 dark:border-white/[0.1] bg-white dark:bg-gray-800 px-3 py-2 text-xs text-gray-800 dark:text-white focus:border-brand-500 focus:outline-none"
-          >
-            <option value="">Sélectionnez une commande qui vous est assignée</option>
+      <FormCard title="Create Goods Receipt">
+        <FormSection
+          title="Purchase Order"
+          aside={
+            <Link to={order ? `/purchase-orders/${order.id}` : "/goods-receipts"}>
+              <Button variant="outline" size="sm">
+                Cancel
+              </Button>
+            </Link>
+          }
+        >
+          <Label>Order to receive *</Label>
+          <select value={selectedOrderId} onChange={(e) => handleSelectOrder(e.target.value)} className={SELECT_CLASS}>
+            <option value="">Select an order assigned to you</option>
             {assignedOrders.map((o) => (
               <option key={o.id} value={o.id}>
                 {o.orderCode} — {o.supplierName}
@@ -182,46 +173,44 @@ export default function GoodsReceiptForm() {
               </option>
             )}
           </select>
-        </label>
-
-        {loadingOrder && <p className="text-xs text-gray-500">Chargement de la commande...</p>}
-
-        {order && lines.length === 0 && (
-          <p className="text-xs text-gray-500">Toutes les quantités de cette commande ont déjà été reçues.</p>
-        )}
+          <p className="mt-1.5 text-theme-xs text-gray-500 dark:text-gray-400">
+            Enter received and rejected quantities. Validating updates stock and the purchase order.
+          </p>
+          {loadingOrder && <p className="mt-3 text-sm text-gray-500">Loading purchase order...</p>}
+          {order && lines.length === 0 && (
+            <p className="mt-3 text-sm text-gray-500">Every quantity on this order has already been received.</p>
+          )}
+        </FormSection>
 
         {order && lines.length > 0 && (
-          <div className="space-y-3">
-            {lines.map((line, index) => (
-              <GoodsReceiptLine
-                key={line.purchaseOrderLineId}
-                line={line}
-                onChange={(updated) => updateLine(index, updated)}
-              />
-            ))}
+          <>
+            <FormSection title="Received Lines">
+              <div className="space-y-4">
+                {lines.map((line, index) => (
+                  <GoodsReceiptLine
+                    key={line.purchaseOrderLineId}
+                    line={line}
+                    onChange={(updated) => updateLine(index, updated)}
+                  />
+                ))}
+              </div>
+            </FormSection>
 
-            <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 space-y-1.5">
-              <span>Observations</span>
-              <textarea
-                rows={2}
-                maxLength={1000}
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                className="w-full rounded-xl border border-gray-200 dark:border-white/[0.1] bg-white dark:bg-gray-800 px-3 py-2 text-xs text-gray-800 dark:text-white focus:border-brand-500 focus:outline-none"
-              />
-            </label>
+            <FormSection title="Notes">
+              <TextArea rows={3} value={notes} onChange={setNotes} placeholder="Remarks about the delivery" />
+            </FormSection>
 
-            <div className="flex justify-end gap-2 pt-3 border-t border-gray-100 dark:border-white/[0.05]">
-              <Button variant="outline" size="sm" onClick={() => submit(false)} disabled={submitting}>
-                Enregistrer en brouillon
+            <div className="flex justify-end gap-3 border-t border-gray-100 pt-6 dark:border-gray-800">
+              <Button variant="outline" onClick={() => submit(false)} disabled={submitting}>
+                Save as Draft
               </Button>
-              <Button size="sm" onClick={() => submit(true)} disabled={submitting}>
-                {submitting ? "Enregistrement..." : "Valider la réception"}
+              <Button onClick={() => submit(true)} disabled={submitting}>
+                {submitting ? "Saving..." : "Validate Receipt"}
               </Button>
             </div>
-          </div>
+          </>
         )}
-      </div>
-    </div>
+      </FormCard>
+    </>
   );
 }

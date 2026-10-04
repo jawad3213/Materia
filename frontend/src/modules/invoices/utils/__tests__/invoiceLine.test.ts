@@ -127,11 +127,11 @@ describe("totals", () => {
 describe("lineError", () => {
   it("rule: negative or non-numeric quantity, price or tax blocks saving", () => {
     expect(lineError(draft())).toBeNull();
-    expect(lineError(draft({ invoiced: -1 }))).toMatch(/quantité/);
-    expect(lineError(draft({ invoiced: Number.NaN }))).toMatch(/quantité/);
-    expect(lineError(draft({ invoiced: 2.5 }))).toMatch(/entier/);
-    expect(lineError(draft({ unitPrice: -0.01 }))).toMatch(/prix/);
-    expect(lineError(draft({ taxAmount: -1 }))).toMatch(/taxe/);
+    expect(lineError(draft({ invoiced: -1 }))).toMatch(/quantity/);
+    expect(lineError(draft({ invoiced: Number.NaN }))).toMatch(/quantity/);
+    expect(lineError(draft({ invoiced: 2.5 }))).toMatch(/whole/);
+    expect(lineError(draft({ unitPrice: -0.01 }))).toMatch(/price/);
+    expect(lineError(draft({ taxAmount: -1 }))).toMatch(/tax/);
   });
 });
 
@@ -146,7 +146,7 @@ describe("lineWarnings (three-way match)", () => {
   });
 
   it("rule: a unit price different from the order is flagged, but not on a line billed at zero", () => {
-    expect(lineWarnings(draft({ unitPrice: 5.5 }))[0]).toMatch(/Prix unitaire/);
+    expect(lineWarnings(draft({ unitPrice: 5.5 }))[0]).toMatch(/Unit price/);
     expect(lineWarnings(draft({ unitPrice: 5.5, invoiced: 0 }))).toEqual([]);
   });
 });
@@ -183,8 +183,8 @@ describe("dates and formatting", () => {
   });
 
   it("rule: amounts show two decimals and the currency, accepting numbers or strings", () => {
-    expect(formatAmount(1234.5, "MAD").replace(/\s/g, " ")).toBe("1 234,50 MAD");
-    expect(formatAmount("12.3 MAD")).toBe("12,30");
-    expect(formatAmount(null, "EUR")).toBe("0,00 EUR");
+    expect(formatAmount(1234.5, "MAD")).toBe("1,234.50 MAD");
+    expect(formatAmount("12.3 MAD")).toBe("12.30");
+    expect(formatAmount(null, "EUR")).toBe("0.00 EUR");
   });
 });

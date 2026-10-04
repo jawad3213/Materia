@@ -6,6 +6,8 @@ import RequisitionsRoutes from '../../modules/requisitions/RequisitionsRoutes';
 import PurchaseOrdersRoutes from '../../modules/purchaseOrders/PurchaseOrdersRoutes';
 import GoodsReceiptsRoutes from '../../modules/goodsReceipts/GoodsReceiptsRoutes';
 import InvoicesRoutes from '../../modules/invoices/InvoicesRoutes';
+import PaymentsRoutes from '../../modules/payments/PaymentsRoutes';
+import ReturnToVendorRoutes from '../../modules/returnToVendor/ReturnToVendorRoutes';
 import UsersRoutes from '../../modules/users/UsersRoutes';
 import DashboardPage from '../../modules/dashboard/pages/DashboardPage';
 import ProfilePage from '../../modules/userProfile/pages/ProfilePage';
@@ -134,8 +136,22 @@ export default function AppRoutes() {
             </RoleGuard>
           }
         />
-        <Route path="/approvals" element={<Navigate to="/requisitions/approvals" replace />} />
-        <Route path="/approvals/*" element={<Navigate to="/requisitions/approvals" replace />} />
+        <Route
+          path="/approvals"
+          element={
+            <RoleGuard allowedRoles={['ADMIN']} fallbackPath="/requisitions">
+              <Navigate to="/requisitions/approvals" replace />
+            </RoleGuard>
+          }
+        />
+        <Route
+          path="/approvals/*"
+          element={
+            <RoleGuard allowedRoles={['ADMIN']} fallbackPath="/requisitions">
+              <Navigate to="/requisitions/approvals" replace />
+            </RoleGuard>
+          }
+        />
         
         {/* Purchase Orders: receivers can view the orders they receive; creation and editing are guarded inside */}
         <Route
@@ -157,12 +173,32 @@ export default function AppRoutes() {
           }
         />
 
+        {/* Vendor returns: every procurement role sends rejected goods back (return:read / return:write) */}
+        <Route
+          path="/returns/*"
+          element={
+            <RoleGuard allowedRoles={['ADMIN', 'PURCHASER', 'RECEIVER']}>
+              <ReturnToVendorRoutes />
+            </RoleGuard>
+          }
+        />
+
         {/* Invoices: purchasers record and submit, administrators verify and pay */}
         <Route
           path="/invoices/*"
           element={
             <RoleGuard allowedRoles={['ADMIN', 'PURCHASER']}>
               <InvoicesRoutes />
+            </RoleGuard>
+          }
+        />
+
+        {/* Payments: administrators pay verified invoices, purchasers consult */}
+        <Route
+          path="/payments/*"
+          element={
+            <RoleGuard allowedRoles={['ADMIN', 'PURCHASER']}>
+              <PaymentsRoutes />
             </RoleGuard>
           }
         />

@@ -102,7 +102,6 @@ class InvoiceControllerTest extends AbstractWebMvcTest {
                 new Endpoint("search", HttpMethod.GET, BASE + "/search/keyword?keyword=acme", null, "invoice:read"),
                 new Endpoint("submit", HttpMethod.PATCH, BASE + "/" + ID + "/submit", Map.of(), "invoice:write"),
                 new Endpoint("verify", HttpMethod.PATCH, BASE + "/" + ID + "/verify", Map.of("userName", "Ada"), "invoice:validate"),
-                new Endpoint("pay", HttpMethod.PATCH, BASE + "/" + ID + "/pay", Map.of("amount", 32.0, "userName", "Ada"), "payment:write"),
                 new Endpoint("cancel", HttpMethod.PATCH, BASE + "/" + ID + "/cancel", Map.of("reason", "Duplicate"), "invoice:write")
         );
     }
@@ -196,10 +195,6 @@ class InvoiceControllerTest extends AbstractWebMvcTest {
         mockMvc.perform(as("ADMIN", call(HttpMethod.PATCH, BASE + "/" + ID + "/verify", null))).andExpect(status().isOk());
         verify(useCase, times(2)).verify(ID, "user-ADMIN");
 
-        mockMvc.perform(as("ADMIN", call(HttpMethod.PATCH, BASE + "/" + ID + "/pay",
-                Map.of("amount", 32.0, "userId", "someone-else", "userName", "Forged Name")))).andExpect(status().isOk());
-        verify(useCase).pay(ID, "user-ADMIN", 32.0);
-
         mockMvc.perform(as("PURCHASER", call(HttpMethod.PATCH, BASE + "/" + ID + "/cancel",
                 Map.of("reason", "Duplicate", "userId", "someone-else")))).andExpect(status().isOk());
         verify(useCase).cancel(ID, "user-PURCHASER", "Duplicate");
@@ -243,9 +238,19 @@ class InvoiceControllerTest extends AbstractWebMvcTest {
         when(useCase.getById(missing)).thenThrow(new InvoiceNotFoundException(missing.toString()));
         mockMvc.perform(as("PURCHASER", call(HttpMethod.GET, BASE + "/" + missing, null))).andExpect(status().isNotFound());
 
-        when(useCase.pay(eq(ID), anyString(), anyDouble()))
-                .thenThrow(new InvoiceValidationException("amount", "Le montant payé doit être positif"));
-        mockMvc.perform(as("ADMIN", call(HttpMethod.PATCH, BASE + "/" + ID + "/pay", Map.of("amount", 1.0))))
+        when(useCase.cancel(eq(ID), anyString(), anyString()))
+                .thenThrow(new InvoiceValidationException("reason", "Le motif est trop long"));
+        mockMvc.perform(as("PURCHASER", call(HttpMethod.PATCH, BASE + "/" + ID + "/cancel", Map.of("reason", "x"))))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("payment: invoices are paid only through the payments module; there is no invoice pay endpoint")
+    void noDirectPayEndpoint() throws Exception {
+        int status = mockMvc.perform(as("ADMIN", call(HttpMethod.PATCH, BASE + "/" + ID + "/pay", Map.of("amount", 1.0))))
+                .andReturn().getResponse().getStatus();
+
+        assertTrue(status == 404 || status == 405, () -> "expected no such endpoint, got " + status);
+        verify(useCase, never()).pay(any(), any(), any());
     }
 }

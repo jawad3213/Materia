@@ -62,10 +62,10 @@ describe("useInvoicePermissions follows Role.java and the invoice workflow", () 
   });
 
   for (const role of Object.keys(EXPECTED) as Role[]) {
-    it(`rule: ${role} ${role === "RECEIVER" ? "cannot" : "can"} record invoices`, () => {
+    it(`rule: ${role} ${role === "ADMIN" ? "can" : "cannot"} record invoices`, () => {
       signInAs(role);
       const { result } = renderHook(() => useInvoicePermissions());
-      expect(result.current.canRecord).toBe(role !== "RECEIVER");
+      expect(result.current.canRecord).toBe(role === "ADMIN");
     });
 
     for (const [action, allowed] of Object.entries(EXPECTED[role])) {

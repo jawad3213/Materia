@@ -162,7 +162,7 @@ class MaterialStockControllerTest extends AbstractWebMvcTest {
     @Test
     @DisplayName("manual reorder: raises a requisition, with or without a request body")
     void manualReorder_withAndWithoutBody() throws Exception {
-        when(useCase.triggerReorder(eq(id), any(), any()))
+        when(useCase.triggerReorder(eq(id), any(), any(), any()))
                 .thenReturn(new ManualReorderOutput(id, "MAT-2026-0001", "req-1", 40, "created"));
 
         mockMvc.perform(post(BASE + "/{id}/reorder", id).contentType(MediaType.APPLICATION_JSON)
@@ -171,8 +171,9 @@ class MaterialStockControllerTest extends AbstractWebMvcTest {
                 .andExpect(jsonPath("$.message").value("created"));
         mockMvc.perform(post(BASE + "/{id}/reorder", id)).andExpect(status().isOk());
 
-        verify(useCase).triggerReorder(id, 40, "top up");
-        verify(useCase).triggerReorder(id, null, null);
+        // The requester is the signed-in user, passed through to the requisition.
+        verify(useCase).triggerReorder(eq(id), eq(40), eq("top up"), any());
+        verify(useCase).triggerReorder(eq(id), isNull(), isNull(), any());
     }
 
     @Test

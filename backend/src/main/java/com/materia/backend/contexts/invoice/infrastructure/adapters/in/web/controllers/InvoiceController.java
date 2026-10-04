@@ -7,7 +7,6 @@ import com.materia.backend.contexts.invoice.domain.enums.InvoiceStatus;
 import com.materia.backend.contexts.invoice.domain.ports.in.InvoiceUseCase;
 import com.materia.backend.contexts.invoice.infrastructure.adapters.in.web.dtos.invoice.CreateInvoiceWebRequest;
 import com.materia.backend.contexts.invoice.infrastructure.adapters.in.web.dtos.invoice.InvoiceCancelWebRequest;
-import com.materia.backend.contexts.invoice.infrastructure.adapters.in.web.dtos.invoice.InvoicePayWebRequest;
 import com.materia.backend.contexts.invoice.infrastructure.adapters.in.web.dtos.invoice.InvoiceWebResponse;
 import com.materia.backend.contexts.invoice.infrastructure.adapters.in.web.dtos.invoice.UpdateInvoiceWebRequest;
 import com.materia.backend.contexts.invoice.infrastructure.adapters.in.web.mappers.InvoiceWebMapper;
@@ -33,7 +32,8 @@ import java.util.UUID;
 
 /**
  * REST controller for invoices. Permissions follow Role.java: purchasers record and submit invoices
- * ({@code invoice:write}), administrators verify ({@code invoice:validate}) and pay ({@code payment:write}).
+ * ({@code invoice:write}) and administrators verify them ({@code invoice:validate}). Invoices are paid only
+ * through the payments module, which records each payment on the invoice.
  * The acting user is always the authenticated principal, and names shown on the invoice come from that
  * user's account; user ids and names sent in request bodies are ignored.
  */
@@ -154,16 +154,6 @@ public class InvoiceController {
             @PathVariable UUID id,
             Authentication authentication) {
         InvoiceOutput response = invoiceUseCase.verify(id, principal(authentication));
-        return ResponseEntity.ok(webMapper.toWebResponse(response));
-    }
-
-    @PreAuthorize("hasAuthority('payment:write')")
-    @PatchMapping("/{id}/pay")
-    public ResponseEntity<InvoiceWebResponse> payInvoice(
-            @PathVariable UUID id,
-            @Valid @RequestBody InvoicePayWebRequest webRequest,
-            Authentication authentication) {
-        InvoiceOutput response = invoiceUseCase.pay(id, principal(authentication), webRequest.getAmount());
         return ResponseEntity.ok(webMapper.toWebResponse(response));
     }
 

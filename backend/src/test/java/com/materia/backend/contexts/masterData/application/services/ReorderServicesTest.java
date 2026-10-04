@@ -129,8 +129,8 @@ class ReorderServicesTest {
     // ---- Automatic reordering (T071) ----
 
     @Test
-    @DisplayName("auto-reorder: raises a requisition and records the quantity as on order")
-    void autoReorder_raisesRequisitionAndMarksOnOrder() {
+    @DisplayName("auto-reorder: raises a requisition requested by the system; stock on order is left to the purchase order")
+    void autoReorder_raisesRequisition_onOrderLeftToThePurchaseOrder() {
         Material m = aMaterial().stock(10).reorderPoint(20).onOrder(0).build();
         when(materials.findById(m.getId())).thenReturn(Optional.of(m));
         when(requisitions.createRequisitionFromReorder(any(), anyInt(), anyString(), anyBoolean())).thenReturn("req-1");
@@ -138,8 +138,7 @@ class ReorderServicesTest {
         reorder.onMaterialBelowReorderPoint(eventFor(m));
 
         verify(requisitions).createRequisitionFromReorder(eq(m), anyInt(), anyString(), anyBoolean());
-        assertTrue(m.getStockOnOrder() > 0, "the reordered quantity must be recorded as on order");
-        verify(materials).save(m);
+        assertEquals(0, m.getStockOnOrder(), "a requisition is a request; the purchase order records the stock on order");
     }
 
     @Test
@@ -160,11 +159,11 @@ class ReorderServicesTest {
     void manualReorder_customQuantityWins() {
         Material m = aMaterial().stock(10).reorderPoint(20).build();
         when(materials.findById(m.getId())).thenReturn(Optional.of(m));
-        when(requisitions.createRequisitionFromReorder(any(), anyInt(), anyString(), anyBoolean())).thenReturn("req-7");
+        when(requisitions.createRequisitionFromReorder(any(), anyInt(), anyString(), anyBoolean(), any())).thenReturn("req-7");
 
         reorder.triggerManualReorder(m.getId(), 42, "top up");
 
-        verify(requisitions).createRequisitionFromReorder(eq(m), eq(42), eq("top up"), anyBoolean());
+        verify(requisitions).createRequisitionFromReorder(eq(m), eq(42), eq("top up"), anyBoolean(), isNull());
     }
 
     @Test
