@@ -1,1213 +1,417 @@
-import React, { useEffect, useState } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { requisitionApi } from "../services/requisitionApi";
 import purchaseOrderService from "../../purchaseOrders/services/purchaseOrderService";
-import type { CreatePurchaseOrderRequest } from "../../purchaseOrders/types";
-import { supplierApi } from "../../suppliers/services/supplierApi";
 import useAuth from "../../auth/hooks/useAuth";
 import { isOwnRequisition } from "../utils/requisitionOwnership";
+import { toPurchaseOrderRequest, type OrderSupplier } from "../utils/convertToPurchaseOrder";
 import type { Requisition } from "../types";
 import RequisitionStatusBadge from "./RequisitionStatusBadge";
 import RequisitionApprovalModal from "./RequisitionApprovalModal";
 import RequisitionCancelModal from "./RequisitionCancelModal";
 import RequisitionConvertToPoModal from "./RequisitionConvertToPoModal";
+import { formatAmount } from "../../invoices/utils/invoiceLine";
 import Button from "../../../shared/components/ui/button/Button";
 import DeleteConfirmModal from "../../../shared/components/ui/modal/DeleteConfirmModal";
+import { Table, TableBody, TableCell, TableHeader, TableRow } from "../../../shared/components/ui/table";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableRow,
-} from "../../../shared/components/ui/table";
+  BackToListButton,
+  DetailCard,
+  DetailField,
+  DetailGrid,
+  DetailHeader,
+  FloatingToast,
+  PageLoader,
+  PageNotFound,
+} from "../../../shared/components/page/DetailParts";
+import { InitialsAvatar, StackedCell } from "../../../shared/components/page/ListParts";
+import { SectionIcons } from "../../../shared/components/page/pageIcons";
+import { BODY_CELL, HEAD_CELL } from "../../../shared/components/page/pageStyles";
+import { getApiErrorMessage } from "../../../shared/utils/apiError";
+
+type Feedback = { type: "success" | "error"; text: string };
+type StepState = "done" | "current" | "failed" | "todo";
+
+const formatDate = (value?: string | null) => (value ? new Date(value).toLocaleDateString() : null);
+const formatDateTime = (value?: string | null) => (value ? new Date(value).toLocaleString() : "—");
+
+const STEP_STYLES: Record<StepState, string> = {
+  done: "bg-success-500 text-white",
+  current: "bg-brand-500 text-white ring-4 ring-brand-500/20",
+  failed: "bg-error-500 text-white",
+  todo: "bg-gray-200 text-gray-500 dark:bg-gray-800 dark:text-gray-400",
+};
+
+/** Created, submitted, reviewed, ordered: where the requisition is in its lifecycle. */
+function Progress({ requisition }: { requisition: Requisition }) {
+  const s = requisition.status;
+  const reviewed = s === "APPROVED" || s === "CONVERTED";
+  const steps: { label: string; date: string | null; state: StepState; note?: string }[] = [
+    { label: "Created", date: formatDate(requisition.createdAt), state: "done" },
+    {
+      label: "Submitted",
+      date: formatDate(requisition.submittedDate),
+      state: s === "DRAFT" ? "current" : requisition.submittedDate || s !== "CANCELLED" ? "done" : "todo",
+    },
+    {
+      label: s === "REJECTED" ? "Rejected" : "Approved",
+      date: formatDate(requisition.approvedDate),
+      state: reviewed ? "done" : s === "REJECTED" ? "failed" : s === "SUBMITTED" || s === "UNDER_REVIEW" ? "current" : "todo",
+      note: requisition.approverName || undefined,
+    },
+    {
+      label: "Ordered",
+      date: formatDate(requisition.convertedDate),
+      state: s === "CONVERTED" ? "done" : s === "APPROVED" ? "current" : "todo",
+      note: requisition.purchaseOrderCode || undefined,
+    },
+  ];
+
+  return (
+    <DetailCard title="Progress" icon={SectionIcons.check} tone={s === "REJECTED" || s === "CANCELLED" ? "error" : "brand"}>
+      {s === "CANCELLED" && (
+        <p className="mb-4 text-sm text-error-500">
+          Cancelled{requisition.cancelledDate ? ` on ${formatDate(requisition.cancelledDate)}` : ""}
+          {requisition.cancellationReason ? `: ${requisition.cancellationReason}` : "."}
+        </p>
+      )}
+      <ol className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        {steps.map((step, i) => (
+          <li key={step.label} className="flex items-start gap-3">
+            <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-semibold ${STEP_STYLES[step.state]}`}>
+              {step.state === "done" ? "✓" : step.state === "failed" ? "✕" : i + 1}
+            </span>
+            <div>
+              <p className="text-sm font-medium text-gray-800 dark:text-white/90">{step.label}</p>
+              <p className="text-theme-xs text-gray-500 dark:text-gray-400">{step.date ?? (step.state === "current" ? "In progress" : "—")}</p>
+              {step.note && <p className="text-theme-xs text-gray-500 dark:text-gray-400">{step.note}</p>}
+            </div>
+          </li>
+        ))}
+      </ol>
+    </DetailCard>
+  );
+}
 
 export default function RequisitionDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, hasPermission } = useAuth();
+  const canWrite = hasPermission("requisition:write");
+  const canValidate = hasPermission("requisition:validate");
+  const canConvertPermission = hasPermission("requisition:convert");
 
   const [requisition, setRequisition] = useState<Requisition | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
-
-  // Approval / Rejection modal state
-  const [modalState, setModalState] = useState<{
-    isOpen: boolean;
-    mode: "APPROVE" | "REJECT";
-  }>({
-    isOpen: false,
-    mode: "APPROVE",
-  });
-
-  // Cancel modal state
-  const [showCancelModal, setShowCancelModal] = useState(false);
-
-  // Convert to PO modal state
-  const [showConvertModal, setShowConvertModal] = useState(false);
-
-  // Success toast feedback
-  const [feedback, setFeedback] = useState<{
-    type: "success" | "error";
-    text: string;
-  } | null>(null);
-
-  useEffect(() => {
-    if (id) {
-      loadRequisition(id);
-    }
-  }, [id]);
-
-  const loadRequisition = async (reqId: string) => {
-    try {
-      setLoading(true);
-      setError(null);
-      const res = await requisitionApi.getById(reqId);
-      setRequisition(res.data);
-    } catch (err: any) {
-      console.error("Failed to load requisition details:", err);
-      setError(
-        err?.response?.data?.message ||
-        "Could not retrieve requisition details. Please ensure the record exists."
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleQuickSubmit = async () => {
-    if (!requisition) return;
-    try {
-      setActionLoading(true);
-      const res = await requisitionApi.submit(requisition.id, "current-user");
-      setRequisition(res.data);
-      setFeedback({
-        type: "success",
-        text: `Requisition ${res.data.requisitionCode} has been submitted for approval.`,
-      });
-    } catch (err: any) {
-      console.error("Failed to submit requisition:", err);
-      setFeedback({
-        type: "error",
-        text: err?.response?.data?.message || "Failed to submit requisition.",
-      });
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  const handleApprovalDecision = async (notesOrReason: string) => {
-    if (!requisition) return;
-    const isApprove = modalState.mode === "APPROVE";
-    try {
-      setActionLoading(true);
-      let res;
-      if (isApprove) {
-        res = await requisitionApi.approve(
-          requisition.id,
-          "manager-approver",
-          "Management Approver",
-          notesOrReason
-        );
-        setFeedback({
-          type: "success",
-          text: `Requisition ${res.data.requisitionCode} has been approved.`,
-        });
-      } else {
-        res = await requisitionApi.reject(
-          requisition.id,
-          notesOrReason,
-          "manager-approver",
-          "Management Approver"
-        );
-        setFeedback({
-          type: "success",
-          text: `Requisition ${res.data.requisitionCode} has been rejected.`,
-        });
-      }
-      setRequisition(res.data);
-      setModalState({ isOpen: false, mode: "APPROVE" });
-    } catch (err: any) {
-      console.error("Approval action failed:", err);
-      setFeedback({
-        type: "error",
-        text: err?.response?.data?.message || "Action failed.",
-      });
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  const handleCancelRequisition = async (reason: string) => {
-    if (!requisition) return;
-    try {
-      setActionLoading(true);
-      const res = await requisitionApi.cancel(requisition.id, "current-user", reason);
-      setRequisition(res.data);
-      setFeedback({
-        type: "success",
-        text: `Requisition ${res.data.requisitionCode} has been cancelled.`,
-      });
-      setShowCancelModal(false);
-    } catch (err: any) {
-      console.error("Failed to cancel requisition:", err);
-      setFeedback({
-        type: "error",
-        text: err?.response?.data?.message || "Failed to cancel requisition.",
-      });
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  const handleConvertToPo = async (selectedSupplier?: { id: string; name: string; code?: string }) => {
-    if (!requisition) return;
-    try {
-      setActionLoading(true);
-      // Resolve supplier
-      let supId = selectedSupplier?.id;
-      let supName = selectedSupplier?.name;
-      let supCode = selectedSupplier?.code;
-
-      if (!supId) {
-        const lineWithSup = requisition.lines?.find((l) => l.supplierId && l.supplierName);
-        if (lineWithSup) {
-          supId = lineWithSup.supplierId;
-          supName = lineWithSup.supplierName;
-          supCode = lineWithSup.supplierCode;
-        }
-      }
-
-      if (!supId) {
-        const supList = await supplierApi.getAllUnpaginated();
-        if (supList.data && supList.data.length > 0) {
-          supId = supList.data[0].id;
-          supName = supList.data[0].name;
-          supCode = supList.data[0].code;
-        }
-      }
-
-      if (!supId) {
-        setShowConvertModal(false);
-        navigate(`/purchase-orders/create?fromRequisition=${requisition.id}`);
-        return;
-      }
-
-      const poPayload: CreatePurchaseOrderRequest = {
-        requisitionId: requisition.id,
-        requisitionCode: requisition.requisitionCode,
-        supplierId: supId,
-        supplierName: supName || "Fournisseur",
-        supplierCode: supCode || undefined,
-        orderDate: new Date().toISOString().split("T")[0],
-        expectedDeliveryDate: requisition.requiredDate || undefined,
-        paymentTerms: "Virement 30 jours",
-        paymentDelayDays: 30,
-        deliveryTerms: "Livraison sur site DAP",
-        incoterm: "DAP",
-        currencyCode: requisition.currencyCode || "MAD",
-        taxAmount: 0,
-        shippingCost: 0,
-        orderedBy: user?.id || "CURRENT_USER",
-        orderedByName: user?.name || user?.email || "Acheteur",
-        notes: requisition.title + (requisition.description ? ` - ${requisition.description}` : ""),
-        lines: (requisition.lines || []).map((l, idx) => ({
-          lineNumber: idx + 1,
-          requisitionLineId: l.id,
-          materialCode: l.materialCode,
-          materialId: l.materialId || undefined,
-          materialName: l.materialName || undefined,
-          unitOfMeasure: l.unitOfMeasure || undefined,
-          quantity: Number(l.quantity) || 1,
-          unitPrice: Number(l.unitPrice) || 0,
-          currencyCode: l.currencyCode || requisition.currencyCode || "MAD",
-          expectedDeliveryDate: l.requiredDate || requisition.requiredDate || undefined,
-          notes: l.notes || undefined,
-        })),
-        createdBy: user?.email || "system",
-      };
-
-      // The backend converts the requisition in the same transaction as the order creation.
-      const createdPo = await purchaseOrderService.create(poPayload);
-      const res = await requisitionApi.getById(requisition.id);
-      setRequisition(res.data);
-      setShowConvertModal(false);
-      setFeedback({
-        type: "success",
-        text: `Demande convertie avec succès en Bon de Commande ${createdPo.data.orderCode}.`,
-      });
-    } catch (err: any) {
-      console.error("Failed to convert requisition to PO:", err);
-      setFeedback({
-        type: "error",
-        text: err?.response?.data?.message || "Échec de la conversion en bon de commande.",
-      });
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [feedback, setFeedback] = useState<Feedback | null>(null);
+  const [decision, setDecision] = useState<"APPROVE" | "REJECT" | null>(null);
+  const [showCancel, setShowCancel] = useState(false);
+  const [showConvert, setShowConvert] = useState(false);
+  const [showDelete, setShowDelete] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const handleDeleteConfirm = async () => {
+  useEffect(() => {
+    if (!id) return;
+    let cancelled = false;
+    requisitionApi
+      .getById(id)
+      .then((res) => {
+        if (!cancelled) setRequisition(res.data);
+      })
+      .catch((err) => {
+        if (!cancelled) setLoadError(getApiErrorMessage(err, "The requisition you requested does not exist."));
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+
+  const runAction = async (action: () => Promise<{ data: Requisition }>, success: (r: Requisition) => string, failure: string) => {
+    try {
+      setActionLoading(true);
+      const res = await action();
+      setRequisition(res.data);
+      setFeedback({ type: "success", text: success(res.data) });
+      return true;
+    } catch (err) {
+      setFeedback({ type: "error", text: getApiErrorMessage(err, failure) });
+      return false;
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const approverId = user?.id || "";
+  const approverName = user?.name || user?.email || "";
+
+  const handleSubmit = () =>
+    requisition &&
+    runAction(() => requisitionApi.submit(requisition.id), (r) => `Requisition ${r.requisitionCode} was submitted for approval.`, "Submitting the requisition failed.");
+
+  const handleDecision = async (notesOrReason: string) => {
+    if (!requisition || !decision) return;
+    const approve = decision === "APPROVE";
+    const done = await runAction(
+      () =>
+        approve
+          ? requisitionApi.approve(requisition.id, approverId, approverName, notesOrReason)
+          : requisitionApi.reject(requisition.id, notesOrReason, approverId, approverName),
+      (r) => `Requisition ${r.requisitionCode} was ${approve ? "approved" : "rejected"}.`,
+      approve ? "Approving the requisition failed." : "Rejecting the requisition failed."
+    );
+    if (done) setDecision(null);
+  };
+
+  const handleCancel = async (reason: string) => {
+    if (!requisition) return;
+    const res = await requisitionApi.cancel(requisition.id, undefined, reason);
+    setRequisition(res.data);
+    setFeedback({ type: "success", text: `Requisition ${res.data.requisitionCode} was cancelled.` });
+  };
+
+  const handleConvert = async (supplier: OrderSupplier) => {
+    if (!requisition) return;
+    try {
+      setActionLoading(true);
+      const created = await purchaseOrderService.create(toPurchaseOrderRequest(requisition, supplier, user));
+      setRequisition((await requisitionApi.getById(requisition.id)).data);
+      setShowConvert(false);
+      setFeedback({ type: "success", text: `Purchase order ${created.data.orderCode} was created from this requisition.` });
+    } catch (err) {
+      setFeedback({ type: "error", text: getApiErrorMessage(err, "Creating the purchase order failed.") });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleDelete = async () => {
     if (!requisition) return;
     try {
       setIsDeleting(true);
       await requisitionApi.delete(requisition.id);
       navigate("/requisitions");
-    } catch (err: any) {
-      console.error("Failed to delete requisition:", err);
-      setFeedback({
-        type: "error",
-        text: err?.response?.data?.message || "Failed to delete requisition.",
-      });
-      setShowDeleteModal(false);
-    } finally {
+    } catch (err) {
+      setFeedback({ type: "error", text: getApiErrorMessage(err, "Deleting the requisition failed.") });
+      setShowDelete(false);
       setIsDeleting(false);
     }
   };
 
-  const formatAmount = (amt: string | number | undefined, curr = "MAD") => {
-    if (amt === undefined || amt === null) return `0.00 ${curr}`;
-    const str = String(amt).trim();
-    let detectedCurr = curr;
-    if (!curr || curr === "MAD") {
-      const upper = str.toUpperCase();
-      if (upper.includes("EUR") || upper.includes("€") || upper.includes("â‚¬") || upper.includes("\u20AC")) {
-        detectedCurr = "EUR";
-      } else if (upper.includes("USD") || upper.includes("$")) {
-        detectedCurr = "USD";
-      } else if (upper.includes("MAD") || upper.includes("DH") || upper.includes("DIRHAM")) {
-        detectedCurr = "MAD";
-      }
-    }
-
-    let cleaned = str.replace(/[^0-9.,-]+/g, "");
-    if (cleaned.includes(",") && cleaned.includes(".")) {
-      if (cleaned.indexOf(",") < cleaned.indexOf(".")) {
-        cleaned = cleaned.replace(/,/g, "");
-      } else {
-        cleaned = cleaned.replace(/\./g, "").replace(/,/g, ".");
-      }
-    } else if (cleaned.includes(",")) {
-      cleaned = cleaned.replace(/,/g, ".");
-    }
-    const num = parseFloat(cleaned);
-    const validNum = isNaN(num) ? 0 : num;
-    return `${new Intl.NumberFormat("en-US", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(validNum)} ${detectedCurr}`;
-  };
-
-  if (loading) {
+  if (loading) return <PageLoader message="Loading requisition..." />;
+  if (!requisition) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 gap-3">
-        <div className="size-8 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" />
-        <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">
-          Loading purchase requisition details...
-        </span>
-      </div>
+      <PageNotFound
+        title="Requisition Not Found"
+        message={loadError || "The requisition you requested does not exist."}
+        backTo="/requisitions"
+        backLabel="Back to Requisitions"
+      />
     );
   }
 
-  if (error || !requisition) {
-    return (
-      <div className="rounded-2xl border border-red-200 bg-red-50/50 p-8 text-center dark:border-red-500/20 dark:bg-red-500/10">
-        <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400 mb-4">
-          <svg className="size-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-          </svg>
-        </div>
-        <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-2">
-          Requisition Not Found
-        </h3>
-        <p className="text-xs text-gray-500 dark:text-gray-400 max-w-md mx-auto mb-6">
-          {error || "The requested purchase requisition could not be located."}
-        </p>
-        <Button size="sm" onClick={() => navigate("/purchase-requisitions")}>
-          Return to Requisitions List
-        </Button>
-      </div>
-    );
-  }
-
-  const isDraft = requisition.status === "DRAFT";
-  const isPending =
-    requisition.status === "SUBMITTED" || requisition.status === "UNDER_REVIEW";
-  const isApproved = requisition.status === "APPROVED";
-  const isRejected = requisition.status === "REJECTED";
-  const isConverted = requisition.status === "CONVERTED";
-  const isCancelled = requisition.status === "CANCELLED";
-
-  // Matrix Lifecycle Rules:
-  // Modifier: DRAFT ✅ OUI, SUBMITTED ✅ OUI*, APPROVED ❌ NON, REJECTED ❌ NON, CONVERTED ❌ NON, CANCELLED ❌ NON
-  const canEdit = isDraft || isPending;
-
-  // Supprimer: DRAFT ✅ OUI, SUBMITTED ❌ NON, APPROVED ❌ NON, REJECTED ✅ OUI, CONVERTED ❌ NON, CANCELLED ✅ OUI
-  const canDelete = isDraft || isRejected || isCancelled;
-
-  // Soumettre: DRAFT ✅ OUI, others ❌ NON
-  const canSubmit = isDraft;
-
-  // Approuver / Rejeter: SUBMITTED ✅ OUI, others ❌ NON. The requester or creator cannot approve their own.
-  const canApprove = isPending && !isOwnRequisition(requisition, user?.id);
-  const canReject = isPending;
-
-  // Convertir: APPROVED ✅ OUI, others ❌ NON
-  const canConvert = isApproved;
-
-  // Annuler: SUBMITTED ✅ OUI, APPROVED ✅ OUI, DRAFT ❌ NON (delete directly instead)
-  const canCancel = isPending || isApproved;
+  const s = requisition.status;
+  const isPending = s === "SUBMITTED" || s === "UNDER_REVIEW";
+  const own = isOwnRequisition(requisition, user?.id);
+  const canEdit = canWrite && (s === "DRAFT" || isPending);
+  const canDelete = canWrite && (s === "DRAFT" || s === "REJECTED" || s === "CANCELLED");
+  const canSubmit = canWrite && s === "DRAFT";
+  const canDecide = canValidate && isPending && !own;
+  const canConvert = canConvertPermission && s === "APPROVED";
+  const canCancel = canWrite && (isPending || s === "APPROVED");
+  const lines = requisition.lines || [];
+  const currency = requisition.currencyCode;
 
   return (
-    <div className="space-y-6">
-      {/* Toast Alert */}
-      {feedback && (
-        <div
-          className={`flex items-center justify-between p-4 rounded-xl text-xs font-medium border ${feedback.type === "success"
-              ? "bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:border-emerald-500/20"
-              : "bg-red-50 text-red-800 border-red-200 dark:bg-red-500/10 dark:text-red-300 dark:border-red-500/20"
-            }`}
-        >
-          <span>{feedback.text}</span>
-          <button
-            type="button"
-            onClick={() => setFeedback(null)}
-            className="hover:opacity-75 font-bold"
-          >
-            ×
-          </button>
-        </div>
+    <>
+      <FloatingToast feedback={feedback} onClose={() => setFeedback(null)} />
+
+      <DetailHeader title={requisition.requisitionCode} parentName="Requisitions" parentUrl="/requisitions">
+        <BackToListButton to="/requisitions" />
+        <Button size="sm" variant="outline" onClick={() => window.print()}>
+          Print
+        </Button>
+        {canDelete && (
+          <Button size="sm" variant="outline" onClick={() => setShowDelete(true)} disabled={actionLoading}>
+            Delete
+          </Button>
+        )}
+        {canCancel && (
+          <Button size="sm" variant="outline" onClick={() => setShowCancel(true)} disabled={actionLoading}>
+            Cancel Requisition
+          </Button>
+        )}
+        {canEdit && (
+          <Link to={`/requisitions/edit/${requisition.id}`}>
+            <Button size="sm" variant="outline" disabled={actionLoading}>
+              Edit
+            </Button>
+          </Link>
+        )}
+        {canDecide && (
+          <Button size="sm" variant="outline" onClick={() => setDecision("REJECT")} disabled={actionLoading}>
+            Reject
+          </Button>
+        )}
+        {canDecide && (
+          <Button size="sm" onClick={() => setDecision("APPROVE")} disabled={actionLoading}>
+            Approve
+          </Button>
+        )}
+        {canSubmit && (
+          <Button size="sm" onClick={handleSubmit} disabled={actionLoading}>
+            Submit for Approval
+          </Button>
+        )}
+        {canConvert && (
+          <Button size="sm" onClick={() => setShowConvert(true)} disabled={actionLoading}>
+            Create Purchase Order
+          </Button>
+        )}
+      </DetailHeader>
+
+      {canValidate && isPending && own && (
+        <p className="mb-6 rounded-xl border border-warning-200 bg-warning-50 px-4 py-3 text-sm text-warning-700 dark:border-warning-500/30 dark:bg-warning-500/10 dark:text-orange-300">
+          You requested this purchase, so another approver must review it.
+        </p>
       )}
 
-      {/* Top Header Card */}
-      <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-white/[0.07] dark:bg-gray-900">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <div className="flex items-center gap-3 mb-2">
-              <button
-                type="button"
-                onClick={() => navigate("/requisitions")}
-                className="inline-flex items-center gap-1 text-xs font-medium text-gray-500 hover:text-brand-600 dark:text-gray-400 dark:hover:text-brand-400"
-              >
-                <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                </svg>
-                Back to List
-              </button>
-              <span className="text-gray-300 dark:text-gray-700">|</span>
-              <span className="text-xs font-bold text-brand-600 dark:text-brand-400">
-                {requisition.requisitionCode}
-              </span>
-              <RequisitionStatusBadge status={requisition.status} size="sm" />
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div className="flex flex-col gap-6 lg:col-span-1">
+          <DetailCard>
+            <div className="mb-6 flex items-center justify-between">
+              <InitialsAvatar name={requisition.requesterName} size="lg" />
+              <RequisitionStatusBadge status={s} size="md" />
             </div>
-            <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-              {requisition.title}
-            </h1>
-            {requisition.description && (
-              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400 max-w-2xl">
-                {requisition.description}
-              </p>
-            )}
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => window.print()}
-              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-xl border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 dark:border-white/[0.1] dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700 transition-colors"
-              title="Print Requisition"
-            >
-              <svg className="size-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-              </svg>
-              Print
-            </button>
-
-            {/* Edit Requisition Button (DRAFT & SUBMITTED only) or Locked Badge */}
-            {canEdit ? (
-              <Link
-                to={`/requisitions/edit/${requisition.id}`}
-                className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-xl border border-gray-200 bg-white text-gray-700 hover:text-brand-600 hover:bg-brand-50/50 dark:border-white/[0.1] dark:bg-gray-800 dark:text-gray-200 dark:hover:text-brand-400 dark:hover:bg-brand-500/10 transition-colors"
-                title="Edit Requisition"
-              >
-                <svg className="size-4 text-gray-500 hover:text-brand-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                </svg>
-                Edit
-              </Link>
-            ) : (
-              <span
-                className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-xl border border-gray-200/60 bg-gray-50 text-gray-400 cursor-not-allowed dark:border-white/[0.05] dark:bg-gray-800/50 dark:text-gray-500"
-                title={`Locked: Requisition in ${requisition.status} status cannot be modified`}
-              >
-                <svg className="size-4 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                </svg>
-                Locked ({requisition.status})
-              </span>
-            )}
-
-            {/* Delete Requisition Button (DRAFT, REJECTED, CANCELLED) or Disabled */}
-            {canDelete ? (
-              <button
-                type="button"
-                onClick={() => setShowDeleteModal(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-xl border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-400 dark:hover:bg-red-500/20 transition-colors cursor-pointer"
-                title="Delete Requisition"
-              >
-                <svg className="size-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-                Delete
-              </button>
-            ) : (
-              <span
-                className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-xl border border-gray-200/60 bg-gray-50 text-gray-300 dark:border-white/[0.05] dark:bg-gray-800/50 dark:text-gray-600 cursor-not-allowed opacity-50"
-                title={`Cannot delete: Requisition in ${requisition.status} status cannot be deleted`}
-              >
-                <svg className="size-4 text-gray-300 dark:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-                Delete
-              </span>
-            )}
-
-            {/* Submit for Approval Button (DRAFT only) */}
-            {canSubmit && (
-              <Button
-                size="sm"
-                onClick={handleQuickSubmit}
-                disabled={actionLoading}
-              >
-                Submit for Approval
-              </Button>
-            )}
-
-            {/* Approve and Reject Buttons (SUBMITTED only) */}
-            {canApprove && (
-              <Button
-                size="sm"
-                onClick={() => setModalState({ isOpen: true, mode: "APPROVE" })}
-                disabled={actionLoading}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white"
-              >
-                Approve Requisition
-              </Button>
-            )}
-
-            {canReject && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setModalState({ isOpen: true, mode: "REJECT" })}
-                disabled={actionLoading}
-                className="border-red-300 text-red-700 hover:bg-red-50 dark:border-red-500/30 dark:text-red-400"
-              >
-                Reject
-              </Button>
-            )}
-
-            {/* Convert to Purchase Order Button (APPROVED only) */}
-            {canConvert && (
-              <Button
-                size="sm"
-                onClick={() => setShowConvertModal(true)}
-                disabled={actionLoading}
-                className="bg-purple-600 hover:bg-purple-700 text-white"
-              >
-                Convert to Purchase Order
-              </Button>
-            )}
-
-            {/* Cancel Requisition Button: Active for SUBMITTED & APPROVED, Disabled for DRAFT & others */}
-            {canCancel ? (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setShowCancelModal(true)}
-                disabled={actionLoading}
-                className="border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-500/30 dark:text-amber-400 cursor-pointer"
-              >
-                Cancel Requisition
-              </Button>
-            ) : (
-              <span
-                className="inline-flex items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white text-gray-400 dark:border-white/[0.05] dark:bg-gray-800 dark:text-gray-600 px-4 py-3 text-sm cursor-not-allowed opacity-50 font-medium"
-                title={
-                  isDraft
-                    ? "Draft requisitions cannot be cancelled (delete directly instead)"
-                    : `Cannot cancel: Requisition in ${requisition.status} status cannot be cancelled`
-                }
-              >
-                Cancel Requisition
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* Sophisticated Colorful Horizontal Workflow Pipeline */}
-        <div className="mt-8 pt-6 border-t border-gray-100 dark:border-white/[0.07]">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <span className="inline-flex size-2 rounded-full bg-brand-500 animate-pulse" />
-              <h4 className="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-200">
-                Procurement Pipeline Progress
-              </h4>
-            </div>
-            <span className="text-[11px] font-semibold text-gray-500 dark:text-gray-400">
-              {isCancelled
-                ? "Requisition Cancelled"
-                : isConverted
-                ? "4 of 4 Stages Completed"
-                : isApproved
-                  ? "3 of 4 Stages Completed"
-                  : isPending
-                    ? "2 of 4 Stages Completed"
-                    : isRejected
-                      ? "Stage 3 Rejected"
-                      : "1 of 4 Stages Completed"}
-            </span>
-          </div>
-
-          {/* Visual Track Progress Bar */}
-          <div className="relative mb-5 hidden md:block">
-            <div className="h-1.5 w-full rounded-full bg-gray-100 dark:bg-white/[0.08] overflow-hidden">
-              <div
-                className={`h-full transition-all duration-500 rounded-full ${isCancelled
-                    ? "bg-gradient-to-r from-gray-400 to-slate-500"
-                    : isRejected
-                    ? "bg-gradient-to-r from-emerald-500 via-emerald-400 to-red-500"
-                    : "bg-gradient-to-r from-emerald-500 via-teal-500 to-purple-600"
-                  }`}
-                style={{
-                  width: isCancelled
-                    ? "100%"
-                    : isConverted
-                    ? "100%"
-                    : isApproved
-                      ? "75%"
-                      : isPending
-                        ? "50%"
-                        : isRejected
-                          ? "75%"
-                          : "25%",
-                }}
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 relative">
-            {/* ================= STAGE 1: DRAFT CREATED ================= */}
-            <div className="relative rounded-2xl border border-emerald-200/90 bg-gradient-to-br from-emerald-50/90 to-teal-50/30 p-4 shadow-sm dark:border-emerald-500/30 dark:from-emerald-950/30 dark:to-teal-900/10 transition-all hover:shadow-md">
-              <div className="flex items-center justify-between mb-2">
-                <div className="size-8 rounded-xl bg-emerald-500 text-white flex items-center justify-center shadow-sm shadow-emerald-500/40">
-                  <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                  </svg>
-                </div>
-                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300">
-                  Completed
-                </span>
-              </div>
-              <div className="flex flex-col">
-                <span className="text-[11px] font-bold uppercase tracking-wide text-emerald-800 dark:text-emerald-300">
-                  1. Created (Draft)
-                </span>
-                <span className="text-sm font-extrabold text-gray-900 dark:text-white mt-0.5">
-                  {requisition.createdAt
-                    ? new Date(requisition.createdAt).toLocaleDateString()
-                    : "—"}
-                </span>
-                <span className="text-[11px] text-gray-500 dark:text-gray-400 mt-1 truncate">
-                  By: {requisition.createdBy || requisition.requesterName}
-                </span>
-              </div>
-
-              {/* Stage Connector Arrow */}
-              <div className="hidden md:flex absolute -right-3 top-1/2 -translate-y-1/2 z-10 size-6 items-center justify-center rounded-full border border-emerald-200 bg-white shadow-xs dark:border-emerald-500/30 dark:bg-gray-800 text-emerald-600 dark:text-emerald-400">
-                <svg className="size-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
-                </svg>
-              </div>
-            </div>
-
-            {/* ================= STAGE 2: SUBMITTED ================= */}
-            <div
-              className={`relative rounded-2xl border p-4 shadow-sm transition-all hover:shadow-md ${isDraft
-                  ? "border-brand-300 bg-gradient-to-br from-brand-50/90 to-blue-50/40 ring-2 ring-brand-500/20 dark:border-brand-500/40 dark:from-brand-950/40 dark:to-blue-900/20"
-                  : "border-emerald-200/90 bg-gradient-to-br from-emerald-50/90 to-teal-50/30 dark:border-emerald-500/30 dark:from-emerald-950/30 dark:to-teal-900/10"
-                }`}
-            >
-              <div className="flex items-center justify-between mb-2">
-                <div
-                  className={`size-8 rounded-xl flex items-center justify-center text-white shadow-sm ${isDraft
-                      ? "bg-brand-500 shadow-brand-500/40 ring-4 ring-brand-500/20 animate-pulse"
-                      : "bg-emerald-500 shadow-emerald-500/40"
-                    }`}
-                >
-                  {isDraft ? (
-                    <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                    </svg>
-                  ) : (
-                    <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                    </svg>
-                  )}
-                </div>
-                <span
-                  className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${isDraft
-                      ? "bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-300 animate-pulse"
-                      : "bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300"
-                    }`}
-                >
-                  {isDraft ? "Action Required" : "Submitted"}
-                </span>
-              </div>
-              <div className="flex flex-col">
-                <span
-                  className={`text-[11px] font-bold uppercase tracking-wide ${isDraft
-                      ? "text-brand-700 dark:text-brand-300"
-                      : "text-emerald-800 dark:text-emerald-300"
-                    }`}
-                >
-                  2. Submission
-                </span>
-                <span className="text-sm font-extrabold text-gray-900 dark:text-white mt-0.5">
-                  {requisition.submittedDate || (isDraft ? "Awaiting Submission" : "—")}
-                </span>
-                <span className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">
-                  {isDraft ? "Submit for management review" : "In review queue"}
-                </span>
-              </div>
-
-              {/* Stage Connector Arrow */}
-              <div className="hidden md:flex absolute -right-3 top-1/2 -translate-y-1/2 z-10 size-6 items-center justify-center rounded-full border border-gray-200 bg-white shadow-xs dark:border-white/[0.1] dark:bg-gray-800 text-gray-400">
-                <svg className="size-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
-                </svg>
-              </div>
-            </div>
-
-            {/* ================= STAGE 3: MANAGER REVIEW ================= */}
-            <div
-              className={`relative rounded-2xl border p-4 shadow-sm transition-all hover:shadow-md ${isApproved
-                  ? "border-emerald-200/90 bg-gradient-to-br from-emerald-50/90 to-teal-50/30 dark:border-emerald-500/30 dark:from-emerald-950/30 dark:to-teal-900/10"
-                  : isRejected
-                    ? "border-red-300 bg-gradient-to-br from-red-50/90 to-rose-50/40 ring-2 ring-red-500/20 dark:border-red-500/40 dark:from-red-950/40 dark:to-rose-900/20"
-                    : isPending
-                      ? "border-amber-300 bg-gradient-to-br from-amber-50/90 to-orange-50/40 ring-2 ring-amber-500/20 dark:border-amber-500/40 dark:from-amber-950/40 dark:to-orange-900/20"
-                      : "border-gray-200/70 bg-gray-50/60 dark:border-white/[0.06] dark:bg-white/[0.02] opacity-70"
-                }`}
-            >
-              <div className="flex items-center justify-between mb-2">
-                <div
-                  className={`size-8 rounded-xl flex items-center justify-center text-white shadow-sm ${isApproved
-                      ? "bg-emerald-500 shadow-emerald-500/40"
-                      : isRejected
-                        ? "bg-red-500 shadow-red-500/40"
-                        : isPending
-                          ? "bg-amber-500 shadow-amber-500/40 ring-4 ring-amber-500/20 animate-pulse"
-                          : "bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-400"
-                    }`}
-                >
-                  {isApproved ? (
-                    <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                    </svg>
-                  ) : isRejected ? (
-                    <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  ) : isPending ? (
-                    <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  ) : (
-                    <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                    </svg>
-                  )}
-                </div>
-                <span
-                  className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${isApproved
-                      ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300"
-                      : isRejected
-                        ? "bg-red-100 text-red-800 dark:bg-red-500/20 dark:text-red-300"
-                        : isPending
-                          ? "bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-300 animate-pulse"
-                          : "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400"
-                    }`}
-                >
-                  {isApproved
-                    ? "Approved"
-                    : isRejected
-                      ? "Rejected"
-                      : isPending
-                        ? "Under Review"
-                        : "Upcoming"}
-                </span>
-              </div>
-              <div className="flex flex-col">
-                <span
-                  className={`text-[11px] font-bold uppercase tracking-wide ${isApproved
-                      ? "text-emerald-800 dark:text-emerald-300"
-                      : isRejected
-                        ? "text-red-800 dark:text-red-300"
-                        : isPending
-                          ? "text-amber-800 dark:text-amber-300"
-                          : "text-gray-500 dark:text-gray-400"
-                    }`}
-                >
-                  3. Manager Review
-                </span>
-                <span className="text-sm font-extrabold text-gray-900 dark:text-white mt-0.5 truncate">
-                  {isApproved
-                    ? requisition.approvedDate || "Approved"
-                    : isRejected
-                      ? "Decision: Rejected"
-                      : isPending
-                        ? "Pending Decision"
-                        : "Pending Submission"}
-                </span>
-                <span className="text-[11px] text-gray-500 dark:text-gray-400 mt-1 truncate">
-                  {requisition.approverName
-                    ? `By: ${requisition.approverName}`
-                    : isPending
-                      ? "Requires approval"
-                      : "Not yet reviewed"}
-                </span>
-              </div>
-
-              {/* Stage Connector Arrow */}
-              <div className="hidden md:flex absolute -right-3 top-1/2 -translate-y-1/2 z-10 size-6 items-center justify-center rounded-full border border-gray-200 bg-white shadow-xs dark:border-white/[0.1] dark:bg-gray-800 text-gray-400">
-                <svg className="size-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
-                </svg>
-              </div>
-            </div>
-
-            {/* ================= STAGE 4: PURCHASE ORDER CONVERSION ================= */}
-            <div
-              className={`relative rounded-2xl border p-4 shadow-sm transition-all hover:shadow-md ${isConverted
-                  ? "border-purple-300 bg-gradient-to-br from-purple-50/90 to-indigo-50/50 ring-2 ring-purple-500/20 dark:border-purple-500/40 dark:from-purple-950/40 dark:to-indigo-900/20"
-                  : isApproved
-                    ? "border-purple-200 bg-purple-50/40 dark:border-purple-500/20 dark:bg-purple-950/10"
-                    : "border-gray-200/70 bg-gray-50/60 dark:border-white/[0.06] dark:bg-white/[0.02] opacity-70"
-                }`}
-            >
-              <div className="flex items-center justify-between mb-2">
-                <div
-                  className={`size-8 rounded-xl flex items-center justify-center text-white shadow-sm ${isConverted
-                      ? "bg-gradient-to-r from-purple-600 to-indigo-600 shadow-purple-500/40"
-                      : isApproved
-                        ? "bg-purple-500 shadow-purple-500/40 ring-4 ring-purple-500/20 animate-pulse"
-                        : "bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-400"
-                    }`}
-                >
-                  {isConverted ? (
-                    <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-                    </svg>
-                  ) : isApproved ? (
-                    <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                    </svg>
-                  ) : (
-                    <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                    </svg>
-                  )}
-                </div>
-                <span
-                  className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${isConverted
-                      ? "bg-purple-100 text-purple-800 dark:bg-purple-500/20 dark:text-purple-300"
-                      : isApproved
-                        ? "bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-300 animate-pulse"
-                        : "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400"
-                    }`}
-                >
-                  {isConverted
-                    ? "Converted"
-                    : isApproved
-                      ? "Ready to Convert"
-                      : "Not Converted"}
-                </span>
-              </div>
-              <div className="flex flex-col">
-                <span
-                  className={`text-[11px] font-bold uppercase tracking-wide ${isConverted
-                      ? "text-purple-800 dark:text-purple-300"
-                      : isApproved
-                        ? "text-purple-700 dark:text-purple-300"
-                        : "text-gray-500 dark:text-gray-400"
-                    }`}
-                >
-                  4. Purchase Order
-                </span>
-                <span className="text-sm font-extrabold text-gray-900 dark:text-white mt-0.5 truncate">
-                  {isConverted && requisition.purchaseOrderCode ? (
-                    <Link
-                      to={`/purchase-orders/${requisition.purchaseOrderId || requisition.purchaseOrderCode}`}
-                      className="text-purple-600 hover:text-purple-700 dark:text-purple-400 underline font-bold"
-                    >
-                      {requisition.purchaseOrderCode}
-                    </Link>
-                  ) : isApproved ? (
-                    "Ready for PO"
-                  ) : (
-                    "Pending Approval"
-                  )}
-                </span>
-                <span className="text-[11px] text-gray-500 dark:text-gray-400 mt-1 truncate">
-                  {requisition.convertedDate
-                    ? `Date: ${requisition.convertedDate}`
-                    : isApproved
-                      ? "1-click conversion available"
-                      : "Locked"}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Rejection reason banner if rejected */}
-          {isRejected && requisition.rejectionReason && (
-            <div className="mt-4 p-4 rounded-2xl bg-gradient-to-r from-red-50 to-rose-50/60 text-red-900 border border-red-200 text-xs dark:bg-red-500/15 dark:text-red-300 dark:border-red-500/30 flex items-start gap-3">
-              <div className="size-6 rounded-lg bg-red-500 text-white flex items-center justify-center flex-shrink-0 mt-0.5">
-                <svg className="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </div>
-              <div>
-                <strong className="font-bold text-red-950 dark:text-red-200">Rejection Reason:</strong>{" "}
-                <span>{requisition.rejectionReason}</span>
-              </div>
-            </div>
-          )}
-
-          {/* Cancellation details banner if cancelled */}
-          {isCancelled && (
-            <div className="mt-4 p-4 rounded-2xl bg-gradient-to-r from-gray-100 to-slate-100 text-gray-800 border border-gray-300 text-xs dark:bg-gray-800/60 dark:text-gray-200 dark:border-gray-700 flex items-start gap-3">
-              <div className="size-6 rounded-lg bg-gray-600 text-white flex items-center justify-center flex-shrink-0 mt-0.5">
-                <svg className="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-                </svg>
-              </div>
-              <div className="flex flex-col gap-0.5">
-                <div>
-                  <strong className="font-bold text-gray-900 dark:text-white">Requisition Cancelled:</strong>{" "}
-                  <span>{requisition.cancellationReason || "No cancellation reason provided."}</span>
-                </div>
-                {requisition.cancelledDate && (
-                  <span className="text-[11px] text-gray-500 dark:text-gray-400">
-                    Cancelled on: {requisition.cancelledDate}
-                  </span>
+            <h3 className="mb-1 font-mono text-xl font-bold text-gray-900 dark:text-white">{requisition.requisitionCode}</h3>
+            <p className="mb-6 text-sm font-medium text-gray-500 dark:text-gray-400">{requisition.title}</p>
+            <div className="space-y-4">
+              <DetailField label="Requester">{requisition.requesterName}</DetailField>
+              <DetailField label="Needed By">{requisition.requiredDate || "—"}</DetailField>
+              <DetailField label="Estimated Total">
+                <span className="font-semibold">{formatAmount(requisition.totalAmount, currency)}</span>
+              </DetailField>
+              <DetailField label="Purchase Order">
+                {requisition.purchaseOrderId ? (
+                  <Link to={`/purchase-orders/${requisition.purchaseOrderId}`} className="font-mono text-brand-500 hover:underline">
+                    {requisition.purchaseOrderCode || requisition.purchaseOrderId}
+                  </Link>
+                ) : (
+                  "—"
                 )}
-              </div>
+              </DetailField>
             </div>
-          )}
+          </DetailCard>
 
-          {/* Approval notes if present */}
-          {requisition.approvalNotes && (
-            <div className="mt-4 p-4 rounded-2xl bg-gradient-to-r from-emerald-50 to-teal-50/60 text-emerald-900 border border-emerald-200 text-xs dark:bg-emerald-500/15 dark:text-emerald-300 dark:border-emerald-500/30 flex items-start gap-3">
-              <div className="size-6 rounded-lg bg-emerald-500 text-white flex items-center justify-center flex-shrink-0 mt-0.5">
-                <svg className="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                </svg>
+          {(requisition.description || requisition.justification) && (
+            <DetailCard title="Purpose" icon={SectionIcons.note}>
+              <div className="space-y-4">
+                {requisition.description && <DetailField label="Description">{requisition.description}</DetailField>}
+                {requisition.justification && <DetailField label="Justification">{requisition.justification}</DetailField>}
               </div>
-              <div>
-                <strong className="font-bold text-emerald-950 dark:text-emerald-200">Approval Notes:</strong>{" "}
-                <span>{requisition.approvalNotes}</span>
-              </div>
-            </div>
+            </DetailCard>
           )}
         </div>
-      </div>
 
-      {/* Summary KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Total Value */}
-        <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-white/[0.07] dark:bg-gray-900">
-          <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
-            Total Estimated Amount
-          </span>
-          <div className="mt-2 text-xl font-bold text-gray-900 dark:text-white">
-            {formatAmount(requisition.totalAmount, requisition.currencyCode)}
-          </div>
-          <span className="text-[11px] text-gray-400 mt-1 block">
-            Currency: {requisition.currencyCode || "MAD"}
-          </span>
-        </div>
+        <div className="flex flex-col gap-6 lg:col-span-2">
+          <Progress requisition={requisition} />
 
-        {/* Line Items Count */}
-        <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-white/[0.07] dark:bg-gray-900">
-          <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
-            Total Line Items
-          </span>
-          <div className="mt-2 text-xl font-bold text-gray-900 dark:text-white">
-            {requisition.lines?.length || 0}
-          </div>
-          <span className="text-[11px] text-gray-400 mt-1 block">
-            Procurement lines requested
-          </span>
-        </div>
-
-        {/* Requester */}
-        <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-white/[0.07] dark:bg-gray-900">
-          <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
-            Requested By
-          </span>
-          <div className="mt-2 text-base font-bold text-gray-900 dark:text-white truncate">
-            {requisition.requesterName}
-          </div>
-          <span className="text-[11px] text-gray-400 mt-1 block">
-            ID: {requisition.requesterId}
-          </span>
-        </div>
-
-        {/* Need-By Date */}
-        <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-white/[0.07] dark:bg-gray-900">
-          <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
-            Required Date
-          </span>
-          <div className="mt-2 text-base font-bold text-gray-900 dark:text-white">
-            {requisition.requiredDate || "Not specified"}
-          </div>
-          <span className="text-[11px] text-gray-400 mt-1 block">
-            Target delivery date
-          </span>
-        </div>
-      </div>
-
-      {/* Business Justification & Requisition Scope Section */}
-      <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-white/[0.07] dark:bg-gray-900">
-        <div className="flex items-center gap-2.5 mb-4 pb-3 border-b border-gray-100 dark:border-white/[0.07]">
-          <div className="size-8 rounded-xl bg-brand-50 text-brand-600 dark:bg-brand-500/15 dark:text-brand-400 flex items-center justify-center">
-            <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-          </div>
-          <div>
-            <h3 className="text-sm font-bold text-gray-900 dark:text-white">
-              Business Justification & Operational Context
-            </h3>
-            <p className="text-xs text-gray-400">
-              Procurement rationale, project alignment, and requirements
-            </p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Business Justification Box */}
-          <div className="rounded-xl border border-brand-200/80 bg-brand-50/40 p-4 dark:border-brand-500/20 dark:bg-brand-500/5">
-            <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-brand-700 dark:text-brand-300 mb-2">
-              <svg className="size-4 text-brand-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              Business Justification
-            </div>
-            {requisition.justification ? (
-              <p className="text-xs text-gray-800 dark:text-gray-200 leading-relaxed whitespace-pre-wrap font-medium">
-                {requisition.justification}
-              </p>
-            ) : (
-              <p className="text-xs text-gray-400 italic">
-                No business justification recorded for this requisition.
-              </p>
-            )}
-          </div>
-
-          {/* Description Box */}
-          <div className="rounded-xl border border-gray-200/70 bg-gray-50/60 p-4 dark:border-white/[0.05] dark:bg-white/[0.02]">
-            <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300 mb-2">
-              <svg className="size-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" />
-              </svg>
-              Requisition Description
-            </div>
-            {requisition.description ? (
-              <p className="text-xs text-gray-800 dark:text-gray-200 leading-relaxed whitespace-pre-wrap">
-                {requisition.description}
-              </p>
-            ) : (
-              <p className="text-xs text-gray-400 italic">
-                No additional description provided.
-              </p>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Line Items Table Card */}
-      <div className="rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-white/[0.07] dark:bg-gray-900 overflow-hidden">
-        <div className="p-5 border-b border-gray-100 dark:border-white/[0.07] flex items-center justify-between">
-          <div>
-            <h3 className="text-sm font-bold text-gray-900 dark:text-white">
-              Line Items Breakdown
-            </h3>
-            <p className="text-xs text-gray-400">
-              Detailed specifications, quantities, and pricing for each item
-            </p>
-          </div>
-          <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300">
-            {requisition.lines?.length || 0} items
-          </span>
-        </div>
-
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader className="bg-gray-50/75 dark:bg-white/[0.02]">
-              <TableRow className="border-b border-gray-100 dark:border-white/[0.05]">
-                <TableCell isHeader className="px-4 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300">
-                  #
-                </TableCell>
-                <TableCell isHeader className="px-4 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300">
-                  Material
-                </TableCell>
-                <TableCell isHeader className="px-4 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300">
-                  Quantity & UOM
-                </TableCell>
-                <TableCell isHeader className="px-4 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300">
-                  Est. Unit Price
-                </TableCell>
-                <TableCell isHeader className="px-4 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300">
-                  Line Total
-                </TableCell>
-                <TableCell isHeader className="px-4 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300">
-                  Supplier / Terms
-                </TableCell>
-                <TableCell isHeader className="px-4 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300">
-                  Storage Location
-                </TableCell>
-              </TableRow>
-            </TableHeader>
-
-            <TableBody>
-              {(!requisition.lines || requisition.lines.length === 0) ? (
-                <TableRow>
-                  <TableCell className="px-4 py-8 text-center text-xs text-gray-500" colSpan={7}>
-                    No line items attached to this purchase requisition.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                requisition.lines.map((line, idx) => (
-                  <TableRow
-                    key={line.id || idx}
-                    className="border-b border-gray-100 hover:bg-gray-50/50 dark:border-white/[0.05] dark:hover:bg-white/[0.02]"
-                  >
-                    <TableCell className="px-4 py-3.5 text-xs text-gray-400 font-mono">
-                      {line.lineNumber || idx + 1}
-                    </TableCell>
-                    <TableCell className="px-4 py-3.5">
-                      <div className="flex flex-col">
-                        <span className="text-xs font-bold text-brand-600 dark:text-brand-400">
-                          {line.materialCode}
-                        </span>
-                        <span className="text-xs font-medium text-gray-900 dark:text-white">
-                          {line.materialName}
-                        </span>
-                        {line.materialDescription && (
-                          <span className="text-[10px] text-gray-400 max-w-sm line-clamp-1">
-                            {line.materialDescription}
-                          </span>
-                        )}
-                        {line.notes && (
-                          <span className="text-[10px] text-amber-600 dark:text-amber-400 italic mt-0.5">
-                            Note: {line.notes}
-                          </span>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="px-4 py-3.5">
-                      <span className="text-xs font-semibold text-gray-900 dark:text-white">
-                        {line.quantity} {line.unitOfMeasure || "PCS"}
-                      </span>
-                      {/* What arrived on validated receipts of the order created from this requisition. */}
-                      {((line.quantityReceived ?? 0) > 0 || (line.quantityRejected ?? 0) > 0) && (
-                        <span className="block text-[11px] text-emerald-700 dark:text-emerald-400">
-                          Reçu : {line.quantityReceived ?? 0}
-                          {(line.quantityRejected ?? 0) > 0 && (
-                            <span className="text-rose-600 dark:text-rose-400"> • Rejeté : {line.quantityRejected}</span>
-                          )}
-                        </span>
-                      )}
-                    </TableCell>
-                    <TableCell className="px-4 py-3.5 text-xs text-gray-600 dark:text-gray-300">
-                      {formatAmount(line.unitPrice, line.currencyCodeLine || line.currencyCode || requisition.currencyCode)}
-                    </TableCell>
-                    <TableCell className="px-4 py-3.5 text-xs font-bold text-gray-900 dark:text-white">
-                      {formatAmount(line.lineTotal, line.currencyCodeLine || line.currencyCode || requisition.currencyCode)}
-                    </TableCell>
-                    <TableCell className="px-4 py-3.5">
-                      <div className="flex flex-col text-xs text-gray-600 dark:text-gray-400">
-                        <span>{line.supplierName || line.supplierCode || "Not specified"}</span>
-                        {line.deliveryTerms && (
-                          <span className="text-[10px] text-gray-400">
-                            Terms: {line.deliveryTerms}
-                          </span>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="px-4 py-3.5 text-xs text-gray-600 dark:text-gray-400">
-                      {line.storageLocation || "—"}
-                    </TableCell>
+          <DetailCard title={`Requested Lines (${lines.length})`} icon={SectionIcons.list} tone="brand" padded={false}>
+            <div className="max-w-full overflow-x-auto">
+              <Table>
+                <TableHeader className="border-b border-gray-100 bg-gray-50/50 dark:border-white/[0.05] dark:bg-gray-900/50">
+                  <TableRow>
+                    <TableCell isHeader className={HEAD_CELL}>Material</TableCell>
+                    <TableCell isHeader className={HEAD_CELL}>Quantity</TableCell>
+                    <TableCell isHeader className={HEAD_CELL}>Unit Price</TableCell>
+                    <TableCell isHeader className={HEAD_CELL}>Line Total</TableCell>
+                    <TableCell isHeader className={HEAD_CELL}>Supplier</TableCell>
+                    <TableCell isHeader className={HEAD_CELL}>Needed By</TableCell>
                   </TableRow>
-                ))
+                </TableHeader>
+                <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
+                  {lines.map((l, i) => (
+                    <TableRow key={l.id || i}>
+                      <TableCell className={BODY_CELL}>
+                        <StackedCell main={<span className="font-mono">{l.materialCode}</span>} sub={l.materialName} />
+                      </TableCell>
+                      <TableCell className={BODY_CELL}>{`${l.quantity} ${l.unitOfMeasure ?? ""}`.trim()}</TableCell>
+                      <TableCell className={`${BODY_CELL} whitespace-nowrap`}>{formatAmount(l.unitPrice, l.currencyCode || currency)}</TableCell>
+                      <TableCell className={`${BODY_CELL} whitespace-nowrap`}>{formatAmount(l.lineTotal, l.currencyCode || currency)}</TableCell>
+                      <TableCell className={BODY_CELL}>{l.supplierName || "—"}</TableCell>
+                      <TableCell className={BODY_CELL}>{l.requiredDate || requisition.requiredDate || "—"}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </DetailCard>
+
+          <DetailCard title="Review" icon={SectionIcons.info}>
+            <DetailGrid>
+              <DetailField label="Approver">{requisition.approverName || "Not reviewed yet"}</DetailField>
+              <DetailField label="Reviewed On">{formatDate(requisition.approvedDate) ?? "—"}</DetailField>
+              {requisition.approvalNotes && (
+                <DetailField label="Approval Notes" wide>
+                  {requisition.approvalNotes}
+                </DetailField>
               )}
-            </TableBody>
-          </Table>
+              {requisition.rejectionReason && (
+                <DetailField label="Rejection Reason" wide>
+                  <span className="text-error-500">{requisition.rejectionReason}</span>
+                </DetailField>
+              )}
+            </DetailGrid>
+          </DetailCard>
+
+          <DetailCard title="System Information" icon={SectionIcons.info}>
+            <DetailGrid>
+              <DetailField label="Created">{formatDateTime(requisition.createdAt)}</DetailField>
+              <DetailField label="Created By">{requisition.createdBy || "—"}</DetailField>
+              <DetailField label="Last Updated">{formatDateTime(requisition.updatedAt)}</DetailField>
+              <DetailField label="Updated By">{requisition.updatedBy || "—"}</DetailField>
+            </DetailGrid>
+          </DetailCard>
         </div>
       </div>
 
-      {/* Approval / Rejection Modal */}
-      {modalState.isOpen && (
+      {decision && (
         <RequisitionApprovalModal
-          isOpen={modalState.isOpen}
-          mode={modalState.mode}
+          isOpen
+          mode={decision}
           requisition={requisition}
-          onClose={() => setModalState({ isOpen: false, mode: "APPROVE" })}
-          onConfirm={handleApprovalDecision}
+          onClose={() => setDecision(null)}
+          onConfirm={handleDecision}
           isLoading={actionLoading}
         />
       )}
 
-      {/* Delete Confirmation Modal */}
-      {showDeleteModal && (
+      {showCancel && (
+        <RequisitionCancelModal isOpen onClose={() => setShowCancel(false)} requisition={requisition} onConfirm={handleCancel} isLoading={actionLoading} />
+      )}
+
+      <RequisitionConvertToPoModal
+        isOpen={showConvert}
+        onClose={() => setShowConvert(false)}
+        onConfirm={handleConvert}
+        requisition={requisition}
+        isConverting={actionLoading}
+      />
+
+      {showDelete && (
         <DeleteConfirmModal
-          isOpen={showDeleteModal}
-          onClose={() => setShowDeleteModal(false)}
-          onConfirm={handleDeleteConfirm}
-          title="Delete Purchase Requisition"
-          message={`Are you sure you want to delete purchase requisition ${requisition.requisitionCode} ("${requisition.title}")? This action cannot be undone.`}
+          isOpen
+          onClose={() => setShowDelete(false)}
+          onConfirm={handleDelete}
+          title="Delete Requisition"
+          message={`Delete requisition ${requisition.requisitionCode} permanently?`}
           isDeleting={isDeleting}
         />
       )}
-
-      {/* Cancel Confirmation Modal */}
-      {showCancelModal && (
-        <RequisitionCancelModal
-          isOpen={showCancelModal}
-          onClose={() => setShowCancelModal(false)}
-          requisition={requisition}
-          onConfirm={handleCancelRequisition}
-          isLoading={actionLoading}
-        />
-      )}
-
-      {/* Convert to PO Confirmation Modal */}
-      {showConvertModal && (
-        <RequisitionConvertToPoModal
-          isOpen={showConvertModal}
-          onClose={() => setShowConvertModal(false)}
-          requisition={requisition}
-          onConfirm={handleConvertToPo}
-          isConverting={actionLoading}
-        />
-      )}
-    </div>
+    </>
   );
 }

@@ -16,7 +16,7 @@ export default function PieChartTwo() {
       horizontalAlign: "center",
       fontFamily: "Outfit",
       markers: {
-        shape: "circle" as any,
+        shape: "circle",
       },
     },
     plotOptions: {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import useAuth from "../../auth/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { requisitionApi } from "../services/requisitionApi";
@@ -17,6 +17,8 @@ import Button from "../../../shared/components/ui/button/Button";
 import Toast from "../../../shared/components/ui/notifications/Toast";
 import Badge from "../../../shared/components/ui/badge/Badge";
 import { useCurrencyConverter } from "../../../shared/hooks";
+import { Modal } from "../../../shared/components/ui/modal";
+import { getApiErrorMessage } from "../../../shared/utils/apiError";
 
 interface LocalLineItem extends RequisitionLineRequest {
   tempId: string;
@@ -58,6 +60,9 @@ const extractCurrency = (val: unknown, fallback: string = "MAD"): string => {
   return fallback;
 };
 
+/** A week from today, the default need-by date. */
+const inAWeek = () => new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+
 interface CreateRequisitionFormProps {
   requisitionId?: string;
 }
@@ -92,22 +97,20 @@ export default function CreateRequisitionForm({ requisitionId }: CreateRequisiti
   const [materialSearchQuery, setMaterialSearchQuery] = useState("");
 
   // Header form state
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState(() => ({
     title: "",
     description: "",
     justification: "",
     requesterName: user?.name || "",
-    requiredDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
-      .toISOString()
-      .split("T")[0],
+    requiredDate: inAWeek(),
     currencyCode: "MAD",
-  });
+  }));
 
   // Live currency converter hook
-  const { convertToTarget, isLoadingRates, rates } = useCurrencyConverter(formData.currencyCode);
+  const { convertToTarget, rates } = useCurrencyConverter(formData.currencyCode);
 
   // Dynamic lines state
-  const [lines, setLines] = useState<LocalLineItem[]>([
+  const [lines, setLines] = useState<LocalLineItem[]>(() => [
     {
       tempId: crypto.randomUUID(),
       materialId: "",
@@ -117,9 +120,7 @@ export default function CreateRequisitionForm({ requisitionId }: CreateRequisiti
       unitOfMeasure: "PCS",
       estimatedUnitPrice: 0,
       lineTotal: 0,
-      requiredDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
-        .toISOString()
-        .split("T")[0],
+      requiredDate: inAWeek(),
       supplierId: "",
       supplierCode: "",
       notes: "",
@@ -150,12 +151,12 @@ export default function CreateRequisitionForm({ requisitionId }: CreateRequisiti
 
         const matList: MaterialListItem[] = Array.isArray(materialsRes.data)
           ? materialsRes.data
-          : (materialsRes.data as any)?.content || [];
+          : (materialsRes.data as { content?: MaterialListItem[] } | null)?.content || [];
         setMaterials(matList);
 
         const supList: SupplierListItem[] = Array.isArray(suppliersRes.data)
           ? suppliersRes.data
-          : (suppliersRes.data as any)?.content || [];
+          : (suppliersRes.data as { content?: SupplierListItem[] } | null)?.content || [];
         setSuppliers(supList);
       } catch (err) {
         console.error("Failed to load materials or suppliers:", err);
@@ -225,11 +226,11 @@ export default function CreateRequisitionForm({ requisitionId }: CreateRequisiti
             );
           }
         }
-      } catch (err: any) {
+      } catch (err) {
         console.error("Failed to load requisition for editing:", err);
         setSubmitMessage({
           type: "error",
-          text: err?.response?.data?.message || "Failed to load requisition for editing.",
+          text: getApiErrorMessage(err, "Failed to load requisition for editing."),
         });
       } finally {
         setIsLoadingExisting(false);
@@ -253,6 +254,8 @@ export default function CreateRequisitionForm({ requisitionId }: CreateRequisiti
 
   // Automatically re-convert line items whenever live exchange rates or header currency updates
   useEffect(() => {
+    // Prices follow the live exchange rates; the lines are the state being converted.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLines((prevLines) =>
       prevLines.map((line) => {
         const rawOrigPrice =
@@ -294,7 +297,7 @@ export default function CreateRequisitionForm({ requisitionId }: CreateRequisiti
   const handleLineChange = (
     tempId: string,
     field: keyof LocalLineItem,
-    value: any
+    value: string | number | undefined
   ) => {
     setLines((prevLines) =>
       prevLines.map((line) => {
@@ -334,14 +337,14 @@ export default function CreateRequisitionForm({ requisitionId }: CreateRequisiti
               updated.supplierId = selectedMat.supplierId;
               const sup = suppliers.find((s) => s.id === selectedMat.supplierId);
               if (sup) {
-                updated.supplierCode = (sup as any).code || "";
+                updated.supplierCode = sup.code || "";
               }
             } else {
               updated.supplierId = "";
               updated.supplierCode = "";
             }
           } else {
-            updated.materialId = value;
+            updated.materialId = value === undefined ? undefined : String(value);
             updated.materialCode = "";
             updated.materialName = "";
             updated.supplierId = "";
@@ -582,14 +585,11 @@ export default function CreateRequisitionForm({ requisitionId }: CreateRequisiti
         navigate("/requisitions");
       }, 1500);
       return true;
-    } catch (err: any) {
+    } catch (err) {
       console.error("Failed to process requisition:", err);
       setSubmitMessage({
         type: "error",
-        text:
-          err?.response?.data?.message ||
-          err?.message ||
-          "Failed to process purchase requisition. Please verify backend status.",
+        text: getApiErrorMessage(err, "Saving the requisition failed."),
       });
       return false;
     } finally {
@@ -648,7 +648,7 @@ export default function CreateRequisitionForm({ requisitionId }: CreateRequisiti
           </div>
         )}
 
-        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-white/[0.07] dark:bg-gray-900">
+        <div className="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-white/[0.03]">
           {/* Section 1: General Header Details */}
           <div className="mb-8">
             <div className="flex items-center gap-3 pb-3 mb-6 border-b border-gray-100 dark:border-white/[0.07]">
@@ -1087,7 +1087,7 @@ export default function CreateRequisitionForm({ requisitionId }: CreateRequisiti
                                 handleLineChange(
                                   line.tempId,
                                   "supplierCode",
-                                  (sup as any)?.code || ""
+                                  sup?.code || ""
                                 );
                               }}
                               className={`h-11 w-full appearance-none rounded-lg border px-4 py-2.5 pr-10 text-sm shadow-theme-xs transition-all focus:outline-hidden focus:ring-3 ${
@@ -1241,8 +1241,8 @@ export default function CreateRequisitionForm({ requisitionId }: CreateRequisiti
 
       {/* Exit Confirmation Modal */}
       {showExitModal && (
-        <div className="fixed inset-0 z-99999 flex items-center justify-center bg-gray-900/50 backdrop-blur-xs p-4 animate-fade-in">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl dark:bg-gray-900 border border-gray-100 dark:border-white/[0.08]">
+        <Modal isOpen onClose={() => setShowExitModal(false)} className="max-w-md p-6">
+          <div>
             <div className="flex items-center gap-3 mb-3">
               <div className="flex size-10 items-center justify-center rounded-full bg-amber-100 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400">
                 <svg className="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1298,7 +1298,7 @@ export default function CreateRequisitionForm({ requisitionId }: CreateRequisiti
               </Button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

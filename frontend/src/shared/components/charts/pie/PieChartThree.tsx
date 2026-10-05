@@ -16,7 +16,7 @@ export default function PieChartThree() {
       horizontalAlign: "center",
       fontFamily: "Outfit",
       markers: {
-        shape: "circle" as any,
+        shape: "circle",
       },
     },
     plotOptions: {

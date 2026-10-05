@@ -1,715 +1,402 @@
-import React, { useEffect, useState, useRef } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableRow,
-} from "../../../shared/components/ui/table";
-import Checkbox from "../../../shared/components/form/input/Checkbox";
-import Button from "../../../shared/components/ui/button/Button";
-import DeleteConfirmModal from "../../../shared/components/ui/modal/DeleteConfirmModal";
-import Pagination from "../../../shared/components/ui/Pagination";
+import React, { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { requisitionApi } from "../services/requisitionApi";
 import purchaseOrderService from "../../purchaseOrders/services/purchaseOrderService";
-import type { CreatePurchaseOrderRequest } from "../../purchaseOrders/types";
-import { supplierApi } from "../../suppliers/services/supplierApi";
 import useAuth from "../../auth/hooks/useAuth";
-import type {
-  Requisition,
-  RequisitionFilterTab,
-  RequisitionSearchRequest,
-} from "../types";
-import RequisitionStatCards from "./RequisitionStatCards";
-import RequisitionCancelModal from "./RequisitionCancelModal";
-import RequisitionTableToolbar from "./RequisitionTableToolbar";
-import RequisitionTableRow from "./RequisitionTableRow";
+import { REQUISITION_STATUS_INFO, type Requisition } from "../types";
+import RequisitionStatusBadge from "./RequisitionStatusBadge";
+import RequisitionFilters, { type RequisitionFilterValues } from "./RequisitionFilters";
 import RequisitionExpandedRow from "./RequisitionExpandedRow";
+import RequisitionCancelModal from "./RequisitionCancelModal";
 import RequisitionConvertToPoModal from "./RequisitionConvertToPoModal";
+import { toPurchaseOrderRequest, type OrderSupplier } from "../utils/convertToPurchaseOrder";
+import { formatAmount } from "../../invoices/utils/invoiceLine";
+import DeleteConfirmModal from "../../../shared/components/ui/modal/DeleteConfirmModal";
+import ListCard, { type FilterPill } from "../../../shared/components/page/ListCard";
+import StatFilterCards, { type StatCard } from "../../../shared/components/page/StatFilterCards";
+import {
+  InitialsAvatar,
+  ListFooter,
+  RowIconButton,
+  StackedCell,
+  TableStateRow,
+  ViewAction,
+} from "../../../shared/components/page/ListParts";
+import { FloatingToast } from "../../../shared/components/page/DetailParts";
+import { StatIcons } from "../../../shared/components/page/pageIcons";
+import { BODY_CELL, HEAD_CELL } from "../../../shared/components/page/pageStyles";
+import { useClientPagination } from "../../../shared/components/page/useClientPagination";
+import { Table, TableBody, TableCell, TableHeader, TableRow } from "../../../shared/components/ui/table";
+import { getApiErrorMessage } from "../../../shared/utils/apiError";
+
+type QuickFilter = "ALL" | "PENDING" | "APPROVED" | "CONVERTED";
+type Feedback = { type: "success" | "error"; text: string };
+
+const QUICK_FILTERS: Record<QuickFilter, (r: Requisition) => boolean> = {
+  ALL: () => true,
+  PENDING: (r) => r.status === "SUBMITTED" || r.status === "UNDER_REVIEW",
+  APPROVED: (r) => r.status === "APPROVED",
+  CONVERTED: (r) => r.status === "CONVERTED",
+};
+
+const EMPTY_FILTERS: RequisitionFilterValues = { status: "", requester: "", neededFrom: "", neededTo: "" };
+const COLUMNS = 8;
+
+/** Need-by date, flagged when late or due within three days while the requisition is still open. */
+function NeededBy({ requisition }: { requisition: Requisition }) {
+  const date = requisition.requiredDate;
+  if (!date) return <>—</>;
+  const open = ["DRAFT", "SUBMITTED", "UNDER_REVIEW", "APPROVED"].includes(requisition.status);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const days = Math.ceil((new Date(`${date}T00:00:00`).getTime() - today.getTime()) / 86_400_000);
+  return (
+    <StackedCell
+      main={date}
+      sub={
+        open && days < 0 ? (
+          <span className="font-semibold text-error-500">Overdue</span>
+        ) : open && days <= 3 ? (
+          <span className="text-warning-600 dark:text-orange-400">{days === 0 ? "Due today" : `Due in ${days} day(s)`}</span>
+        ) : undefined
+      }
+    />
+  );
+}
+
+const icons = {
+  expand: (
+    <svg className="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+    </svg>
+  ),
+  edit: (
+    <svg className="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+    </svg>
+  ),
+  submit: (
+    <svg className="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+    </svg>
+  ),
+  order: (
+    <svg className="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+    </svg>
+  ),
+  cancel: (
+    <svg className="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636" />
+    </svg>
+  ),
+  delete: (
+    <svg className="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+      />
+    </svg>
+  ),
+};
 
 export default function RequisitionListTable() {
-  const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, hasPermission } = useAuth();
+  const canWrite = hasPermission("requisition:write");
+  const canConvert = hasPermission("requisition:convert");
+
   const [requisitions, setRequisitions] = useState<Requisition[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [expandedRowIds, setExpandedRowIds] = useState<Set<string>>(new Set());
-
-  // Delete modal state
-  const [requisitionToDelete, setRequisitionToDelete] =
-    useState<Requisition | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [feedback, setFeedback] = useState<Feedback | null>(null);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [keyword, setKeyword] = useState("");
+  const [quick, setQuick] = useState<QuickFilter>("ALL");
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [draftFilters, setDraftFilters] = useState<RequisitionFilterValues>(EMPTY_FILTERS);
+  const [filters, setFilters] = useState<RequisitionFilterValues>(EMPTY_FILTERS);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [toDelete, setToDelete] = useState<Requisition | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-
-  // Convert to PO modal state
-  const [convertToPoRequisition, setConvertToPoRequisition] =
-    useState<Requisition | null>(null);
+  const [toCancel, setToCancel] = useState<Requisition | null>(null);
+  const [toConvert, setToConvert] = useState<Requisition | null>(null);
   const [isConverting, setIsConverting] = useState(false);
 
-  // Cancel modal state
-  const [requisitionToCancel, setRequisitionToCancel] =
-    useState<Requisition | null>(null);
-  const [isCancelling, setIsCancelling] = useState(false);
-
-  // User feedback toast/alert state
-  const [feedback, setFeedback] = useState<{
-    type: "success" | "error";
-    text: string;
-  } | null>(null);
-
-  // Search & Filter state
-  const [searchKeyword, setSearchKeyword] = useState("");
-  const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const [filterStatus, setFilterStatus] = useState("");
-  const [filterRequester, setFilterRequester] = useState("");
-  const [filterDateFrom, setFilterDateFrom] = useState("");
-  const [filterDateTo, setFilterDateTo] = useState("");
-
-  // Top KPI Card filter state
-  const [activeStatFilter, setActiveStatFilter] =
-    useState<RequisitionFilterTab>("ALL");
-  const [statCounts, setStatCounts] = useState({
-    total: 0,
-    pendingReview: 0,
-    readyForPo: 0,
-    converted: 0,
-    totalEstimatedValue: 0,
-    currency: "MAD",
-  });
-
-  // Pagination state
-  const [page, setPage] = useState(0);
-  const [size] = useState(10);
-  const [totalPages, setTotalPages] = useState(0);
-  const [totalElements, setTotalElements] = useState(0);
-
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const isFirstMount = useRef(true);
-
-  // Active filters count
-  const activeFiltersCount = [
-    filterStatus,
-    filterRequester,
-    filterDateFrom,
-    filterDateTo,
-  ].filter(Boolean).length;
-
   useEffect(() => {
-    fetchStatCounts();
-  }, [refreshTrigger]);
-
-  const fetchStatCounts = async () => {
-    try {
-      const res = await requisitionApi.getAll();
-      const all = res.data || [];
-      const pending = all.filter(
-        (r) => r.status === "SUBMITTED" || r.status === "UNDER_REVIEW"
-      ).length;
-      const approved = all.filter((r) => r.status === "APPROVED").length;
-      const converted = all.filter((r) => r.status === "CONVERTED").length;
-
-      const totalVal = all.reduce((sum, r) => {
-        const amt =
-          typeof r.totalAmount === "number"
-            ? r.totalAmount
-            : parseFloat(String(r.totalAmount || "0").replace(/[^0-9.-]+/g, "")) || 0;
-        return sum + amt;
-      }, 0);
-
-      const detectedCurr = all[0]?.currencyCode || "MAD";
-
-      setStatCounts({
-        total: all.length,
-        pendingReview: pending,
-        readyForPo: approved,
-        converted: converted,
-        totalEstimatedValue: totalVal,
-        currency: detectedCurr,
+    let cancelled = false;
+    requisitionApi
+      .getAll()
+      .then((res) => {
+        if (!cancelled) setRequisitions(Array.isArray(res.data) ? res.data : []);
+      })
+      .catch((err) => {
+        if (!cancelled) setFeedback({ type: "error", text: getApiErrorMessage(err, "Could not load requisitions.") });
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
       });
+    return () => {
+      cancelled = true;
+    };
+  }, [refreshKey]);
+
+  const refresh = () => {
+    setLoading(true);
+    setRefreshKey((k) => k + 1);
+  };
+
+  const handleSubmit = async (req: Requisition) => {
+    try {
+      setBusyId(req.id);
+      await requisitionApi.submit(req.id);
+      setFeedback({ type: "success", text: `Requisition ${req.requisitionCode} was submitted for approval.` });
+      refresh();
     } catch (err) {
-      console.error("Failed to load requisition stats:", err);
-    }
-  };
-
-  useEffect(() => {
-    if (isFirstMount.current) {
-      isFirstMount.current = false;
-      fetchRequisitions();
-      return;
-    }
-    fetchRequisitions();
-  }, [page, refreshTrigger, activeStatFilter]);
-
-  const fetchRequisitions = async () => {
-    try {
-      setLoading(true);
-
-      const criteria: RequisitionSearchRequest = {};
-
-      if (searchKeyword.trim()) {
-        criteria.keyword = searchKeyword.trim();
-      }
-
-      if (filterRequester.trim()) {
-        criteria.requesterId = filterRequester.trim();
-      }
-
-      if (filterDateFrom) {
-        criteria.requiredDateFrom = filterDateFrom;
-      }
-
-      if (filterDateTo) {
-        criteria.requiredDateTo = filterDateTo;
-      }
-
-      // Merge activeStatFilter with filterStatus
-      if (activeStatFilter === "PENDING") {
-        criteria.status = "SUBMITTED";
-      } else if (activeStatFilter === "APPROVED") {
-        criteria.status = "APPROVED";
-      } else if (activeStatFilter === "CONVERTED") {
-        criteria.status = "CONVERTED";
-      } else if (activeStatFilter === "DRAFT") {
-        criteria.status = "DRAFT";
-      } else if (filterStatus) {
-        criteria.status = filterStatus;
-      }
-
-      const hasCriteria =
-        criteria.keyword ||
-        criteria.status ||
-        criteria.requesterId ||
-        criteria.requiredDateFrom ||
-        criteria.requiredDateTo;
-
-      if (hasCriteria) {
-        try {
-          const res = await requisitionApi.searchAdvanced(criteria, page, size);
-          const data = res.data;
-          setRequisitions(data.content || []);
-          setTotalPages(data.totalPages || 0);
-          setTotalElements(data.totalElements || 0);
-        } catch (searchErr) {
-          // Fallback to client-side filtering if search endpoint has criteria issues
-          const allRes = await requisitionApi.getAll();
-          let items = allRes.data || [];
-
-          if (criteria.keyword) {
-            const kw = criteria.keyword.toLowerCase();
-            items = items.filter(
-              (r) =>
-                r.requisitionCode?.toLowerCase().includes(kw) ||
-                r.title?.toLowerCase().includes(kw) ||
-                r.requesterName?.toLowerCase().includes(kw) ||
-                r.description?.toLowerCase().includes(kw)
-            );
-          }
-
-          if (activeStatFilter === "PENDING") {
-            items = items.filter(
-              (r) => r.status === "SUBMITTED" || r.status === "UNDER_REVIEW"
-            );
-          } else if (criteria.status) {
-            items = items.filter((r) => r.status === criteria.status);
-          }
-
-          if (criteria.requesterId) {
-            items = items.filter(
-              (r) =>
-                r.requesterId?.toLowerCase().includes(criteria.requesterId!.toLowerCase()) ||
-                r.requesterName?.toLowerCase().includes(criteria.requesterId!.toLowerCase())
-            );
-          }
-
-          setTotalElements(items.length);
-          setTotalPages(Math.ceil(items.length / size) || 1);
-          setRequisitions(items.slice(page * size, (page + 1) * size));
-        }
-      } else {
-        const allRes = await requisitionApi.getAll();
-        const items = allRes.data || [];
-        setTotalElements(items.length);
-        setTotalPages(Math.ceil(items.length / size) || 1);
-        setRequisitions(items.slice(page * size, (page + 1) * size));
-      }
-    } catch (err) {
-      console.error("Failed to load requisitions:", err);
-      setRequisitions([]);
+      setFeedback({ type: "error", text: getApiErrorMessage(err, "Submitting the requisition failed.") });
     } finally {
-      setLoading(false);
+      setBusyId(null);
     }
   };
 
-  const handleToggleRow = (id: string) => {
-    setExpandedRowIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
-  };
-
-  const handleSelectAll = (checked: boolean) => {
-    if (checked) {
-      setSelectedIds(requisitions.map((r) => r.id));
-    } else {
-      setSelectedIds([]);
-    }
-  };
-
-  const handleSelectOne = (id: string) => {
-    setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
-    );
-  };
-
-  const handleSelectStatFilter = (filter: RequisitionFilterTab) => {
-    setActiveStatFilter((prev) => (prev === filter ? "ALL" : filter));
-    setPage(0);
-  };
-
-  const handleApplyFilters = () => {
-    setIsFilterOpen(false);
-    setPage(0);
-    setRefreshTrigger((prev) => prev + 1);
-  };
-
-  const handleClearFilters = () => {
-    setFilterStatus("");
-    setFilterRequester("");
-    setFilterDateFrom("");
-    setFilterDateTo("");
-    setIsFilterOpen(false);
-    setPage(0);
-    setRefreshTrigger((prev) => prev + 1);
-  };
-
-  // Workflow Handlers
-  const handleQuickSubmit = async (requisition: Requisition) => {
-    try {
-      setLoading(true);
-      await requisitionApi.submit(requisition.id, "current-user");
-      setRefreshTrigger((prev) => prev + 1);
-      setFeedback({
-        type: "success",
-        text: `Requisition ${requisition.requisitionCode} submitted for approval.`,
-      });
-    } catch (err: any) {
-      console.error("Failed to submit requisition:", err);
-      setFeedback({
-        type: "error",
-        text: err?.response?.data?.message || `Failed to submit requisition ${requisition.requisitionCode}.`,
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleConvertToPoConfirm = async (selectedSupplier?: { id: string; name: string; code?: string }) => {
-    if (!convertToPoRequisition) return;
-    const reqCode = convertToPoRequisition.requisitionCode;
+  const handleConvert = async (supplier: OrderSupplier) => {
+    if (!toConvert) return;
     try {
       setIsConverting(true);
-      // Fetch full requisition to get all line items
-      const fullReqRes = await requisitionApi.getById(convertToPoRequisition.id);
-      const fullReq = fullReqRes.data;
-
-      // Resolve supplier
-      let supId = selectedSupplier?.id;
-      let supName = selectedSupplier?.name;
-      let supCode = selectedSupplier?.code;
-
-      if (!supId) {
-        const lineWithSup = fullReq.lines?.find((l) => l.supplierId && l.supplierName);
-        if (lineWithSup) {
-          supId = lineWithSup.supplierId;
-          supName = lineWithSup.supplierName;
-          supCode = lineWithSup.supplierCode;
-        }
-      }
-
-      if (!supId) {
-        const supList = await supplierApi.getAllUnpaginated();
-        if (supList.data && supList.data.length > 0) {
-          supId = supList.data[0].id;
-          supName = supList.data[0].name;
-          supCode = supList.data[0].code;
-        }
-      }
-
-      if (!supId) {
-        setConvertToPoRequisition(null);
-        navigate(`/purchase-orders/create?fromRequisition=${fullReq.id}`);
-        return;
-      }
-
-      const poPayload: CreatePurchaseOrderRequest = {
-        requisitionId: fullReq.id,
-        requisitionCode: fullReq.requisitionCode,
-        supplierId: supId,
-        supplierName: supName || "Fournisseur",
-        supplierCode: supCode || undefined,
-        orderDate: new Date().toISOString().split("T")[0],
-        expectedDeliveryDate: fullReq.requiredDate || undefined,
-        paymentTerms: "Virement 30 jours",
-        paymentDelayDays: 30,
-        deliveryTerms: "Livraison sur site DAP",
-        incoterm: "DAP",
-        currencyCode: fullReq.currencyCode || "MAD",
-        taxAmount: 0,
-        shippingCost: 0,
-        orderedBy: user?.id || "CURRENT_USER",
-        orderedByName: user?.name || user?.email || "Acheteur",
-        notes: fullReq.title + (fullReq.description ? ` - ${fullReq.description}` : ""),
-        lines: (fullReq.lines || []).map((l, idx) => ({
-          lineNumber: idx + 1,
-          requisitionLineId: l.id,
-          materialCode: l.materialCode,
-          materialId: l.materialId || undefined,
-          materialName: l.materialName || undefined,
-          unitOfMeasure: l.unitOfMeasure || undefined,
-          quantity: Number(l.quantity) || 1,
-          unitPrice: Number(l.unitPrice) || 0,
-          currencyCode: l.currencyCode || fullReq.currencyCode || "MAD",
-          expectedDeliveryDate: l.requiredDate || fullReq.requiredDate || undefined,
-          notes: l.notes || undefined,
-        })),
-        createdBy: user?.email || "system",
-      };
-
-      // The backend converts the requisition in the same transaction as the order creation.
-      const createdPo = await purchaseOrderService.create(poPayload);
-
-      setConvertToPoRequisition(null);
-      setRefreshTrigger((prev) => prev + 1);
-      setFeedback({
-        type: "success",
-        text: `Demande ${reqCode} convertie avec succès en Bon de Commande ${createdPo.data.orderCode}.`,
-      });
-    } catch (err: any) {
-      console.error("Failed to convert requisition to PO:", err);
-      setFeedback({
-        type: "error",
-        text: err?.response?.data?.message || `Échec de la conversion de la demande ${reqCode} en bon de commande.`,
-      });
+      const full = (await requisitionApi.getById(toConvert.id)).data;
+      const created = await purchaseOrderService.create(toPurchaseOrderRequest(full, supplier, user));
+      setToConvert(null);
+      setFeedback({ type: "success", text: `Requisition ${full.requisitionCode} is now purchase order ${created.data.orderCode}.` });
+      refresh();
+    } catch (err) {
+      setFeedback({ type: "error", text: getApiErrorMessage(err, "Creating the purchase order failed.") });
     } finally {
       setIsConverting(false);
     }
   };
 
-  const handleDeleteConfirm = async () => {
-    if (!requisitionToDelete) return;
-    const reqCode = requisitionToDelete.requisitionCode;
-    const reqId = requisitionToDelete.id;
+  const handleCancel = async (reason: string) => {
+    if (!toCancel) return;
+    await requisitionApi.cancel(toCancel.id, undefined, reason);
+    setFeedback({ type: "success", text: `Requisition ${toCancel.requisitionCode} was cancelled.` });
+    setToCancel(null);
+    refresh();
+  };
+
+  const handleDelete = async () => {
+    if (!toDelete) return;
     try {
       setIsDeleting(true);
-      await requisitionApi.delete(reqId);
-      setRequisitionToDelete(null);
-      setSelectedIds((prev) => prev.filter((id) => id !== reqId));
-      setRefreshTrigger((prev) => prev + 1);
-      setFeedback({
-        type: "success",
-        text: `Requisition ${reqCode} has been successfully deleted.`,
-      });
-    } catch (err: any) {
-      console.error("Failed to delete requisition:", err);
-      setFeedback({
-        type: "error",
-        text: err?.response?.data?.message || `Failed to delete requisition ${reqCode}.`,
-      });
+      await requisitionApi.delete(toDelete.id);
+      setFeedback({ type: "success", text: `Requisition ${toDelete.requisitionCode} was deleted.` });
+      setToDelete(null);
+      refresh();
+    } catch (err) {
+      setFeedback({ type: "error", text: getApiErrorMessage(err, "Deleting the requisition failed.") });
     } finally {
       setIsDeleting(false);
     }
   };
 
-  const handleCancelConfirm = async (reason: string) => {
-    if (!requisitionToCancel) return;
-    const reqCode = requisitionToCancel.requisitionCode;
-    try {
-      setIsCancelling(true);
-      await requisitionApi.cancel(requisitionToCancel.id, "current-user", reason);
-      setRequisitionToCancel(null);
-      setRefreshTrigger((prev) => prev + 1);
-      setFeedback({
-        type: "success",
-        text: `Requisition ${reqCode} has been cancelled.`,
-      });
-    } catch (err: any) {
-      console.error("Failed to cancel requisition:", err);
-      setFeedback({
-        type: "error",
-        text: err?.response?.data?.message || `Failed to cancel requisition ${reqCode}.`,
-      });
-    } finally {
-      setIsCancelling(false);
-    }
-  };
+  const toggleRow = (id: string) =>
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
 
-  const formatAmount = (amt: string | number, curr = "MAD") => {
-    if (amt === undefined || amt === null) return `0.00 ${curr}`;
-    const str = String(amt).trim();
-    let detectedCurr = curr;
-    if (!curr || curr === "MAD") {
-      const upper = str.toUpperCase();
-      if (upper.includes("EUR") || upper.includes("€") || upper.includes("â‚¬") || upper.includes("\u20AC")) {
-        detectedCurr = "EUR";
-      } else if (upper.includes("USD") || upper.includes("$")) {
-        detectedCurr = "USD";
-      } else if (upper.includes("MAD") || upper.includes("DH") || upper.includes("DIRHAM")) {
-        detectedCurr = "MAD";
-      }
-    }
+  const pending = requisitions.filter(QUICK_FILTERS.PENDING);
+  const approved = requisitions.filter(QUICK_FILTERS.APPROVED);
+  const converted = requisitions.filter(QUICK_FILTERS.CONVERTED);
+  const drafts = requisitions.filter((r) => r.status === "DRAFT").length;
+  const cards: StatCard<QuickFilter>[] = [
+    { id: "ALL", title: "All Requisitions", value: requisitions.length, unit: "requests", subtitle: `${drafts} draft(s)`, tone: "brand", icon: StatIcons.all },
+    { id: "PENDING", title: "Awaiting Approval", value: pending.length, unit: "requests", subtitle: "Submitted or under review", tone: "amber", icon: StatIcons.pending, badge: pending.length },
+    { id: "APPROVED", title: "Ready to Order", value: approved.length, unit: "requests", subtitle: "Approved, no order yet", tone: "blue", icon: StatIcons.warning, badge: approved.length },
+    { id: "CONVERTED", title: "Ordered", value: converted.length, unit: "requests", subtitle: "Turned into purchase orders", tone: "green", icon: StatIcons.done },
+  ];
 
-    let cleaned = str.replace(/[^0-9.,-]+/g, "");
-    if (cleaned.includes(",") && cleaned.includes(".")) {
-      if (cleaned.indexOf(",") < cleaned.indexOf(".")) {
-        cleaned = cleaned.replace(/,/g, "");
-      } else {
-        cleaned = cleaned.replace(/\./g, "").replace(/,/g, ".");
-      }
-    } else if (cleaned.includes(",")) {
-      cleaned = cleaned.replace(/,/g, ".");
-    }
-    const num = parseFloat(cleaned);
-    const validNum = isNaN(num) ? 0 : num;
-    return `${new Intl.NumberFormat("en-US", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(validNum)} ${detectedCurr}`;
-  };
+  const visible = useMemo(() => {
+    const term = keyword.trim().toLowerCase();
+    const requester = filters.requester.trim().toLowerCase();
+    return requisitions
+      .filter(QUICK_FILTERS[quick])
+      .filter((r) => !filters.status || r.status === filters.status)
+      .filter((r) => !requester || String(r.requesterName ?? "").toLowerCase().includes(requester))
+      .filter((r) => !filters.neededFrom || (r.requiredDate ?? "") >= filters.neededFrom)
+      .filter((r) => !filters.neededTo || (!!r.requiredDate && r.requiredDate <= filters.neededTo))
+      .filter(
+        (r) =>
+          !term ||
+          [r.requisitionCode, r.title, r.description, r.requesterName, r.purchaseOrderCode, ...(r.lines ?? []).map((l) => l.materialCode)]
+            .filter(Boolean)
+            .some((v) => String(v).toLowerCase().includes(term))
+      )
+      .sort((a, b) => String(b.createdAt ?? "").localeCompare(String(a.createdAt ?? "")));
+  }, [requisitions, quick, filters, keyword]);
 
-  const getUrgencyBadge = (requiredDateStr?: string) => {
-    if (!requiredDateStr) return null;
-    const reqDate = new Date(requiredDateStr);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    reqDate.setHours(0, 0, 0, 0);
-
-    const diffDays = Math.ceil(
-      (reqDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
-    );
-
-    if (diffDays < 0) {
-      return (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-50 text-red-700 dark:bg-red-500/15 dark:text-red-400 border border-red-200/60 dark:border-red-500/20">
-          <span className="size-1 rounded-full bg-red-500" />
-          Overdue
-        </span>
-      );
-    } else if (diffDays <= 3) {
-      return (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400 border border-amber-200/60 dark:border-amber-500/20">
-          <span className="size-1 rounded-full bg-amber-500 animate-ping" />
-          Due in {diffDays}d
-        </span>
-      );
-    }
-    return (
-      <span className="text-xs text-gray-500 dark:text-gray-400">
-        {requiredDateStr}
-      </span>
-    );
-  };
-
-  const isAllSelected =
-    requisitions.length > 0 &&
-    requisitions.every((r) => selectedIds.includes(r.id));
+  const paging = useClientPagination(visible);
+  const pills: FilterPill[] = [
+    ...(filters.status ? [{ label: `Status: ${REQUISITION_STATUS_INFO[filters.status].label}`, onRemove: () => setFilters({ ...filters, status: "" }) }] : []),
+    ...(filters.requester ? [{ label: `Requester: ${filters.requester}`, onRemove: () => setFilters({ ...filters, requester: "" }) }] : []),
+    ...(filters.neededFrom ? [{ label: `Needed from: ${filters.neededFrom}`, onRemove: () => setFilters({ ...filters, neededFrom: "" }) }] : []),
+    ...(filters.neededTo ? [{ label: `Needed to: ${filters.neededTo}`, onRemove: () => setFilters({ ...filters, neededTo: "" }) }] : []),
+  ];
 
   return (
-    <div className="space-y-6">
-      {/* Toast Feedback Banner */}
-      {feedback && (
-        <div
-          className={`flex items-center justify-between p-4 rounded-xl text-xs font-medium border transition-all ${
-            feedback.type === "success"
-              ? "bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:border-emerald-500/20"
-              : "bg-red-50 text-red-800 border-red-200 dark:bg-red-500/10 dark:text-red-300 dark:border-red-500/20"
-          }`}
-        >
-          <div className="flex items-center gap-2">
-            {feedback.type === "success" ? (
-              <svg className="size-4 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-            ) : (
-              <svg className="size-4 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            )}
-            <span>{feedback.text}</span>
-          </div>
-          <button
-            type="button"
-            onClick={() => setFeedback(null)}
-            className="hover:opacity-75"
-          >
-            <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-      )}
+    <>
+      <FloatingToast feedback={feedback} onClose={() => setFeedback(null)} />
 
-      {/* Top Metric / Filter Stat Cards */}
-      <RequisitionStatCards
-        activeFilter={activeStatFilter}
-        onSelectFilter={handleSelectStatFilter}
-        counts={statCounts}
-      />
+      <StatFilterCards cards={cards} active={quick} onSelect={setQuick} />
 
-      {/* Main Table Card Container */}
-      <div className="rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-white/[0.07] dark:bg-gray-900">
-        {/* Table Toolbar & Search */}
-        <RequisitionTableToolbar
-          searchKeyword={searchKeyword}
-          onSearchKeywordChange={setSearchKeyword}
-          onSearchSubmit={() => {
-            setPage(0);
-            fetchRequisitions();
-          }}
-          isFilterOpen={isFilterOpen}
-          onToggleFilter={() => setIsFilterOpen(!isFilterOpen)}
-          activeFiltersCount={activeFiltersCount}
-          onRefresh={() => setRefreshTrigger((prev) => prev + 1)}
-          loading={loading}
-          pendingReviewCount={statCounts.pendingReview}
-          activeStatFilter={activeStatFilter}
-          onClearStatFilter={() => setActiveStatFilter("ALL")}
-          filterStatus={filterStatus}
-          onClearFilterStatus={() => {
-            setFilterStatus("");
-            setRefreshTrigger((prev) => prev + 1);
-          }}
-          filterRequester={filterRequester}
-          onClearFilterRequester={() => {
-            setFilterRequester("");
-            setRefreshTrigger((prev) => prev + 1);
-          }}
-          onClearFilterDateFrom={() => {
-            setFilterDateFrom("");
-            setRefreshTrigger((prev) => prev + 1);
-          }}
-          onClearFilterDateTo={() => {
-            setFilterDateTo("");
-            setRefreshTrigger((prev) => prev + 1);
-          }}
-          filterDateFrom={filterDateFrom}
-          setFilterDateFrom={setFilterDateFrom}
-          filterDateTo={filterDateTo}
-          setFilterDateTo={setFilterDateTo}
-          setFilterStatus={setFilterStatus}
-          setFilterRequester={setFilterRequester}
-          onApplyFilters={handleApplyFilters}
-          onClearFilters={handleClearFilters}
-        />
-
-        {/* Data Table */}
-        <div className="overflow-x-auto">
+      <ListCard
+        title="Requisitions List"
+        search={{ value: keyword, onChange: setKeyword, placeholder: "Search requisitions..." }}
+        filter={{
+          activeCount: pills.length,
+          isOpen: isFilterOpen,
+          onToggle: () => {
+            setDraftFilters(filters);
+            setIsFilterOpen(!isFilterOpen);
+          },
+          panel: (
+            <RequisitionFilters
+              isOpen={isFilterOpen}
+              onClose={() => setIsFilterOpen(false)}
+              value={draftFilters}
+              onChange={setDraftFilters}
+              onApply={() => {
+                setFilters(draftFilters);
+                setIsFilterOpen(false);
+              }}
+              onClear={() => {
+                setDraftFilters(EMPTY_FILTERS);
+                setFilters(EMPTY_FILTERS);
+                setIsFilterOpen(false);
+              }}
+            />
+          ),
+        }}
+        action={canWrite ? { label: "New Requisition", to: "/requisitions/create" } : undefined}
+        pills={pills}
+        onClearPills={() => setFilters(EMPTY_FILTERS)}
+        footer={
+          <ListFooter page={paging.page} size={paging.size} total={paging.total} totalPages={paging.totalPages} onPageChange={paging.setPage} />
+        }
+      >
+        <div className="max-w-full overflow-x-auto">
           <Table>
-            <TableHeader className="bg-gray-50/75 dark:bg-white/[0.02]">
-              <TableRow className="border-b border-gray-100 dark:border-white/[0.05]">
-                <TableCell isHeader className="w-10 px-4 py-3.5">
-                  <span className="sr-only">Expand</span>
-                </TableCell>
-                <TableCell isHeader className="w-10 px-4 py-3.5">
-                  <Checkbox
-                    checked={isAllSelected}
-                    onChange={handleSelectAll}
-                  />
-                </TableCell>
-                <TableCell isHeader className="px-4 py-3.5 text-xs font-semibold text-gray-600 dark:text-gray-300">
-                  Requisition
-                </TableCell>
-                <TableCell isHeader className="px-4 py-3.5 text-xs font-semibold text-gray-600 dark:text-gray-300">
-                  Requester
-                </TableCell>
-                <TableCell isHeader className="px-4 py-3.5 text-xs font-semibold text-gray-600 dark:text-gray-300">
-                  Need By
-                </TableCell>
-                <TableCell isHeader className="px-4 py-3.5 text-xs font-semibold text-gray-600 dark:text-gray-300">
-                  Total Value
-                </TableCell>
-                <TableCell isHeader className="px-4 py-3.5 text-xs font-semibold text-gray-600 dark:text-gray-300">
-                  Status
-                </TableCell>
-                <TableCell isHeader className="px-4 py-3.5 text-xs font-semibold text-gray-600 dark:text-gray-300">
-                  PO Reference
-                </TableCell>
-                <TableCell isHeader className="px-4 py-3.5 text-right text-xs font-semibold text-gray-600 dark:text-gray-300">
-                  Actions
-                </TableCell>
+            <TableHeader className="border-b border-gray-100 bg-gray-50/50 dark:border-white/[0.05] dark:bg-gray-900/50">
+              <TableRow>
+                <TableCell isHeader className={HEAD_CELL}>Requisition</TableCell>
+                <TableCell isHeader className={HEAD_CELL}>Requester</TableCell>
+                <TableCell isHeader className={HEAD_CELL}>Needed By</TableCell>
+                <TableCell isHeader className={HEAD_CELL}>Estimated</TableCell>
+                <TableCell isHeader className={HEAD_CELL}>Status</TableCell>
+                <TableCell isHeader className={HEAD_CELL}>Order</TableCell>
+                <TableCell isHeader className={HEAD_CELL}>Approver</TableCell>
+                <TableCell isHeader className={HEAD_CELL}>Action</TableCell>
               </TableRow>
             </TableHeader>
-
-            <TableBody>
+            <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
               {loading ? (
-                <TableRow>
-                  <TableCell colSpan={9} className="px-4 py-12 text-center text-xs text-gray-500 dark:text-gray-400">
-                    <div className="flex flex-col items-center justify-center gap-2">
-                      <div className="size-6 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" />
-                      <span>Loading purchase requisitions...</span>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ) : requisitions.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={9} className="px-4 py-16 text-center text-gray-500 dark:text-gray-400">
-                    <div className="flex flex-col items-center justify-center gap-3">
-                      <div className="p-3 rounded-2xl bg-gray-100 text-gray-400 dark:bg-white/[0.05] dark:text-gray-500">
-                        <svg className="size-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={1.5}
-                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                          />
-                        </svg>
-                      </div>
-                      <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                        No purchase requisitions found
-                      </p>
-                      <p className="text-xs text-gray-400 dark:text-gray-500 max-w-sm">
-                        {searchKeyword || activeFiltersCount > 0 || activeStatFilter !== "ALL"
-                          ? "Try adjusting your search criteria or resetting filters."
-                          : "Create your first purchase requisition to start managing material procurement."}
-                      </p>
-                      <Link to="/requisitions/create">
-                        <Button size="sm">Create Requisition</Button>
-                      </Link>
-                    </div>
-                  </TableCell>
-                </TableRow>
+                <TableStateRow colSpan={COLUMNS} loading message="Fetching requisitions..." />
+              ) : paging.pageItems.length === 0 ? (
+                <TableStateRow colSpan={COLUMNS} message="No requisitions found." />
               ) : (
-                requisitions.map((req) => {
-                  const isExpanded = expandedRowIds.has(req.id);
-                  const isSelected = selectedIds.includes(req.id);
-
+                paging.pageItems.map((req) => {
+                  const isOpen = expanded.has(req.id);
+                  const busy = busyId === req.id;
+                  const isPending = req.status === "SUBMITTED" || req.status === "UNDER_REVIEW";
+                  const canEdit = canWrite && (req.status === "DRAFT" || isPending);
+                  const canDelete = canWrite && ["DRAFT", "REJECTED", "CANCELLED"].includes(req.status);
+                  const canCancel = canWrite && (isPending || req.status === "APPROVED");
                   return (
                     <React.Fragment key={req.id}>
-                      <RequisitionTableRow
-                        requisition={req}
-                        isExpanded={isExpanded}
-                        isSelected={isSelected}
-                        onToggleExpand={handleToggleRow}
-                        onSelect={handleSelectOne}
-                        formatAmount={formatAmount}
-                        getUrgencyBadge={getUrgencyBadge}
-                        onQuickSubmit={handleQuickSubmit}
-                        onConvertToPo={(r) => setConvertToPoRequisition(r)}
-                        onCancel={(r) => setRequisitionToCancel(r)}
-                        onDelete={(r) => setRequisitionToDelete(r)}
-                      />
-
-                      {/* Expandable Nested Line Items Row */}
-                      {isExpanded && (
-                        <RequisitionExpandedRow
-                          requisition={req}
-                          formatAmount={formatAmount}
-                        />
-                      )}
+                      <TableRow>
+                        <TableCell className={BODY_CELL}>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => toggleRow(req.id)}
+                              title={isOpen ? "Hide lines" : "Show lines"}
+                              aria-label={isOpen ? "Hide lines" : "Show lines"}
+                              className="rounded-md p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-white/[0.05]"
+                            >
+                              <span className={`block transition-transform ${isOpen ? "rotate-90 text-brand-500" : ""}`}>{icons.expand}</span>
+                            </button>
+                            <StackedCell
+                              main={
+                                <Link to={`/requisitions/view/${req.id}`} className="font-mono hover:text-brand-500">
+                                  {req.requisitionCode}
+                                </Link>
+                              }
+                              sub={<span className="block max-w-[220px] truncate">{req.title}</span>}
+                            />
+                          </div>
+                        </TableCell>
+                        <TableCell className={BODY_CELL}>
+                          <div className="flex items-center gap-3">
+                            <InitialsAvatar name={req.requesterName} />
+                            <StackedCell main={req.requesterName} sub={`${req.lines?.length ?? 0} line(s)`} />
+                          </div>
+                        </TableCell>
+                        <TableCell className={BODY_CELL}>
+                          <NeededBy requisition={req} />
+                        </TableCell>
+                        <TableCell className={`${BODY_CELL} whitespace-nowrap`}>{formatAmount(req.totalAmount, req.currencyCode)}</TableCell>
+                        <TableCell className={BODY_CELL}>
+                          <RequisitionStatusBadge status={req.status} />
+                        </TableCell>
+                        <TableCell className={BODY_CELL}>
+                          {req.purchaseOrderId ? (
+                            <Link to={`/purchase-orders/${req.purchaseOrderId}`} className="font-mono hover:text-brand-500">
+                              {req.purchaseOrderCode || "View"}
+                            </Link>
+                          ) : (
+                            "—"
+                          )}
+                        </TableCell>
+                        <TableCell className={BODY_CELL}>{req.approverName || "—"}</TableCell>
+                        <TableCell className={BODY_CELL}>
+                          <div className="flex items-center">
+                            <ViewAction to={`/requisitions/view/${req.id}`} title="View Requisition" />
+                            {canEdit && (
+                              <Link
+                                to={`/requisitions/edit/${req.id}`}
+                                title="Edit"
+                                aria-label="Edit"
+                                className="flex items-center justify-center rounded-lg p-2 text-gray-400 transition-colors hover:bg-brand-50 hover:text-brand-500 dark:hover:bg-brand-500/10"
+                              >
+                                {icons.edit}
+                              </Link>
+                            )}
+                            {canWrite && req.status === "DRAFT" && (
+                              <RowIconButton title="Submit for approval" tone="brand" disabled={busy} onClick={() => handleSubmit(req)}>
+                                {icons.submit}
+                              </RowIconButton>
+                            )}
+                            {canConvert && req.status === "APPROVED" && (
+                              <RowIconButton title="Create purchase order" tone="brand" disabled={busy} onClick={() => setToConvert(req)}>
+                                {icons.order}
+                              </RowIconButton>
+                            )}
+                            {canCancel && (
+                              <RowIconButton title="Cancel requisition" tone="warning" disabled={busy} onClick={() => setToCancel(req)}>
+                                {icons.cancel}
+                              </RowIconButton>
+                            )}
+                            {canDelete && (
+                              <RowIconButton title="Delete" tone="danger" disabled={busy} onClick={() => setToDelete(req)}>
+                                {icons.delete}
+                              </RowIconButton>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                      {isOpen && <RequisitionExpandedRow requisition={req} colSpan={COLUMNS} />}
                     </React.Fragment>
                   );
                 })
@@ -717,58 +404,28 @@ export default function RequisitionListTable() {
             </TableBody>
           </Table>
         </div>
+      </ListCard>
 
-        {/* Table Footer / Pagination */}
-        <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between border-t border-gray-100 dark:border-white/[0.07]">
-          <div className="text-xs text-gray-500 dark:text-gray-400">
-            Showing <span className="font-semibold">{requisitions.length}</span> of{" "}
-            <span className="font-semibold">{totalElements}</span> requisitions
-            {selectedIds.length > 0 && (
-              <span className="ml-2 font-medium text-brand-600 dark:text-brand-400">
-                ({selectedIds.length} selected)
-              </span>
-            )}
-          </div>
-
-          {totalPages > 1 && (
-            <Pagination
-              currentPage={page}
-              totalPages={totalPages}
-              onPageChange={(p) => setPage(p)}
-            />
-          )}
-        </div>
-      </div>
-
-      {/* Convert to PO Confirmation Modal */}
       <RequisitionConvertToPoModal
-        isOpen={!!convertToPoRequisition}
-        onClose={() => setConvertToPoRequisition(null)}
-        onConfirm={handleConvertToPoConfirm}
-        requisition={convertToPoRequisition}
+        isOpen={!!toConvert}
+        onClose={() => setToConvert(null)}
+        onConfirm={handleConvert}
+        requisition={toConvert}
         isConverting={isConverting}
       />
 
-      {/* Delete Confirmation Modal */}
-      <DeleteConfirmModal
-        isOpen={!!requisitionToDelete}
-        onClose={() => setRequisitionToDelete(null)}
-        onConfirm={handleDeleteConfirm}
-        title="Delete Purchase Requisition"
-        message={`Are you sure you want to delete requisition ${requisitionToDelete?.requisitionCode}? This action cannot be undone.`}
-        isDeleting={isDeleting}
-      />
+      {toCancel && <RequisitionCancelModal isOpen onClose={() => setToCancel(null)} requisition={toCancel} onConfirm={handleCancel} />}
 
-      {/* Cancel Confirmation Modal */}
-      {requisitionToCancel && (
-        <RequisitionCancelModal
-          isOpen={!!requisitionToCancel}
-          onClose={() => setRequisitionToCancel(null)}
-          requisition={requisitionToCancel}
-          onConfirm={handleCancelConfirm}
-          isLoading={isCancelling}
+      {toDelete && (
+        <DeleteConfirmModal
+          isOpen
+          onClose={() => setToDelete(null)}
+          onConfirm={handleDelete}
+          title="Delete Requisition"
+          message={`Delete requisition ${toDelete.requisitionCode} permanently?`}
+          isDeleting={isDeleting}
         />
       )}
-    </div>
+    </>
   );
 }

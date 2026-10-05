@@ -165,12 +165,19 @@ export default function PaymentForm() {
           )}
         </FormSection>
 
-        {supplierId && (
-          <>
-            <FormSection title="Invoices to Pay" aside={<span className="text-theme-xs text-gray-500 dark:text-gray-400">{selected.length} selected</span>}>
+        <>
+            <FormSection
+              title="Invoices to Pay"
+              aside={supplierId ? <span className="text-theme-xs text-gray-500 dark:text-gray-400">{selected.length} selected</span> : undefined}
+            >
               <div className="space-y-4">
-                {loadingSupplier && <p className="text-sm text-gray-500">Loading invoices...</p>}
-                {!loadingSupplier && lines.length === 0 && (
+                {!supplierId && (
+                  <div className="rounded-xl border border-dashed border-gray-300 px-6 py-10 text-center text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">
+                    Select a supplier to load their verified invoices.
+                  </div>
+                )}
+                {supplierId && loadingSupplier && <p className="text-sm text-gray-500">Loading invoices...</p>}
+                {supplierId && !loadingSupplier && lines.length === 0 && (
                   <p className="text-sm text-gray-500 dark:text-gray-400">
                     Nothing to pay: this supplier&apos;s invoices are settled or already set aside by other payments.
                   </p>
@@ -198,8 +205,7 @@ export default function PaymentForm() {
                 </Button>
               </div>
             </div>
-          </>
-        )}
+        </>
       </FormCard>
     </>
   );

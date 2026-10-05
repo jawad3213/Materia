@@ -8,19 +8,9 @@ export default function EditPurchaseOrderPage() {
 
   return (
     <>
-      <PageMeta
-        title="Modifier un Bon de Commande | Materia Procurement"
-        description="Modifiez un bon de commande tant qu'il n'a pas été confirmé par le fournisseur."
-      />
-      <PageBreadcrumb
-        pageTitle="Modifier le Bon de Commande"
-        parentName="Bons de Commande"
-        parentUrl="/purchase-orders"
-      />
-
-      <div className="mt-6">
-        <PurchaseOrderForm key={id} purchaseOrderId={id} />
-      </div>
+      <PageMeta title="Edit Purchase Order | Materia Dashboard" description="Change an order until the supplier confirms it" />
+      <PageBreadcrumb pageTitle="Edit Purchase Order" parentName="Purchase Orders" parentUrl="/purchase-orders" />
+      <PurchaseOrderForm key={id} purchaseOrderId={id} />
     </>
   );
 }

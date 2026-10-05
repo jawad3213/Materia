@@ -254,9 +254,9 @@ export default function CreateUserForm() {
                   <Select
                     id="roleCode"
                     options={[
-                      { value: UserRole.PURCHASER, label: 'PURCHASER (Acheteur) — 19 permissions' },
-                      { value: UserRole.RECEIVER, label: 'RECEIVER (Réceptionnaire) — 14 permissions' },
-                      { value: UserRole.ADMIN, label: 'ADMIN (Administrateur) — Full System Access' },
+                      { value: UserRole.PURCHASER, label: 'PURCHASER — 19 permissions' },
+                      { value: UserRole.RECEIVER, label: 'RECEIVER — 14 permissions' },
+                      { value: UserRole.ADMIN, label: 'ADMIN — Full System Access' },
                     ]}
                     value={formData.roleCode || UserRole.PURCHASER}
                     onChange={(val) => handleChange('roleCode', val)}

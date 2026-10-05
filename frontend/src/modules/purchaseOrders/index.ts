@@ -19,7 +19,6 @@ export {
   default as PurchaseOrderStatusBadge,
   PurchaseOrderDeliveryStatusBadge,
 } from "./components/PurchaseOrderStatusBadge";
-export { default as PurchaseOrderStatCards } from "./components/PurchaseOrderStatCards";
 export { default as PurchaseOrderFilters } from "./components/PurchaseOrderFilters";
 export { default as PurchaseOrderCancelModal } from "./components/PurchaseOrderCancelModal";
 export { default as PurchaseOrderExpandedRow } from "./components/PurchaseOrderExpandedRow";

@@ -70,6 +70,41 @@ export function ViewAction({ to, title }: { to: string; title: string }) {
   );
 }
 
+const ROW_ACTION_TONES = {
+  default: "",
+  brand: "hover:text-brand-500",
+  warning: "hover:text-warning-500",
+  danger: "hover:text-error-500",
+};
+
+/** A quick row action (submit, confirm, cancel...) styled like the eye icon. */
+export function RowIconButton({
+  title,
+  onClick,
+  tone = "default",
+  disabled,
+  children,
+}: {
+  title: string;
+  onClick: () => void;
+  tone?: keyof typeof ROW_ACTION_TONES;
+  disabled?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      title={title}
+      aria-label={title}
+      className={`${ACTION_BUTTON} ${ROW_ACTION_TONES[tone]} disabled:opacity-40`}
+    >
+      {children}
+    </button>
+  );
+}
+
 /** The coloured initials avatar shown beside names in the suppliers table. */
 const AVATAR_COLORS = [
   "bg-red-50 text-red-500 dark:bg-red-500/15 dark:text-red-500",

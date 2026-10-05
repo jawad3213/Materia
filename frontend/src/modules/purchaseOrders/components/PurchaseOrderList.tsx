@@ -1,1035 +1,399 @@
-import React, { useEffect, useState, useRef, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableRow,
-} from "../../../shared/components/ui/table";
-import Checkbox from "../../../shared/components/form/input/Checkbox";
-import Button from "../../../shared/components/ui/button/Button";
-import DeleteConfirmModal from "../../../shared/components/ui/modal/DeleteConfirmModal";
-import Pagination from "../../../shared/components/ui/Pagination";
 import purchaseOrderService from "../services/purchaseOrderService";
-import type {
-  PurchaseOrder,
-  PurchaseOrderFilterTab,
-  OrderStatus,
-  DeliveryStatus,
-} from "../types";
-import PurchaseOrderStatusBadge, {
-  PurchaseOrderDeliveryStatusBadge,
-} from "./PurchaseOrderStatusBadge";
-import PurchaseOrderStatCards from "./PurchaseOrderStatCards";
-import PurchaseOrderFilters from "./PurchaseOrderFilters";
+import { DELIVERY_STATUS_INFO, ORDER_STATUS_INFO, type PurchaseOrder } from "../types";
+import PurchaseOrderStatusBadge, { PurchaseOrderDeliveryStatusBadge } from "./PurchaseOrderStatusBadge";
+import PurchaseOrderFilters, { type PurchaseOrderFilterValues } from "./PurchaseOrderFilters";
 import PurchaseOrderExpandedRow from "./PurchaseOrderExpandedRow";
 import PurchaseOrderCancelModal from "./PurchaseOrderCancelModal";
 import useAuth from "../../auth/hooks/useAuth";
 import usePurchaseOrderPermissions from "../hooks/usePurchaseOrder";
+import { formatAmount } from "../../invoices/utils/invoiceLine";
+import DeleteConfirmModal from "../../../shared/components/ui/modal/DeleteConfirmModal";
+import Badge from "../../../shared/components/ui/badge/Badge";
+import ListCard, { type FilterPill } from "../../../shared/components/page/ListCard";
+import StatFilterCards, { type StatCard } from "../../../shared/components/page/StatFilterCards";
+import {
+  InitialsAvatar,
+  ListFooter,
+  RowIconButton,
+  StackedCell,
+  TableStateRow,
+  ViewAction,
+} from "../../../shared/components/page/ListParts";
+import { FloatingToast } from "../../../shared/components/page/DetailParts";
+import { StatIcons } from "../../../shared/components/page/pageIcons";
+import { BODY_CELL, HEAD_CELL } from "../../../shared/components/page/pageStyles";
+import { useClientPagination } from "../../../shared/components/page/useClientPagination";
+import { Table, TableBody, TableCell, TableHeader, TableRow } from "../../../shared/components/ui/table";
+import { getApiErrorMessage } from "../../../shared/utils/apiError";
+import { parseAmount } from "../../../shared/utils/moneyUtils";
+
+type QuickFilter = "ALL" | "WITH_SUPPLIER" | "READY_FOR_RECEIPT" | "COMPLETED";
+type Feedback = { type: "success" | "error"; text: string };
+
+const QUICK_FILTERS: Record<QuickFilter, (o: PurchaseOrder) => boolean> = {
+  ALL: () => true,
+  WITH_SUPPLIER: (o) => o.status === "SUBMITTED" || o.status === "CONFIRMED",
+  READY_FOR_RECEIPT: (o) => o.status === "READY_FOR_RECEIPT" || o.status === "PARTIALLY_RECEIVED",
+  COMPLETED: (o) => o.status === "COMPLETED" || o.status === "RECEIVED",
+};
+
+const EMPTY_FILTERS: PurchaseOrderFilterValues = { status: "", deliveryStatus: "", dateFrom: "", dateTo: "" };
+const COLUMNS = 8;
+
+/** Sums order totals per currency, so amounts in different currencies are never added together. */
+function sumByCurrency(orders: PurchaseOrder[]): string {
+  const totals = new Map<string, number>();
+  for (const o of orders) {
+    const currency = o.currencyCode || "MAD";
+    totals.set(currency, (totals.get(currency) ?? 0) + parseAmount(o.grandTotal));
+  }
+  if (totals.size === 0) return formatAmount(0);
+  return [...totals.entries()].map(([currency, value]) => formatAmount(value, currency)).join(" + ");
+}
+
+/** Expected delivery date, flagged when late or due within three days (open orders only). */
+function DeliveryDue({ order }: { order: PurchaseOrder }) {
+  const date = order.expectedDeliveryDate;
+  if (!date) return <>—</>;
+  const open = ["SUBMITTED", "CONFIRMED", "READY_FOR_RECEIPT", "PARTIALLY_RECEIVED"].includes(order.status);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const days = Math.ceil((new Date(`${date}T00:00:00`).getTime() - today.getTime()) / 86_400_000);
+  return (
+    <StackedCell
+      main={date}
+      sub={
+        open && days < 0 ? (
+          <span className="font-semibold text-error-500">{Math.abs(days)} day(s) late</span>
+        ) : open && days <= 3 ? (
+          <span className="text-warning-600 dark:text-orange-400">{days === 0 ? "Due today" : `Due in ${days} day(s)`}</span>
+        ) : undefined
+      }
+    />
+  );
+}
+
+const icons = {
+  expand: (
+    <svg className="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+    </svg>
+  ),
+  submit: (
+    <svg className="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+    </svg>
+  ),
+  confirm: (
+    <svg className="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+    </svg>
+  ),
+  cancel: (
+    <svg className="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636" />
+    </svg>
+  ),
+  delete: (
+    <svg className="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+      />
+    </svg>
+  ),
+};
 
 export default function PurchaseOrderList() {
   const { user } = useAuth();
   const permissions = usePurchaseOrderPermissions();
-  const canCreate = permissions.canCreate;
 
   const [orders, setOrders] = useState<PurchaseOrder[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [expandedRowIds, setExpandedRowIds] = useState<Set<string>>(new Set());
-
-  // Delete modal state
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [feedback, setFeedback] = useState<Feedback | null>(null);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [keyword, setKeyword] = useState("");
+  const [quick, setQuick] = useState<QuickFilter>("ALL");
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [draftFilters, setDraftFilters] = useState<PurchaseOrderFilterValues>(EMPTY_FILTERS);
+  const [filters, setFilters] = useState<PurchaseOrderFilterValues>(EMPTY_FILTERS);
   const [orderToDelete, setOrderToDelete] = useState<PurchaseOrder | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-
-  // Cancel modal state
   const [orderToCancel, setOrderToCancel] = useState<PurchaseOrder | null>(null);
-  const [isCancelling, setIsCancelling] = useState(false);
-
-  // User feedback toast/alert state
-  const [feedback, setFeedback] = useState<{
-    type: "success" | "error";
-    text: string;
-  } | null>(null);
-
-  // Search & Filter state
-  const [searchKeyword, setSearchKeyword] = useState("");
-  const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const [filterStatus, setFilterStatus] = useState("");
-  const [filterDeliveryStatus, setFilterDeliveryStatus] = useState("");
-  const [filterDateFrom, setFilterDateFrom] = useState("");
-  const [filterDateTo, setFilterDateTo] = useState("");
-
-  // Top KPI Card filter state
-  const [activeStatFilter, setActiveStatFilter] =
-    useState<PurchaseOrderFilterTab>("ALL");
-
-  // Pagination state
-  const [page, setPage] = useState(0);
-  const [size] = useState(10);
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const isFirstMount = useRef(true);
-
-  // Active filters count
-  const activeFiltersCount = [
-    filterStatus,
-    filterDeliveryStatus,
-    filterDateFrom,
-    filterDateTo,
-  ].filter(Boolean).length;
+  const [busyId, setBusyId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (isFirstMount.current) {
-      isFirstMount.current = false;
-      fetchOrders();
-      return;
-    }
-    fetchOrders();
-  }, [refreshTrigger]);
-
-  const fetchOrders = async () => {
-    try {
-      setLoading(true);
-      const res = await purchaseOrderService.getAll();
-      setOrders(res.data || []);
-    } catch (err) {
-      console.error("Failed to load purchase orders:", err);
-      setOrders([]);
-      setFeedback({
-        type: "error",
-        text: "Impossible de charger les bons de commande. Veuillez réessayer.",
+    let cancelled = false;
+    purchaseOrderService
+      .getAll()
+      .then((res) => {
+        if (!cancelled) setOrders(Array.isArray(res.data) ? res.data : []);
+      })
+      .catch((err) => {
+        if (!cancelled) setFeedback({ type: "error", text: getApiErrorMessage(err, "Could not load purchase orders.") });
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
       });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Filter and search logic
-  const filteredOrders = useMemo(() => {
-    let result = [...orders];
-
-    // Quick tab filter from Stat Cards
-    if (activeStatFilter === "SUBMITTED") {
-      result = result.filter(
-        (o) =>
-          o.status === "SUBMITTED" ||
-          o.status === "CONFIRMED"
-      );
-    } else if (activeStatFilter === "READY_FOR_RECEIPT") {
-      result = result.filter((o) => o.status === "READY_FOR_RECEIPT");
-    } else if (activeStatFilter === "COMPLETED") {
-      result = result.filter((o) => o.status === "COMPLETED");
-    } else if (activeStatFilter === "DRAFT") {
-      result = result.filter((o) => o.status === "DRAFT");
-    }
-
-    // Modal filters
-    if (filterStatus) {
-      result = result.filter((o) => o.status === filterStatus);
-    }
-    if (filterDeliveryStatus) {
-      result = result.filter((o) => o.deliveryStatus === filterDeliveryStatus);
-    }
-    if (filterDateFrom) {
-      result = result.filter((o) => o.orderDate >= filterDateFrom);
-    }
-    if (filterDateTo) {
-      result = result.filter((o) => o.orderDate <= filterDateTo);
-    }
-
-    // Search keyword
-    if (searchKeyword.trim()) {
-      const kw = searchKeyword.trim().toLowerCase();
-      result = result.filter(
-        (o) =>
-          o.orderCode?.toLowerCase().includes(kw) ||
-          o.supplierName?.toLowerCase().includes(kw) ||
-          o.supplierCode?.toLowerCase().includes(kw) ||
-          o.requisitionCode?.toLowerCase().includes(kw) ||
-          o.orderedByName?.toLowerCase().includes(kw) ||
-          o.assignedToName?.toLowerCase().includes(kw)
-      );
-    }
-
-    return result;
-  }, [
-    orders,
-    activeStatFilter,
-    filterStatus,
-    filterDeliveryStatus,
-    filterDateFrom,
-    filterDateTo,
-    searchKeyword,
-  ]);
-
-  // Paginated slice
-  const paginatedOrders = useMemo(() => {
-    const start = page * size;
-    return filteredOrders.slice(start, start + size);
-  }, [filteredOrders, page, size]);
-
-  const totalPages = Math.ceil(filteredOrders.length / size) || 1;
-
-  // KPI statistics calculation
-  const statCounts = useMemo(() => {
-    const draft = orders.filter((o) => o.status === "DRAFT").length;
-    const submitted = orders.filter((o) => o.status === "SUBMITTED").length;
-    const confirmed = orders.filter((o) => o.status === "CONFIRMED").length;
-    const readyForReceipt = orders.filter((o) => o.status === "READY_FOR_RECEIPT").length;
-    const completed = orders.filter((o) => o.status === "COMPLETED").length;
-    const cancelled = orders.filter((o) => o.status === "CANCELLED").length;
-
-    const totalVal = orders.reduce((sum, o) => {
-      const amt =
-        typeof o.grandTotal === "number"
-          ? o.grandTotal
-          : parseFloat(String(o.grandTotal || "0").replace(/[^0-9.-]+/g, "")) || 0;
-      return sum + amt;
-    }, 0);
-
-    const currency = orders[0]?.currencyCode || "MAD";
-
-    return {
-      total: orders.length,
-      draft,
-      submitted,
-      confirmed,
-      readyForReceipt,
-      completed,
-      cancelled,
-      totalValue: totalVal,
-      currency,
+    return () => {
+      cancelled = true;
     };
-  }, [orders]);
+  }, [refreshKey]);
 
-  const handleToggleRow = (id: string) => {
-    setExpandedRowIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
+  const refresh = () => {
+    setLoading(true);
+    setRefreshKey((k) => k + 1);
   };
 
-  const handleSelectAll = (checked: boolean) => {
-    if (checked) {
-      setSelectedIds(paginatedOrders.map((o) => o.id));
-    } else {
-      setSelectedIds([]);
-    }
-  };
-
-  const handleSelectRow = (id: string) => {
-    setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
-    );
-  };
-
-  // Quick Action: Submit to Supplier
-  const handleSubmitOrder = async (order: PurchaseOrder) => {
+  const runAction = async (order: PurchaseOrder, action: () => Promise<unknown>, success: string, failure: string) => {
     try {
-      const userId = user?.id || "CURRENT_USER";
-      await purchaseOrderService.submit(order.id, { userId });
-      setFeedback({
-        type: "success",
-        text: `La commande ${order.orderCode} a été soumise au fournisseur avec succès.`,
-      });
-      setRefreshTrigger((prev) => prev + 1);
-    } catch (err: any) {
-      setFeedback({
-        type: "error",
-        text:
-          err?.response?.data?.message ||
-          "Échec de la soumission de la commande.",
-      });
-    }
-  };
-
-  // Quick Action: Confirm Order
-  const handleConfirmOrder = async (order: PurchaseOrder) => {
-    try {
-      const userId = user?.id || "CURRENT_USER";
-      await purchaseOrderService.confirm(order.id, { userId });
-      setFeedback({
-        type: "success",
-        text: `La commande ${order.orderCode} a été confirmée par le fournisseur.`,
-      });
-      setRefreshTrigger((prev) => prev + 1);
-    } catch (err: any) {
-      setFeedback({
-        type: "error",
-        text:
-          err?.response?.data?.message ||
-          "Échec de la confirmation de la commande.",
-      });
-    }
-  };
-
-  // Cancel modal confirmation
-  const handleConfirmCancel = async (reason: string) => {
-    if (!orderToCancel) return;
-    try {
-      setIsCancelling(true);
-      const userId = user?.id || "CURRENT_USER";
-      await purchaseOrderService.cancel(orderToCancel.id, {
-        userId,
-        reason,
-      });
-      setFeedback({
-        type: "success",
-        text: `La commande ${orderToCancel.orderCode} a été annulée avec succès.`,
-      });
-      setOrderToCancel(null);
-      setRefreshTrigger((prev) => prev + 1);
-    } catch (err: any) {
-      setFeedback({
-        type: "error",
-        text:
-          err?.response?.data?.message ||
-          "Échec de l'annulation de la commande.",
-      });
+      setBusyId(order.id);
+      await action();
+      setFeedback({ type: "success", text: success });
+      refresh();
+    } catch (err) {
+      setFeedback({ type: "error", text: getApiErrorMessage(err, failure) });
     } finally {
-      setIsCancelling(false);
+      setBusyId(null);
     }
   };
 
-  // Delete modal confirmation
-  const handleConfirmDelete = async () => {
+  const userId = user?.id || "";
+  const handleSubmit = (order: PurchaseOrder) =>
+    runAction(order, () => purchaseOrderService.submit(order.id, { userId }), `Order ${order.orderCode} was sent to the supplier.`, "Submitting the order failed.");
+  const handleConfirm = (order: PurchaseOrder) =>
+    runAction(order, () => purchaseOrderService.confirm(order.id, { userId }), `Order ${order.orderCode} is confirmed by the supplier.`, "Confirming the order failed.");
+
+  const handleCancel = async (reason: string) => {
+    if (!orderToCancel) return;
+    await purchaseOrderService.cancel(orderToCancel.id, { userId, reason });
+    setFeedback({ type: "success", text: `Order ${orderToCancel.orderCode} was cancelled.` });
+    setOrderToCancel(null);
+    refresh();
+  };
+
+  const handleDelete = async () => {
     if (!orderToDelete) return;
     try {
       setIsDeleting(true);
       await purchaseOrderService.delete(orderToDelete.id);
-      setFeedback({
-        type: "success",
-        text: `Le bon de commande ${orderToDelete.orderCode} a été supprimé.`,
-      });
+      setFeedback({ type: "success", text: `Order ${orderToDelete.orderCode} was deleted.` });
       setOrderToDelete(null);
-      setRefreshTrigger((prev) => prev + 1);
-    } catch (err: any) {
-      setFeedback({
-        type: "error",
-        text:
-          err?.response?.data?.message ||
-          "Échec de la suppression de la commande.",
-      });
+      refresh();
+    } catch (err) {
+      setFeedback({ type: "error", text: getApiErrorMessage(err, "Deleting the order failed.") });
     } finally {
       setIsDeleting(false);
     }
   };
 
-  const formatAmount = (amt: string | number, curr = "MAD") => {
-    if (amt === undefined || amt === null) return `0.00 ${curr}`;
-    const str = String(amt).trim();
-    let detectedCurr = curr;
-    if (!curr || curr === "MAD") {
-      const upper = str.toUpperCase();
-      if (
-        upper.includes("EUR") ||
-        upper.includes("€") ||
-        upper.includes("â‚¬")
-      ) {
-        detectedCurr = "EUR";
-      } else if (upper.includes("USD") || upper.includes("$")) {
-        detectedCurr = "USD";
-      } else if (upper.includes("MAD") || upper.includes("DH")) {
-        detectedCurr = "MAD";
-      }
-    }
+  const toggleRow = (id: string) =>
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
 
-    let cleaned = str.replace(/[^0-9.,-]+/g, "");
-    if (cleaned.includes(",") && cleaned.includes(".")) {
-      if (cleaned.indexOf(",") < cleaned.indexOf(".")) {
-        cleaned = cleaned.replace(/,/g, "");
-      } else {
-        cleaned = cleaned.replace(/\./g, "").replace(/,/g, ".");
-      }
-    } else if (cleaned.includes(",")) {
-      cleaned = cleaned.replace(/,/g, ".");
-    }
-    const num = parseFloat(cleaned);
-    const validNum = isNaN(num) ? 0 : num;
-    return `${new Intl.NumberFormat("fr-FR", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(validNum)} ${detectedCurr}`;
-  };
+  const withSupplier = orders.filter(QUICK_FILTERS.WITH_SUPPLIER);
+  const toReceive = orders.filter(QUICK_FILTERS.READY_FOR_RECEIPT);
+  const completed = orders.filter(QUICK_FILTERS.COMPLETED);
+  const drafts = orders.filter((o) => o.status === "DRAFT").length;
+  const cards: StatCard<QuickFilter>[] = [
+    { id: "ALL", title: "All Orders", value: orders.length, unit: "orders", subtitle: `${drafts} draft(s)`, tone: "brand", icon: StatIcons.all },
+    {
+      id: "WITH_SUPPLIER",
+      title: "With Supplier",
+      value: withSupplier.length,
+      unit: "orders",
+      subtitle: sumByCurrency(withSupplier),
+      tone: "amber",
+      icon: StatIcons.pending,
+      badge: withSupplier.length,
+    },
+    {
+      id: "READY_FOR_RECEIPT",
+      title: "To Receive",
+      value: toReceive.length,
+      unit: "orders",
+      subtitle: "Ready or partly received",
+      tone: "blue",
+      icon: StatIcons.warning,
+      badge: toReceive.length,
+    },
+    { id: "COMPLETED", title: "Completed", value: completed.length, unit: "orders", subtitle: sumByCurrency(completed), tone: "green", icon: StatIcons.done },
+  ];
 
-  const getUrgencyBadge = (expectedDeliveryDateStr?: string | null) => {
-    if (!expectedDeliveryDateStr) return null;
-    const expDate = new Date(expectedDeliveryDateStr);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    expDate.setHours(0, 0, 0, 0);
+  const visible = useMemo(() => {
+    const term = keyword.trim().toLowerCase();
+    return orders
+      .filter(QUICK_FILTERS[quick])
+      .filter((o) => !filters.status || o.status === filters.status)
+      .filter((o) => !filters.deliveryStatus || o.deliveryStatus === filters.deliveryStatus)
+      .filter((o) => !filters.dateFrom || o.orderDate >= filters.dateFrom)
+      .filter((o) => !filters.dateTo || o.orderDate <= filters.dateTo)
+      .filter(
+        (o) =>
+          !term ||
+          [o.orderCode, o.supplierName, o.supplierCode, o.requisitionCode, o.orderedByName, o.assignedToName]
+            .filter(Boolean)
+            .some((v) => String(v).toLowerCase().includes(term))
+      )
+      .sort((a, b) => String(b.createdAt ?? b.orderDate ?? "").localeCompare(String(a.createdAt ?? a.orderDate ?? "")));
+  }, [orders, quick, filters, keyword]);
 
-    const diffDays = Math.ceil(
-      (expDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
-    );
-
-    if (diffDays < 0) {
-      return (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-50 text-red-700 dark:bg-red-500/15 dark:text-red-400 border border-red-200/60 dark:border-red-500/20">
-          <span className="size-1 rounded-full bg-red-500" />
-          En retard ({Math.abs(diffDays)}j)
-        </span>
-      );
-    } else if (diffDays <= 3) {
-      return (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400 border border-amber-200/60 dark:border-amber-500/20">
-          <span className="size-1 rounded-full bg-amber-500 animate-ping" />
-          Dans {diffDays}j
-        </span>
-      );
-    }
-    return (
-      <span className="text-xs text-gray-500 dark:text-gray-400">
-        {expectedDeliveryDateStr}
-      </span>
-    );
-  };
-
-  const isAllSelected =
-    paginatedOrders.length > 0 &&
-    paginatedOrders.every((o) => selectedIds.includes(o.id));
+  const paging = useClientPagination(visible);
+  const pills: FilterPill[] = [
+    ...(filters.status ? [{ label: `Status: ${ORDER_STATUS_INFO[filters.status].label}`, onRemove: () => setFilters({ ...filters, status: "" }) }] : []),
+    ...(filters.deliveryStatus
+      ? [{ label: `Delivery: ${DELIVERY_STATUS_INFO[filters.deliveryStatus].label}`, onRemove: () => setFilters({ ...filters, deliveryStatus: "" }) }]
+      : []),
+    ...(filters.dateFrom ? [{ label: `From: ${filters.dateFrom}`, onRemove: () => setFilters({ ...filters, dateFrom: "" }) }] : []),
+    ...(filters.dateTo ? [{ label: `To: ${filters.dateTo}`, onRemove: () => setFilters({ ...filters, dateTo: "" }) }] : []),
+  ];
 
   return (
-    <div className="space-y-6">
-      {/* Toast Feedback Banner */}
-      {feedback && (
-        <div
-          className={`flex items-center justify-between p-4 rounded-xl text-xs font-medium border transition-all ${
-            feedback.type === "success"
-              ? "bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:border-emerald-500/20"
-              : "bg-red-50 text-red-800 border-red-200 dark:bg-red-500/10 dark:text-red-300 dark:border-red-500/20"
-          }`}
-        >
-          <div className="flex items-center gap-2">
-            {feedback.type === "success" ? (
-              <svg
-                className="size-4 text-emerald-600 dark:text-emerald-400"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M5 13l4 4L19 7"
-                />
-              </svg>
-            ) : (
-              <svg
-                className="size-4 text-red-600 dark:text-red-400"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-            )}
-            <span>{feedback.text}</span>
-          </div>
-          <button
-            type="button"
-            onClick={() => setFeedback(null)}
-            className="hover:opacity-75"
-          >
-            <svg
-              className="size-4"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
-          </button>
-        </div>
-      )}
+    <>
+      <FloatingToast feedback={feedback} onClose={() => setFeedback(null)} />
 
-      {/* Top Metric / Filter Stat Cards */}
-      <PurchaseOrderStatCards
-        activeFilter={activeStatFilter}
-        onSelectFilter={(tab) => {
-          setActiveStatFilter(tab);
-          setPage(0);
+      <StatFilterCards cards={cards} active={quick} onSelect={setQuick} />
+
+      <ListCard
+        title="Purchase Orders List"
+        search={{ value: keyword, onChange: setKeyword, placeholder: "Search orders..." }}
+        filter={{
+          activeCount: pills.length,
+          isOpen: isFilterOpen,
+          onToggle: () => {
+            setDraftFilters(filters);
+            setIsFilterOpen(!isFilterOpen);
+          },
+          panel: (
+            <PurchaseOrderFilters
+              isOpen={isFilterOpen}
+              onClose={() => setIsFilterOpen(false)}
+              value={draftFilters}
+              onChange={setDraftFilters}
+              onApply={() => {
+                setFilters(draftFilters);
+                setIsFilterOpen(false);
+              }}
+              onClear={() => {
+                setDraftFilters(EMPTY_FILTERS);
+                setFilters(EMPTY_FILTERS);
+                setIsFilterOpen(false);
+              }}
+            />
+          ),
         }}
-        counts={statCounts}
-      />
-
-      {/* Main Table Card Container */}
-      <div className="rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-white/[0.07] dark:bg-gray-900">
-        {/* Table Toolbar & Search */}
-        <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between border-b border-gray-100 dark:border-white/[0.05]">
-          <div>
-            <h3 className="text-base font-bold text-gray-800 dark:text-white/90 flex items-center gap-2">
-              Bons de Commande Fournisseurs
-              <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300">
-                {filteredOrders.length}
-              </span>
-            </h3>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-              Gérez le cycle de vie de vos commandes d'achat, du devis à la réception magasin.
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3">
-            {/* Search Input */}
-            <div className="relative flex-1 sm:flex-none">
-              <svg
-                className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-gray-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                />
-              </svg>
-              <input
-                type="text"
-                placeholder="Rechercher code, fournisseur..."
-                value={searchKeyword}
-                onChange={(e) => {
-                  setSearchKeyword(e.target.value);
-                  setPage(0);
-                }}
-                className="w-full rounded-xl border border-gray-200 bg-transparent py-2 pl-9 pr-8 text-xs text-gray-700 outline-none focus:border-brand-500 dark:border-gray-800 dark:text-gray-300 sm:w-64"
-              />
-              {searchKeyword && (
-                <button
-                  type="button"
-                  onClick={() => setSearchKeyword("")}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
-                >
-                  <svg
-                    className="size-3.5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M6 18L18 6M6 6l12 12"
-                    />
-                  </svg>
-                </button>
-              )}
-            </div>
-
-            {/* Filter Dropdown Toggle Button */}
-            <div className="relative">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setIsFilterOpen(!isFilterOpen)}
-              >
-                <span className="flex items-center gap-1.5 text-xs">
-                  <svg
-                    className="size-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
-                    />
-                  </svg>
-                  Filtres
-                </span>
-              </Button>
-              {activeFiltersCount > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-brand-500 text-[10px] font-bold text-white shadow-sm">
-                  {activeFiltersCount}
-                </span>
-              )}
-
-              <PurchaseOrderFilters
-                isOpen={isFilterOpen}
-                onClose={() => setIsFilterOpen(false)}
-                filterStatus={filterStatus}
-                setFilterStatus={setFilterStatus}
-                filterDeliveryStatus={filterDeliveryStatus}
-                setFilterDeliveryStatus={setFilterDeliveryStatus}
-                filterDateFrom={filterDateFrom}
-                setFilterDateFrom={setFilterDateFrom}
-                filterDateTo={filterDateTo}
-                setFilterDateTo={setFilterDateTo}
-                onApply={() => setPage(0)}
-                onClear={() => {
-                  setFilterStatus("");
-                  setFilterDeliveryStatus("");
-                  setFilterDateFrom("");
-                  setFilterDateTo("");
-                  setPage(0);
-                }}
-              />
-            </div>
-
-            {/* Refresh Button */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setRefreshTrigger((prev) => prev + 1)}
-              disabled={loading}
-              title="Actualiser la liste"
-            >
-              <svg
-                className={`size-4 ${loading ? "animate-spin text-brand-500" : ""}`}
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                />
-              </svg>
-            </Button>
-
-            {/* New Purchase Order Action */}
-            {canCreate && (
-              <Link to="/purchase-orders/create">
-                <Button size="sm">
-                  <span className="flex items-center gap-1.5 text-xs font-semibold">
-                    <svg
-                      className="size-4"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M12 4v16m8-8H4"
-                      />
-                    </svg>
-                    Nouvelle Commande
-                  </span>
-                </Button>
-              </Link>
-            )}
-          </div>
-        </div>
-
-        {/* Active Filter Chips */}
-        {(activeFiltersCount > 0 || activeStatFilter !== "ALL") && (
-          <div className="flex flex-wrap items-center gap-2 px-5 py-2.5 bg-gray-50/75 border-b border-gray-100 dark:bg-gray-900/40 dark:border-white/[0.05]">
-            <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">
-              Filtres actifs :
-            </span>
-
-            {activeStatFilter !== "ALL" && (
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-brand-50 text-brand-700 dark:bg-brand-500/15 dark:text-brand-300">
-                Vue : {activeStatFilter}
-                <button
-                  type="button"
-                  onClick={() => setActiveStatFilter("ALL")}
-                  className="hover:text-brand-900 dark:hover:text-white"
-                >
-                  <svg className="size-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </span>
-            )}
-
-            {filterStatus && (
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-brand-50 text-brand-700 dark:bg-brand-500/15 dark:text-brand-300">
-                Statut : {filterStatus}
-                <button
-                  type="button"
-                  onClick={() => setFilterStatus("")}
-                  className="hover:text-brand-900 dark:hover:text-white"
-                >
-                  <svg className="size-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </span>
-            )}
-
-            {filterDeliveryStatus && (
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-brand-50 text-brand-700 dark:bg-brand-500/15 dark:text-brand-300">
-                Livraison : {filterDeliveryStatus}
-                <button
-                  type="button"
-                  onClick={() => setFilterDeliveryStatus("")}
-                  className="hover:text-brand-900 dark:hover:text-white"
-                >
-                  <svg className="size-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </span>
-            )}
-
-            {filterDateFrom && (
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-brand-50 text-brand-700 dark:bg-brand-500/15 dark:text-brand-300">
-                Depuis : {filterDateFrom}
-                <button
-                  type="button"
-                  onClick={() => setFilterDateFrom("")}
-                  className="hover:text-brand-900 dark:hover:text-white"
-                >
-                  <svg className="size-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </span>
-            )}
-          </div>
-        )}
-
-        {/* Bulk Selection Notification Bar */}
-        {selectedIds.length > 0 && (
-          <div className="flex items-center justify-between px-5 py-2.5 bg-brand-50/70 border-b border-brand-100 text-xs text-brand-900 dark:bg-brand-500/10 dark:border-brand-500/20 dark:text-brand-300 font-medium">
-            <span className="flex items-center gap-2">
-              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-brand-500 text-[10px] font-bold text-white">
-                {selectedIds.length}
-              </span>
-              commande(s) sélectionnée(s)
-            </span>
-            <button
-              type="button"
-              onClick={() => setSelectedIds([])}
-              className="text-xs text-brand-700 hover:text-brand-900 dark:text-brand-400 dark:hover:text-brand-200 underline"
-            >
-              Désélectionner tout
-            </button>
-          </div>
-        )}
-
-        {/* Table Content */}
-        <div className="overflow-x-auto">
+        action={permissions.canCreate ? { label: "New Order", to: "/purchase-orders/create" } : undefined}
+        pills={pills}
+        onClearPills={() => setFilters(EMPTY_FILTERS)}
+        footer={
+          <ListFooter page={paging.page} size={paging.size} total={paging.total} totalPages={paging.totalPages} onPageChange={paging.setPage} />
+        }
+      >
+        <div className="max-w-full overflow-x-auto">
           <Table>
-            <TableHeader className="border-b border-gray-100 dark:border-white/[0.05] bg-gray-50/50 dark:bg-gray-800/20">
+            <TableHeader className="border-b border-gray-100 bg-gray-50/50 dark:border-white/[0.05] dark:bg-gray-900/50">
               <TableRow>
-                <TableCell isHeader className="w-10 px-4 py-3 text-center">
-                  <Checkbox
-                    checked={isAllSelected}
-                    onChange={handleSelectAll}
-                  />
-                </TableCell>
-                <TableCell isHeader className="w-10 px-2 py-3 text-center" />
-                <TableCell isHeader className="py-3 px-4 text-xs font-semibold text-gray-500 dark:text-gray-400">
-                  Code Commande
-                </TableCell>
-                <TableCell isHeader className="py-3 px-4 text-xs font-semibold text-gray-500 dark:text-gray-400">
-                  Fournisseur
-                </TableCell>
-                <TableCell isHeader className="py-3 px-4 text-xs font-semibold text-gray-500 dark:text-gray-400">
-                  Date Commande
-                </TableCell>
-                <TableCell isHeader className="py-3 px-4 text-xs font-semibold text-gray-500 dark:text-gray-400">
-                  Livraison Prévue
-                </TableCell>
-                <TableCell isHeader className="py-3 px-4 text-xs font-semibold text-gray-500 dark:text-gray-400 text-right">
-                  Total TTC
-                </TableCell>
-                <TableCell isHeader className="py-3 px-4 text-xs font-semibold text-gray-500 dark:text-gray-400">
-                  Statut
-                </TableCell>
-                <TableCell isHeader className="py-3 px-4 text-xs font-semibold text-gray-500 dark:text-gray-400">
-                  Livraison
-                </TableCell>
-                <TableCell isHeader className="py-3 px-4 text-xs font-semibold text-gray-500 dark:text-gray-400 text-right">
-                  Actions
-                </TableCell>
+                <TableCell isHeader className={HEAD_CELL}>Order</TableCell>
+                <TableCell isHeader className={HEAD_CELL}>Supplier</TableCell>
+                <TableCell isHeader className={HEAD_CELL}>Ordered</TableCell>
+                <TableCell isHeader className={HEAD_CELL}>Expected</TableCell>
+                <TableCell isHeader className={HEAD_CELL}>Total</TableCell>
+                <TableCell isHeader className={HEAD_CELL}>Status</TableCell>
+                <TableCell isHeader className={HEAD_CELL}>Delivery</TableCell>
+                <TableCell isHeader className={HEAD_CELL}>Action</TableCell>
               </TableRow>
             </TableHeader>
-
             <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
               {loading ? (
-                // Skeleton loading rows
-                Array.from({ length: 5 }).map((_, idx) => (
-                  <TableRow key={idx} className="animate-pulse">
-                    <TableCell className="px-4 py-4 text-center">
-                      <div className="h-4 w-4 mx-auto bg-gray-200 dark:bg-gray-700 rounded" />
-                    </TableCell>
-                    <TableCell className="px-2 py-4">
-                      <div className="h-4 w-4 bg-gray-200 dark:bg-gray-700 rounded" />
-                    </TableCell>
-                    <TableCell className="px-4 py-4">
-                      <div className="h-4 w-28 bg-gray-200 dark:bg-gray-700 rounded" />
-                    </TableCell>
-                    <TableCell className="px-4 py-4">
-                      <div className="h-4 w-36 bg-gray-200 dark:bg-gray-700 rounded" />
-                    </TableCell>
-                    <TableCell className="px-4 py-4">
-                      <div className="h-4 w-20 bg-gray-200 dark:bg-gray-700 rounded" />
-                    </TableCell>
-                    <TableCell className="px-4 py-4">
-                      <div className="h-4 w-20 bg-gray-200 dark:bg-gray-700 rounded" />
-                    </TableCell>
-                    <TableCell className="px-4 py-4 text-right">
-                      <div className="h-4 w-24 ml-auto bg-gray-200 dark:bg-gray-700 rounded" />
-                    </TableCell>
-                    <TableCell className="px-4 py-4">
-                      <div className="h-5 w-20 bg-gray-200 dark:bg-gray-700 rounded-full" />
-                    </TableCell>
-                    <TableCell className="px-4 py-4">
-                      <div className="h-5 w-20 bg-gray-200 dark:bg-gray-700 rounded-full" />
-                    </TableCell>
-                    <TableCell className="px-4 py-4 text-right">
-                      <div className="h-4 w-16 ml-auto bg-gray-200 dark:bg-gray-700 rounded" />
-                    </TableCell>
-                  </TableRow>
-                ))
-              ) : paginatedOrders.length === 0 ? (
-                // Empty state
-                <TableRow>
-                  <TableCell colSpan={10} className="py-14 text-center">
-                    <div className="flex flex-col items-center justify-center max-w-sm mx-auto">
-                      <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-gray-50 text-gray-400 dark:bg-gray-800 dark:text-gray-500 mb-3">
-                        <svg
-                          className="size-7"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={1.5}
-                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                          />
-                        </svg>
-                      </div>
-                      <h4 className="text-sm font-bold text-gray-800 dark:text-white">
-                        Aucun bon de commande trouvé
-                      </h4>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 mb-4 text-center">
-                        {searchKeyword || activeFiltersCount > 0 || activeStatFilter !== "ALL"
-                          ? "Aucun résultat ne correspond à vos filtres actuels."
-                          : "Commencez par créer votre premier bon de commande pour vos fournisseurs."}
-                      </p>
-                      {canCreate && (
-                        <Link to="/purchase-orders/create">
-                          <Button size="sm">
-                            <span className="flex items-center gap-1.5 text-xs font-semibold">
-                              <svg className="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                              </svg>
-                              Créer un Bon de Commande
-                            </span>
-                          </Button>
-                        </Link>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
+                <TableStateRow colSpan={COLUMNS} loading message="Fetching purchase orders..." />
+              ) : paging.pageItems.length === 0 ? (
+                <TableStateRow colSpan={COLUMNS} message="No purchase orders found." />
               ) : (
-                paginatedOrders.map((order) => {
-                  const isExpanded = expandedRowIds.has(order.id);
-                  const isSelected = selectedIds.includes(order.id);
-                  const linesCount = order.lines?.length || 0;
-
+                paging.pageItems.map((order) => {
+                  const isOpen = expanded.has(order.id);
+                  const busy = busyId === order.id;
                   return (
                     <React.Fragment key={order.id}>
-                      <TableRow
-                        className={`transition-colors hover:bg-gray-50/50 dark:hover:bg-white/[0.02] ${
-                          isSelected ? "bg-brand-50/30 dark:bg-brand-500/5" : ""
-                        }`}
-                      >
-                        {/* Checkbox */}
-                        <TableCell className="w-10 px-4 py-3.5 text-center">
-                          <Checkbox
-                            checked={isSelected}
-                            onChange={() => handleSelectRow(order.id)}
-                          />
-                        </TableCell>
-
-                        {/* Expand/Collapse Toggle */}
-                        <TableCell className="w-10 px-2 py-3.5 text-center">
-                          <button
-                            type="button"
-                            onClick={() => handleToggleRow(order.id)}
-                            className="p-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 dark:hover:text-gray-200 transition-colors"
-                            title={isExpanded ? "Masquer les articles" : "Afficher les articles"}
-                          >
-                            <svg
-                              className={`size-4 transition-transform duration-200 ${
-                                isExpanded ? "rotate-90 text-brand-500" : ""
-                              }`}
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
+                      <TableRow>
+                        <TableCell className={BODY_CELL}>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => toggleRow(order.id)}
+                              title={isOpen ? "Hide lines" : "Show lines"}
+                              aria-label={isOpen ? "Hide lines" : "Show lines"}
+                              className="rounded-md p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-white/[0.05]"
                             >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M9 5l7 7-7 7"
-                              />
-                            </svg>
-                          </button>
-                        </TableCell>
-
-                        {/* Order Code */}
-                        <TableCell className="py-3.5 px-4 font-medium">
-                          <Link
-                            to={`/purchase-orders/${order.id}`}
-                            className="font-semibold text-brand-600 dark:text-brand-400 hover:underline flex items-center gap-1.5"
-                          >
-                            {order.orderCode}
-                            {linesCount > 0 && (
-                              <span className="text-[10px] text-gray-400 font-normal">
-                                ({linesCount} art.)
-                              </span>
-                            )}
-                          </Link>
-                          {order.requisitionCode && (
-                            <span className="text-[10px] text-gray-400 block mt-0.5">
-                              DA: {order.requisitionCode}
-                            </span>
-                          )}
-                        </TableCell>
-
-                        {/* Supplier */}
-                        <TableCell className="py-3.5 px-4">
-                          <div className="font-medium text-gray-800 dark:text-white">
-                            {order.supplierName}
+                              <span className={`block transition-transform ${isOpen ? "rotate-90 text-brand-500" : ""}`}>{icons.expand}</span>
+                            </button>
+                            <StackedCell
+                              main={
+                                <Link to={`/purchase-orders/${order.id}`} className="font-mono hover:text-brand-500">
+                                  {order.orderCode}
+                                </Link>
+                              }
+                              sub={order.requisitionCode ? `From ${order.requisitionCode}` : `${order.lines?.length ?? 0} line(s)`}
+                            />
                           </div>
-                          {order.supplierCode && (
-                            <span className="text-[10px] text-gray-400 block">
-                              Code: {order.supplierCode}
-                            </span>
-                          )}
                         </TableCell>
-
-                        {/* Order Date */}
-                        <TableCell className="py-3.5 px-4 text-xs text-gray-600 dark:text-gray-300">
-                          {order.orderDate}
+                        <TableCell className={BODY_CELL}>
+                          <div className="flex items-center gap-3">
+                            <InitialsAvatar name={order.supplierName} />
+                            <StackedCell main={order.supplierName} sub={order.supplierCode} />
+                          </div>
                         </TableCell>
-
-                        {/* Expected Delivery Date */}
-                        <TableCell className="py-3.5 px-4">
-                          {getUrgencyBadge(order.expectedDeliveryDate)}
+                        <TableCell className={BODY_CELL}>
+                          <StackedCell main={order.orderDate} sub={order.orderedByName ?? undefined} />
                         </TableCell>
-
-                        {/* Total Grand Total */}
-                        <TableCell className="py-3.5 px-4 text-right font-bold text-gray-900 dark:text-white">
-                          {formatAmount(order.grandTotal, order.currencyCode)}
+                        <TableCell className={BODY_CELL}>
+                          <DeliveryDue order={order} />
                         </TableCell>
-
-                        {/* Order Status */}
-                        <TableCell className="py-3.5 px-4">
-                          <PurchaseOrderStatusBadge status={order.status} size="sm" />
+                        <TableCell className={`${BODY_CELL} whitespace-nowrap`}>{formatAmount(order.grandTotal, order.currencyCode)}</TableCell>
+                        <TableCell className={BODY_CELL}>
+                          <PurchaseOrderStatusBadge status={order.status} />
                         </TableCell>
-
-                        {/* Delivery Status */}
-                        <TableCell className="py-3.5 px-4">
-                          <PurchaseOrderDeliveryStatusBadge
-                            status={order.deliveryStatus}
-                            size="sm"
-                          />
+                        <TableCell className={BODY_CELL}>
+                          <div className="flex flex-col items-start gap-1">
+                            <PurchaseOrderDeliveryStatusBadge status={order.deliveryStatus} />
+                            {order.assignedToName && <Badge size="sm" color="light">{order.assignedToName}</Badge>}
+                          </div>
                         </TableCell>
-
-                        {/* Row Actions */}
-                        <TableCell className="py-3.5 px-4 text-right">
-                          <div className="flex items-center justify-end gap-1.5">
-                            {/* View Details */}
-                            <Link
-                              to={`/purchase-orders/${order.id}`}
-                              className="p-1.5 text-gray-400 hover:text-brand-600 hover:bg-gray-100 rounded-lg dark:hover:bg-gray-800 dark:hover:text-brand-400 transition-colors"
-                              title="Voir les détails"
-                            >
-                              <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                              </svg>
-                            </Link>
-
-                            {/* Submit Order action if DRAFT */}
+                        <TableCell className={BODY_CELL}>
+                          <div className="flex items-center">
+                            <ViewAction to={`/purchase-orders/${order.id}`} title="View Order" />
                             {permissions.canSubmit(order) && (
-                              <button
-                                type="button"
-                                onClick={() => handleSubmitOrder(order)}
-                                className="p-1.5 text-amber-500 hover:text-amber-700 hover:bg-amber-50 rounded-lg dark:hover:bg-amber-500/10 transition-colors"
-                                title="Soumettre au fournisseur"
-                              >
-                                <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                                </svg>
-                              </button>
+                              <RowIconButton title="Send to supplier" tone="brand" disabled={busy} onClick={() => handleSubmit(order)}>
+                                {icons.submit}
+                              </RowIconButton>
                             )}
-
-                            {/* Confirm Order action if SUBMITTED */}
                             {permissions.canConfirm(order) && (
-                              <button
-                                type="button"
-                                onClick={() => handleConfirmOrder(order)}
-                                className="p-1.5 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg dark:hover:bg-blue-500/10 transition-colors"
-                                title="Confirmer la commande fournisseur"
-                              >
-                                <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                </svg>
-                              </button>
+                              <RowIconButton title="Record supplier confirmation" tone="brand" disabled={busy} onClick={() => handleConfirm(order)}>
+                                {icons.confirm}
+                              </RowIconButton>
                             )}
-
-                            {/* Cancel Order action if cancellable */}
                             {permissions.canCancel(order) && (
-                                <button
-                                  type="button"
-                                  onClick={() => setOrderToCancel(order)}
-                                  className="p-1.5 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg dark:hover:bg-rose-500/10 transition-colors"
-                                  title="Annuler la commande"
-                                >
-                                  <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                  </svg>
-                                </button>
-                              )}
-
-                            {/* Delete Order action if DRAFT and admin */}
+                              <RowIconButton title="Cancel order" tone="warning" disabled={busy} onClick={() => setOrderToCancel(order)}>
+                                {icons.cancel}
+                              </RowIconButton>
+                            )}
                             {permissions.canDelete(order) && (
-                              <button
-                                type="button"
-                                onClick={() => setOrderToDelete(order)}
-                                className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg dark:hover:bg-red-500/10 transition-colors"
-                                title="Supprimer le brouillon"
-                              >
-                                <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                </svg>
-                              </button>
+                              <RowIconButton title="Delete draft" tone="danger" disabled={busy} onClick={() => setOrderToDelete(order)}>
+                                {icons.delete}
+                              </RowIconButton>
                             )}
                           </div>
                         </TableCell>
                       </TableRow>
-
-                      {/* Inline Expanded Row */}
-                      {isExpanded && (
-                        <PurchaseOrderExpandedRow
-                          order={order}
-                          formatAmount={formatAmount}
-                        />
-                      )}
+                      {isOpen && <PurchaseOrderExpandedRow order={order} colSpan={COLUMNS} />}
                     </React.Fragment>
                   );
                 })
@@ -1037,47 +401,22 @@ export default function PurchaseOrderList() {
             </TableBody>
           </Table>
         </div>
+      </ListCard>
 
-        {/* Pagination Footer */}
-        {filteredOrders.length > size && (
-          <div className="flex flex-col sm:flex-row items-center justify-between p-4 border-t border-gray-100 dark:border-white/[0.05] gap-3">
-            <span className="text-xs text-gray-500 dark:text-gray-400">
-              Affichage de {page * size + 1} à{" "}
-              {Math.min((page + 1) * size, filteredOrders.length)} sur{" "}
-              {filteredOrders.length} commandes
-            </span>
-
-            <Pagination
-              currentPage={page + 1}
-              totalPages={totalPages}
-              onPageChange={(p) => setPage(p - 1)}
-            />
-          </div>
-        )}
-      </div>
-
-      {/* Delete Confirmation Modal */}
       {orderToDelete && (
         <DeleteConfirmModal
-          isOpen={Boolean(orderToDelete)}
+          isOpen
           onClose={() => setOrderToDelete(null)}
-          onConfirm={handleConfirmDelete}
-          title="Supprimer la commande"
-          message={`Êtes-vous sûr de vouloir supprimer définitivement le bon de commande ${orderToDelete.orderCode} ?`}
+          onConfirm={handleDelete}
+          title="Delete Order"
+          message={`Delete draft order ${orderToDelete.orderCode} permanently?`}
           isDeleting={isDeleting}
         />
       )}
 
-      {/* Cancel Order Modal */}
       {orderToCancel && (
-        <PurchaseOrderCancelModal
-          isOpen={Boolean(orderToCancel)}
-          onClose={() => setOrderToCancel(null)}
-          order={orderToCancel}
-          onConfirm={handleConfirmCancel}
-          isLoading={isCancelling}
-        />
+        <PurchaseOrderCancelModal isOpen onClose={() => setOrderToCancel(null)} order={orderToCancel} onConfirm={handleCancel} />
       )}
-    </div>
+    </>
   );
 }

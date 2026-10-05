@@ -1,79 +1,106 @@
-import React, { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
-import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableCell,
-} from '../../../shared/components/ui/table';
-import Button from '../../../shared/components/ui/button/Button';
-import InputField from '../../../shared/components/form/input/InputField';
-import Select from '../../../shared/components/form/Select';
+import React, { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import DeleteConfirmModal from '../../../shared/components/ui/modal/DeleteConfirmModal';
 import UserStatusBadge from './UserStatusBadge';
 import UserRoleBadge from './UserRoleBadge';
 import OffboardUserModal from './OffboardUserModal';
 import { useUsers } from '../hooks/useUsers';
-import { EmploymentStatus } from '../enums/EmploymentStatus';
-import type { UserListItem, UpdateUserRequest, OffboardUserRequest } from '../types';
+import { EmploymentStatus, type EmploymentStatusValue } from '../enums/EmploymentStatus';
+import { UserRole, type UserRoleValue } from '../enums/UserRole';
+import type { UserListItem, OffboardUserRequest } from '../types';
+import ListCard, { type FilterPill } from '../../../shared/components/page/ListCard';
+import FilterPanel, { FilterSelect } from '../../../shared/components/page/FilterPanel';
+import StatFilterCards, { type StatCard } from '../../../shared/components/page/StatFilterCards';
+import { InitialsAvatar, ListFooter, RowIconButton, StackedCell, TableStateRow, ViewAction } from '../../../shared/components/page/ListParts';
+import { FloatingToast } from '../../../shared/components/page/DetailParts';
+import { StatIcons } from '../../../shared/components/page/pageIcons';
+import { BODY_CELL, HEAD_CELL } from '../../../shared/components/page/pageStyles';
+import { useClientPagination } from '../../../shared/components/page/useClientPagination';
+import { Table, TableBody, TableCell, TableHeader, TableRow } from '../../../shared/components/ui/table';
+
+type QuickFilter = 'ALL' | 'ACTIVE' | 'PROBATION' | 'TERMINATED';
+interface UserFilterValues {
+  status: EmploymentStatusValue | '';
+  role: UserRoleValue | 'NONE' | '';
+}
+
+const QUICK_FILTERS: Record<QuickFilter, (u: UserListItem) => boolean> = {
+  ALL: () => true,
+  ACTIVE: (u) => u.status === EmploymentStatus.ACTIVE,
+  PROBATION: (u) => u.status === EmploymentStatus.PROBATION,
+  TERMINATED: (u) => u.status === EmploymentStatus.TERMINATED,
+};
+
+const STATUS_LABELS: Record<EmploymentStatusValue, string> = {
+  ACTIVE: 'Active',
+  PROBATION: 'Probation',
+  ON_LEAVE: 'On Leave',
+  SUSPENDED: 'Suspended',
+  TERMINATED: 'Offboarded',
+};
+
+const ROLE_LABELS: Record<UserRoleValue | 'NONE', string> = {
+  ADMIN: 'Admin',
+  PURCHASER: 'Purchaser',
+  RECEIVER: 'Receiver',
+  NONE: 'No system login',
+};
+
+const STATUS_OPTIONS = [
+  { value: '', label: 'All Statuses' },
+  ...(Object.keys(STATUS_LABELS) as EmploymentStatusValue[]).map((s) => ({ value: s, label: STATUS_LABELS[s] })),
+];
+const ROLE_OPTIONS = [
+  { value: '', label: 'All Roles' },
+  ...[...Object.values(UserRole), 'NONE' as const].map((r) => ({ value: r, label: ROLE_LABELS[r] })),
+];
+
+const EMPTY_FILTERS: UserFilterValues = { status: '', role: '' };
+const COLUMNS = 6;
+
+const formatDate = (value?: string) => (value ? new Date(value).toLocaleDateString() : '—');
+
+const icons = {
+  edit: (
+    <svg className="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+    </svg>
+  ),
+  offboard: (
+    <svg className="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+    </svg>
+  ),
+  delete: (
+    <svg className="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+      />
+    </svg>
+  ),
+};
 
 export const UserListTable: React.FC = () => {
-  const navigate = useNavigate();
-  const {
-    users,
-    isLoading,
-    error,
-    fetchUsers,
-    onboard,
-    update,
-    offboard,
-    remove,
-  } = useUsers();
+  const { users, isLoading, error, offboard, remove } = useUsers();
 
-  // Search & Filter state
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedStatus, setSelectedStatus] = useState('');
-
-  // Modal states
+  const [keyword, setKeyword] = useState('');
+  const [quick, setQuick] = useState<QuickFilter>('ALL');
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [draftFilters, setDraftFilters] = useState<UserFilterValues>(EMPTY_FILTERS);
+  const [filters, setFilters] = useState<UserFilterValues>(EMPTY_FILTERS);
   const [userToOffboard, setUserToOffboard] = useState<UserListItem | null>(null);
   const [userToDelete, setUserToDelete] = useState<UserListItem | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [dismissedError, setDismissedError] = useState<string | null>(null);
 
-  // Statistics
-  const stats = useMemo(() => {
-    return {
-      total: users.length,
-      active: users.filter((u) => u.status === EmploymentStatus.ACTIVE).length,
-      probation: users.filter((u) => u.status === EmploymentStatus.PROBATION).length,
-      terminated: users.filter((u) => u.status === EmploymentStatus.TERMINATED).length,
-    };
-  }, [users]);
-
-  // Filtered users
-  const filteredUsers = useMemo(() => {
-    return users.filter((u) => {
-      const q = searchQuery.toLowerCase().trim();
-      const matchesSearch =
-        !q ||
-        u.fullName.toLowerCase().includes(q) ||
-        u.email.toLowerCase().includes(q) ||
-        u.code.toLowerCase().includes(q);
-
-      const matchesStatus = !selectedStatus || u.status === selectedStatus;
-
-      return matchesSearch && matchesStatus;
-    });
-  }, [users, searchQuery, selectedStatus]);
-
-  // Handlers
-  const handleOffboardSubmit = async (data: OffboardUserRequest) => {
-    if (userToOffboard) {
-      await offboard(data);
-    }
+  const handleOffboard = async (data: OffboardUserRequest) => {
+    if (userToOffboard) await offboard(data);
   };
 
-  const handleDeleteConfirm = async () => {
+  const handleDelete = async () => {
     if (!userToDelete) return;
     setIsDeleting(true);
     try {
@@ -84,292 +111,154 @@ export const UserListTable: React.FC = () => {
     }
   };
 
-  // Helper: Initials for avatar
-  const getInitials = (name: string) => {
-    const parts = name.trim().split(' ');
-    if (parts.length >= 2) {
-      return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
-    }
-    return (name[0] || 'U').toUpperCase();
-  };
+  const active = users.filter(QUICK_FILTERS.ACTIVE).length;
+  const probation = users.filter(QUICK_FILTERS.PROBATION).length;
+  const offboarded = users.filter(QUICK_FILTERS.TERMINATED).length;
+  const withLogin = users.filter((u) => !!u.userId).length;
+  const cards: StatCard<QuickFilter>[] = [
+    { id: 'ALL', title: 'All Staff', value: users.length, unit: 'people', subtitle: `${withLogin} with a system login`, tone: 'brand', icon: StatIcons.all },
+    { id: 'ACTIVE', title: 'Active', value: active, unit: 'people', subtitle: 'Currently employed', tone: 'green', icon: StatIcons.done },
+    { id: 'PROBATION', title: 'On Probation', value: probation, unit: 'people', subtitle: 'Trial period', tone: 'amber', icon: StatIcons.pending, badge: probation },
+    { id: 'TERMINATED', title: 'Offboarded', value: offboarded, unit: 'people', subtitle: 'No longer with the company', tone: 'red', icon: StatIcons.overdue },
+  ];
 
-  const formatCreatedDate = (dateStr?: string) => {
-    if (!dateStr) return '—';
-    try {
-      return new Date(dateStr).toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-      });
-    } catch {
-      return dateStr;
-    }
-  };
+  const visible = useMemo(() => {
+    const term = keyword.trim().toLowerCase();
+    return users
+      .filter(QUICK_FILTERS[quick])
+      .filter((u) => !filters.status || u.status === filters.status)
+      .filter((u) => !filters.role || (filters.role === 'NONE' ? !u.role : u.role === filters.role))
+      .filter((u) => !term || [u.fullName, u.email, u.code].some((v) => String(v ?? '').toLowerCase().includes(term)))
+      .sort((a, b) => a.fullName.localeCompare(b.fullName));
+  }, [users, quick, filters, keyword]);
+
+  const paging = useClientPagination(visible);
+  const pills: FilterPill[] = [
+    ...(filters.status ? [{ label: `Status: ${STATUS_LABELS[filters.status]}`, onRemove: () => setFilters({ ...filters, status: '' }) }] : []),
+    ...(filters.role ? [{ label: `Role: ${ROLE_LABELS[filters.role]}`, onRemove: () => setFilters({ ...filters, role: '' }) }] : []),
+  ];
 
   return (
-    <div className="space-y-6">
-      {/* Stat Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="p-4 rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-white/[0.03]">
-          <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Total Staff</span>
-          <div className="text-2xl font-bold text-gray-800 dark:text-white mt-1">{stats.total}</div>
-        </div>
-        <div className="p-4 rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-white/[0.03]">
-          <span className="text-xs text-success-600 dark:text-success-400 font-medium">Active</span>
-          <div className="text-2xl font-bold text-success-600 dark:text-success-400 mt-1">{stats.active}</div>
-        </div>
-        <div className="p-4 rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-white/[0.03]">
-          <span className="text-xs text-warning-600 dark:text-warning-400 font-medium">Probation</span>
-          <div className="text-2xl font-bold text-warning-600 dark:text-warning-400 mt-1">{stats.probation}</div>
-        </div>
-        <div className="p-4 rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-white/[0.03]">
-          <span className="text-xs text-gray-400 font-medium">Offboarded</span>
-          <div className="text-2xl font-bold text-gray-500 dark:text-gray-400 mt-1">{stats.terminated}</div>
-        </div>
-      </div>
+    <>
+      <FloatingToast
+        feedback={error && error !== dismissedError ? { type: 'error', text: error } : null}
+        onClose={() => setDismissedError(error)}
+      />
 
-      {/* Action Bar */}
-      <div className="p-5 rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-white/[0.03] space-y-4">
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="w-full sm:w-80">
-            <InputField
-              id="userSearch"
-              placeholder="Search by name, email, code..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
+      <StatFilterCards cards={cards} active={quick} onSelect={setQuick} />
 
-          <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => fetchUsers()}
-              disabled={isLoading}
-            >
-              🔄 Refresh
-            </Button>
-            <Button
-              type="button"
-              onClick={() => navigate('/users/create')}
-            >
-              + Onboard Employee
-            </Button>
-          </div>
-        </div>
-
-        {/* Filters */}
-        <div className="flex flex-wrap items-center gap-4 pt-3 border-t border-gray-100 dark:border-gray-800">
-          <div className="w-44">
-            <Select
-              id="filterStatus"
-              options={[
-                { value: '', label: 'All Statuses' },
-                { value: EmploymentStatus.ACTIVE, label: 'Active' },
-                { value: EmploymentStatus.PROBATION, label: 'Probation' },
-                { value: EmploymentStatus.ON_LEAVE, label: 'On Leave' },
-                { value: EmploymentStatus.SUSPENDED, label: 'Suspended' },
-                { value: EmploymentStatus.TERMINATED, label: 'Terminated' },
-              ]}
-              value={selectedStatus}
-              onChange={(val) => setSelectedStatus(val)}
-            />
-          </div>
-
-          {(searchQuery || selectedStatus) && (
-            <button
-              onClick={() => {
-                setSearchQuery('');
-                setSelectedStatus('');
+      <ListCard
+        title="Staff Directory"
+        search={{ value: keyword, onChange: setKeyword, placeholder: 'Search staff...' }}
+        filter={{
+          activeCount: pills.length,
+          isOpen: isFilterOpen,
+          onToggle: () => {
+            setDraftFilters(filters);
+            setIsFilterOpen(!isFilterOpen);
+          },
+          panel: (
+            <FilterPanel
+              title="Filter Staff"
+              isOpen={isFilterOpen}
+              onClose={() => setIsFilterOpen(false)}
+              activeCount={[draftFilters.status, draftFilters.role].filter(Boolean).length}
+              onApply={() => {
+                setFilters(draftFilters);
+                setIsFilterOpen(false);
               }}
-              className="text-xs text-brand-600 hover:text-brand-700 dark:text-brand-400 underline cursor-pointer"
+              onClear={() => {
+                setDraftFilters(EMPTY_FILTERS);
+                setFilters(EMPTY_FILTERS);
+                setIsFilterOpen(false);
+              }}
             >
-              Clear filters
-            </button>
-          )}
-
-          <div className="ml-auto text-xs text-gray-500">
-            Showing <strong>{filteredUsers.length}</strong> of <strong>{users.length}</strong> records
-          </div>
-        </div>
-      </div>
-
-      {/* Error state */}
-      {error && (
-        <div className="p-4 rounded-xl bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm">
-          {error}
-        </div>
-      )}
-
-      {/* Users Table */}
-      <div className="overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-white/[0.03]">
-        <div className="overflow-x-auto">
+              <FilterSelect
+                label="Status"
+                value={draftFilters.status}
+                onChange={(status) => setDraftFilters({ ...draftFilters, status: status as EmploymentStatusValue | '' })}
+                options={STATUS_OPTIONS}
+              />
+              <FilterSelect
+                label="Role"
+                value={draftFilters.role}
+                onChange={(role) => setDraftFilters({ ...draftFilters, role: role as UserFilterValues['role'] })}
+                options={ROLE_OPTIONS}
+              />
+            </FilterPanel>
+          ),
+        }}
+        action={{ label: 'Onboard Employee', to: '/users/create' }}
+        pills={pills}
+        onClearPills={() => setFilters(EMPTY_FILTERS)}
+        footer={
+          <ListFooter page={paging.page} size={paging.size} total={paging.total} totalPages={paging.totalPages} onPageChange={paging.setPage} />
+        }
+      >
+        <div className="max-w-full overflow-x-auto">
           <Table>
-            <TableHeader className="bg-gray-50/75 dark:bg-gray-800/40 text-left border-b border-gray-100 dark:border-gray-800">
+            <TableHeader className="border-b border-gray-100 bg-gray-50/50 dark:border-white/[0.05] dark:bg-gray-900/50">
               <TableRow>
-                <TableCell isHeader className="py-3.5 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Full Name
-                </TableCell>
-                <TableCell isHeader className="py-3.5 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Email
-                </TableCell>
-                <TableCell isHeader className="py-3.5 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Code
-                </TableCell>
-                <TableCell isHeader className="py-3.5 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Status
-                </TableCell>
-                <TableCell isHeader className="py-3.5 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Role
-                </TableCell>
-                <TableCell isHeader className="py-3.5 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Day of Creation
-                </TableCell>
-                <TableCell isHeader className="py-3.5 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">
-                  Actions
-                </TableCell>
+                <TableCell isHeader className={HEAD_CELL}>Employee</TableCell>
+                <TableCell isHeader className={HEAD_CELL}>Code</TableCell>
+                <TableCell isHeader className={HEAD_CELL}>Status</TableCell>
+                <TableCell isHeader className={HEAD_CELL}>System Role</TableCell>
+                <TableCell isHeader className={HEAD_CELL}>Joined</TableCell>
+                <TableCell isHeader className={HEAD_CELL}>Action</TableCell>
               </TableRow>
             </TableHeader>
-
-            <TableBody>
+            <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
               {isLoading ? (
-                <TableRow>
-                  <TableCell colSpan={7} className="py-12 text-center text-gray-400">
-                    <div className="flex flex-col items-center justify-center gap-2">
-                      <div className="w-8 h-8 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
-                      <span>Loading employee records...</span>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ) : filteredUsers.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={7} className="py-12 text-center text-gray-400">
-                    <div className="flex flex-col items-center justify-center gap-2">
-                      <span className="text-3xl">👥</span>
-                      <p className="text-gray-500 dark:text-gray-400 font-medium">No employees found</p>
-                      <p className="text-xs text-gray-400">Try adjusting your search criteria or onboard a new employee.</p>
-                    </div>
-                  </TableCell>
-                </TableRow>
+                <TableStateRow colSpan={COLUMNS} loading message="Fetching staff..." />
+              ) : paging.pageItems.length === 0 ? (
+                <TableStateRow colSpan={COLUMNS} message="No employees found." />
               ) : (
-                filteredUsers.map((item) => (
-                  <TableRow
-                    key={item.id}
-                    className="border-b border-gray-100 dark:border-gray-800/60 hover:bg-gray-50/50 dark:hover:bg-white/[0.02] transition-colors"
-                  >
-                    {/* Full Name */}
-                    <TableCell className="py-3.5 px-4">
+                paging.pageItems.map((u) => (
+                  <TableRow key={u.id}>
+                    <TableCell className={BODY_CELL}>
                       <div className="flex items-center gap-3">
-                        <button
-                          type="button"
-                          onClick={() => navigate(`/users/${item.id}`)}
-                          title={`View ${item.fullName}'s profile`}
-                          className="w-9 h-9 rounded-full bg-brand-50 dark:bg-brand-500/15 text-brand-600 dark:text-brand-400 font-bold flex items-center justify-center text-xs shrink-0 cursor-pointer hover:ring-2 hover:ring-brand-500 transition-all focus:outline-none"
-                        >
-                          {getInitials(item.fullName)}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => navigate(`/users/${item.id}`)}
-                          title={`View ${item.fullName}'s profile`}
-                          className="font-semibold text-gray-800 dark:text-white text-sm hover:text-brand-600 dark:hover:text-brand-400 transition-colors text-left flex items-center gap-1.5 group cursor-pointer focus:outline-none"
-                        >
-                          <span>{item.fullName}</span>
-                          <svg className="w-3.5 h-3.5 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all text-brand-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                          </svg>
-                        </button>
+                        <InitialsAvatar name={u.fullName} />
+                        <StackedCell
+                          main={
+                            <Link to={`/users/${u.id}`} className="hover:text-brand-500">
+                              {u.fullName}
+                            </Link>
+                          }
+                          sub={
+                            <a href={`mailto:${u.email}`} className="hover:text-brand-500">
+                              {u.email}
+                            </a>
+                          }
+                        />
                       </div>
                     </TableCell>
-
-                    {/* Email */}
-                    <TableCell className="py-3.5 px-4 text-sm text-gray-600 dark:text-gray-300">
-                      <a
-                        href={`mailto:${item.email}`}
-                        className="hover:text-brand-600 dark:hover:text-brand-400 transition-colors"
-                      >
-                        {item.email}
-                      </a>
+                    <TableCell className={`${BODY_CELL} font-mono`}>{u.code}</TableCell>
+                    <TableCell className={BODY_CELL}>
+                      <UserStatusBadge status={u.status} />
                     </TableCell>
-
-                    {/* Code */}
-                    <TableCell className="py-3.5 px-4 font-mono text-xs">
-                      <button
-                        type="button"
-                        onClick={() => navigate(`/users/${item.id}`)}
-                        className="font-medium text-gray-700 dark:text-gray-300 hover:text-brand-600 dark:hover:text-brand-400 hover:underline cursor-pointer focus:outline-none px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700"
-                        title="View employee"
-                      >
-                        {item.code}
-                      </button>
+                    <TableCell className={BODY_CELL}>
+                      <UserRoleBadge role={u.role} hasAccount={!!u.userId} />
                     </TableCell>
-
-                    {/* Status */}
-                    <TableCell className="py-3.5 px-4">
-                      <UserStatusBadge status={item.status} />
-                    </TableCell>
-
-                    {/* Role */}
-                    <TableCell className="py-3.5 px-4">
-                      <UserRoleBadge role={item.role} hasAccount={!!item.userId} />
-                    </TableCell>
-
-                    {/* Day of Creation */}
-                    <TableCell className="py-3.5 px-4 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
-                      {formatCreatedDate(item.createdAt)}
-                    </TableCell>
-
-                    {/* Actions */}
-                    <TableCell className="py-3.5 px-4 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        {/* View */}
-                        <button
-                          type="button"
-                          onClick={() => navigate(`/users/${item.id}`)}
-                          title="View Employee Details"
-                          className="p-1.5 rounded-lg text-gray-500 hover:text-brand-600 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                    <TableCell className={BODY_CELL}>{formatDate(u.createdAt)}</TableCell>
+                    <TableCell className={BODY_CELL}>
+                      <div className="flex items-center">
+                        <ViewAction to={`/users/${u.id}`} title="View Employee" />
+                        <Link
+                          to={`/users/edit/${u.id}`}
+                          title="Edit"
+                          aria-label="Edit"
+                          className="flex items-center justify-center rounded-lg p-2 text-gray-400 transition-colors hover:bg-brand-50 hover:text-brand-500 dark:hover:bg-brand-500/10"
                         >
-                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                          </svg>
-                        </button>
-
-                        {/* Edit */}
-                        <button
-                          type="button"
-                          onClick={() => navigate(`/users/edit/${item.id}`)}
-                          title="Edit Employee"
-                          className="p-1.5 rounded-lg text-gray-500 hover:text-brand-600 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                        >
-                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                          </svg>
-                        </button>
-
-                        {/* Offboard (Only if not already terminated) */}
-                        {item.status !== EmploymentStatus.TERMINATED && (
-                          <button
-                            onClick={() => setUserToOffboard(item)}
-                            title="Offboard / Terminate"
-                            className="p-1.5 rounded-lg text-amber-500 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors"
-                          >
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                            </svg>
-                          </button>
+                          {icons.edit}
+                        </Link>
+                        {u.status !== EmploymentStatus.TERMINATED && (
+                          <RowIconButton title="Offboard" tone="warning" onClick={() => setUserToOffboard(u)}>
+                            {icons.offboard}
+                          </RowIconButton>
                         )}
-
-                        {/* Delete */}
-                        <button
-                          onClick={() => setUserToDelete(item)}
-                          title="Delete Employee"
-                          className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                        >
-                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        </button>
+                        <RowIconButton title="Delete" tone="danger" onClick={() => setUserToDelete(u)}>
+                          {icons.delete}
+                        </RowIconButton>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -378,25 +267,19 @@ export const UserListTable: React.FC = () => {
             </TableBody>
           </Table>
         </div>
-      </div>
+      </ListCard>
 
-
-      <OffboardUserModal
-        isOpen={!!userToOffboard}
-        user={userToOffboard}
-        onClose={() => setUserToOffboard(null)}
-        onSuccess={handleOffboardSubmit}
-      />
+      <OffboardUserModal isOpen={!!userToOffboard} user={userToOffboard} onClose={() => setUserToOffboard(null)} onSuccess={handleOffboard} />
 
       <DeleteConfirmModal
         isOpen={!!userToDelete}
         onClose={() => setUserToDelete(null)}
-        onConfirm={handleDeleteConfirm}
+        onConfirm={handleDelete}
         isDeleting={isDeleting}
-        title="Delete Employee Record"
-        message={`Are you sure you want to permanently delete ${userToDelete?.fullName} (${userToDelete?.code})? This action cannot be undone.`}
+        title="Delete Employee"
+        message={`Delete ${userToDelete?.fullName} (${userToDelete?.code}) permanently? This cannot be undone.`}
       />
-    </div>
+    </>
   );
 };
 

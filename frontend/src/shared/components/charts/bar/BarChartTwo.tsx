@@ -54,7 +54,7 @@ export default function BarChartTwo() {
       horizontalAlign: "left",
       fontFamily: "Outfit",
       markers: {
-        shape: "circle" as any,
+        shape: "circle",
       },
     },
     grid: {

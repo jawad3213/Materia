@@ -51,7 +51,7 @@ export default function BarChartSix() {
       horizontalAlign: "left",
       fontFamily: "Outfit",
       markers: {
-        shape: "circle" as any,
+        shape: "circle",
       },
     },
     grid: {

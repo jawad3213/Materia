@@ -192,12 +192,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         'material:read', 'supplier:read', 'supplier:write',
         'requisition:read', 'requisition:write', 'requisition:validate', 'requisition:convert',
         'order:read', 'order:write', 'order:cancel', 'receipt:read',
-        'invoice:read', 'invoice:write', 'payment:read'
+        'invoice:read', 'invoice:write', 'payment:read',
+        'return:read', 'return:write', 'dashboard:read'
       ],
       RECEIVER: [
         'category:read', 'material:read', 'material:stock:read', 'material:stock:write',
         'supplier:read', 'requisition:read',
-        'order:read', 'receipt:read', 'receipt:write', 'receipt:quality'
+        'order:read', 'receipt:read', 'receipt:write', 'receipt:quality',
+        'return:read', 'return:write', 'dashboard:read'
       ]
     };
     return rolePermissions[user.role]?.includes(permission) ?? false;

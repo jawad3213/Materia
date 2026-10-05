@@ -12,7 +12,22 @@ import { parseAmount } from "../../../shared/utils/moneyUtils";
 import type { SupplierListItem } from "../../suppliers/types/SupplierListItem";
 import type { MaterialListItem } from "../../materials/types/MaterialListItem";
 import Button from "../../../shared/components/ui/button/Button";
+import Label from "../../../shared/components/form/Label";
+import Input from "../../../shared/components/form/input/InputField";
+import TextArea from "../../../shared/components/form/input/TextArea";
+import { FloatingToast, FormCard, FormSection } from "../../../shared/components/page/DetailParts";
+import { SELECT_CLASS } from "../../../shared/components/page/pageStyles";
+import { formatAmount } from "../../invoices/utils/invoiceLine";
 import useAuth from "../../auth/hooks/useAuth";
+
+/** The APIs answer with a plain array, a page (`content`) or a wrapper (`data`); this returns the items. */
+function asList<T>(raw: unknown): T[] {
+  if (Array.isArray(raw)) return raw as T[];
+  const wrapped = raw as { content?: unknown; data?: unknown } | null | undefined;
+  if (Array.isArray(wrapped?.content)) return wrapped.content as T[];
+  if (Array.isArray(wrapped?.data)) return wrapped.data as T[];
+  return [];
+}
 
 interface LocalLineItem extends PurchaseOrderLineRequest {
   tempId: string;
@@ -53,9 +68,9 @@ export default function PurchaseOrderForm({ purchaseOrderId }: PurchaseOrderForm
     new Date().toISOString().split("T")[0]
   );
   const [expectedDeliveryDate, setExpectedDeliveryDate] = useState("");
-  const [paymentTerms, setPaymentTerms] = useState("Virement 30 jours");
+  const [paymentTerms, setPaymentTerms] = useState("Bank transfer, 30 days");
   const [paymentDelayDays, setPaymentDelayDays] = useState<number>(30);
-  const [deliveryTerms, setDeliveryTerms] = useState("Livraison sur site DAP");
+  const [deliveryTerms, setDeliveryTerms] = useState("Delivered on site");
   const [incoterm, setIncoterm] = useState("DAP");
   const [currencyCode, setCurrencyCode] = useState("MAD");
   const [taxAmount, setTaxAmount] = useState<number>(0);
@@ -122,7 +137,7 @@ export default function PurchaseOrderForm({ purchaseOrderId }: PurchaseOrderForm
 
   const applyOrder = (order: PurchaseOrder) => {
     if (!EDITABLE_STATUSES.includes(order.status)) {
-      setError("Cette commande ne peut plus être modifiée.");
+      setError("This order can no longer be edited.");
       return;
     }
     setEditedOrderCode(order.orderCode);
@@ -167,30 +182,14 @@ export default function PurchaseOrderForm({ purchaseOrderId }: PurchaseOrderForm
       ([supRes, matRes]) => {
         if (cancelled) return;
         if (supRes.status === "fulfilled") {
-          const rawSup = supRes.value;
-          const supList = Array.isArray(rawSup?.data)
-            ? rawSup.data
-            : Array.isArray((rawSup as any)?.content)
-            ? (rawSup as any).content
-            : Array.isArray(rawSup)
-            ? rawSup
-            : [];
-          setSuppliers(supList);
+          setSuppliers(asList<SupplierListItem>(supRes.value));
         } else {
           setSuppliers([]);
         }
 
         if (matRes.status === "fulfilled") {
-          const raw = matRes.value;
-          const matList = Array.isArray(raw)
-            ? raw
-            : Array.isArray((raw as any)?.content)
-            ? (raw as any).content
-            : Array.isArray((raw as any)?.data)
-            ? (raw as any).data
-            : [];
           // Only materials that can still be ordered are offered on a new line.
-          setMaterials(matList.filter((m: any) => !m?.status || m?.status === "ACTIVE"));
+          setMaterials(asList<MaterialListItem>(matRes.value).filter((m) => !m?.status || m.status === "ACTIVE"));
         } else {
           console.error("Failed to load materials:", matRes.reason);
           setMaterials([]);
@@ -212,7 +211,7 @@ export default function PurchaseOrderForm({ purchaseOrderId }: PurchaseOrderForm
       })
       .catch((err) => {
         console.error("Failed to load requisition data for conversion:", err);
-        if (!cancelled) setError("Impossible de charger les données de la demande d'achat à convertir.");
+        if (!cancelled) setError("Could not load the requisition to convert.");
       })
       .finally(() => {
         if (!cancelled) setLoadingRequisition(false);
@@ -233,7 +232,7 @@ export default function PurchaseOrderForm({ purchaseOrderId }: PurchaseOrderForm
       .catch((err) => {
         console.error("Failed to load purchase order for editing:", err);
         if (!cancelled) {
-          setError(getApiErrorMessage(err, "Impossible de charger le bon de commande à modifier."));
+          setError(getApiErrorMessage(err, "Could not load the purchase order to edit."));
         }
       })
       .finally(() => {
@@ -335,27 +334,27 @@ export default function PurchaseOrderForm({ purchaseOrderId }: PurchaseOrderForm
     setError(null);
 
     if (!supplierId || !supplierName) {
-      setError("Veuillez sélectionner un fournisseur.");
+      setError("Select a supplier.");
       return;
     }
 
     if (lines.length === 0) {
-      setError("Au moins un article doit être commandé.");
+      setError("Order at least one line.");
       return;
     }
 
     for (let i = 0; i < lines.length; i++) {
       const l = lines[i];
       if (!l.materialCode.trim()) {
-        setError(`Veuillez renseigner le code matériel pour la ligne #${i + 1}.`);
+        setError(`Enter the material code on line ${i + 1}.`);
         return;
       }
       if (!l.quantity || l.quantity <= 0) {
-        setError(`La quantité de la ligne #${i + 1} doit être supérieure à 0.`);
+        setError(`The quantity on line ${i + 1} must be greater than 0.`);
         return;
       }
       if (l.unitPrice === undefined || Number(l.unitPrice) < 0) {
-        setError(`Le prix unitaire de la ligne #${i + 1} est invalide.`);
+        setError(`The unit price on line ${i + 1} is invalid.`);
         return;
       }
     }
@@ -378,7 +377,7 @@ export default function PurchaseOrderForm({ purchaseOrderId }: PurchaseOrderForm
         taxAmount: Number(taxAmount) || 0,
         shippingCost: Number(shippingCost) || 0,
         orderedBy: user?.id || "CURRENT_USER",
-        orderedByName: user?.name || user?.email || "Acheteur",
+        orderedByName: user?.name || user?.email || "Buyer",
         notes: notes || undefined,
         internalNotes: internalNotes || undefined,
         lines: lines.map((l, idx) => ({
@@ -419,7 +418,7 @@ export default function PurchaseOrderForm({ purchaseOrderId }: PurchaseOrderForm
       setError(
         getApiErrorMessage(
           err,
-          "Échec de l'enregistrement du bon de commande. Veuillez vérifier les informations saisies."
+          "Saving the purchase order failed. Check the details entered."
         )
       );
     } finally {
@@ -429,423 +428,230 @@ export default function PurchaseOrderForm({ purchaseOrderId }: PurchaseOrderForm
 
   const safeSuppliers = Array.isArray(suppliers) ? suppliers : [];
   const safeMaterials = Array.isArray(materials) ? materials : [];
+  const cancelTo = isEdit ? `/purchase-orders/${purchaseOrderId}` : "/purchase-orders";
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between bg-white dark:bg-gray-900 p-6 rounded-2xl border border-gray-200 dark:border-white/[0.07] shadow-sm">
-        <div>
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-            {isEdit
-              ? `Modifier le Bon de Commande ${editedOrderCode ?? ""}`
-              : "Nouveau Bon de Commande Fournisseur"}
-          </h2>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            {isEdit
-              ? editedRequisitionCode
-                ? `Issu de la demande d'achat ${editedRequisitionCode}.`
-                : "Modifiez la commande avant sa confirmation par le fournisseur."
-              : "Émettez un bon de commande officiel pour vos approvisionnements et livraisons."}
-          </p>
-        </div>
-        <Link to={isEdit ? `/purchase-orders/${purchaseOrderId}` : "/purchase-orders"}>
-          <Button variant="outline" size="sm">
-            Annuler
-          </Button>
-        </Link>
-      </div>
+    <>
+      <FloatingToast feedback={error ? { type: "error", text: error } : null} onClose={() => setError(null)} />
 
-      {/* Originating Requisition Alert Banner */}
-      {loadingRequisition && (
-        <div className="p-4 rounded-2xl bg-purple-50 text-purple-700 dark:bg-purple-500/10 dark:text-purple-300 text-xs flex items-center gap-2 border border-purple-200 dark:border-purple-500/20">
-          <div className="size-4 animate-spin rounded-full border-2 border-purple-600 border-t-transparent" />
-          Chargement des données de la demande d'achat à convertir...
-        </div>
-      )}
+      <form onSubmit={handleSubmit}>
+        <FormCard title={isEdit ? `Edit Purchase Order ${editedOrderCode ?? ""}` : "New Purchase Order"}>
+          {(loadingOrder || loadingRequisition) && (
+            <p className="text-sm text-gray-500">{loadingOrder ? "Loading purchase order..." : "Loading the requisition to convert..."}</p>
+          )}
 
-      {originRequisition && !loadingRequisition && (
-        <div className="p-4 rounded-2xl bg-gradient-to-r from-purple-50 to-indigo-50/60 dark:from-purple-950/20 dark:to-indigo-950/20 border border-purple-200 dark:border-purple-500/30 text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="size-9 rounded-xl bg-purple-600 text-white flex items-center justify-center font-bold shadow-sm">
-              <svg className="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-              </svg>
+          {originRequisition && !loadingRequisition && (
+            <div className="flex flex-col gap-2 rounded-xl border border-brand-200 bg-brand-25 p-4 text-sm sm:flex-row sm:items-center sm:justify-between dark:border-brand-500/30 dark:bg-brand-500/[0.06]">
+              <div>
+                <p className="font-medium text-gray-800 dark:text-white/90">
+                  Converting requisition <span className="font-mono text-brand-500">{originRequisition.requisitionCode}</span>
+                </p>
+                <p className="text-theme-xs text-gray-500 dark:text-gray-400">
+                  {originRequisition.title} — {originRequisition.lines?.length || 0} line(s) prefilled. Materials come from the requisition and
+                  quantities cannot exceed what was requested.
+                </p>
+              </div>
+              <Link to={`/requisitions/${originRequisition.id}`} className="text-theme-sm font-medium text-brand-500 hover:underline">
+                View requisition
+              </Link>
             </div>
-            <div>
-              <p className="font-bold text-gray-900 dark:text-white">
-                Conversion de la Demande d'Achat: <span className="text-purple-600 dark:text-purple-400 font-mono">{originRequisition.requisitionCode}</span>
-              </p>
-              <p className="text-gray-600 dark:text-gray-300 mt-0.5">
-                {originRequisition.title} — {originRequisition.lines?.length || 0} ligne(s) préremplie(s)
-              </p>
-            </div>
-          </div>
-          <Link
-            to={`/requisitions/${originRequisition.id}`}
-            className="text-purple-700 dark:text-purple-300 hover:text-purple-900 dark:hover:text-white font-semibold underline text-xs"
+          )}
+
+          {isEdit && editedRequisitionCode && (
+            <p className="text-theme-sm text-gray-500 dark:text-gray-400">
+              From requisition <span className="font-mono font-medium text-brand-500">{editedRequisitionCode}</span>.
+            </p>
+          )}
+
+          <FormSection
+            title="Supplier & Dates"
+            aside={
+              <Link to={cancelTo}>
+                <Button variant="outline" size="sm">
+                  Cancel
+                </Button>
+              </Link>
+            }
           >
-            Consulter la demande d'origine →
-          </Link>
-        </div>
-      )}
-
-      {loadingOrder && (
-        <div className="p-4 rounded-2xl bg-gray-50 text-gray-600 dark:bg-white/[0.03] dark:text-gray-300 text-xs flex items-center gap-2 border border-gray-200 dark:border-white/[0.07]">
-          <div className="size-4 animate-spin rounded-full border-2 border-brand-600 border-t-transparent" />
-          Chargement du bon de commande...
-        </div>
-      )}
-
-      {error && (
-        <div className="p-4 rounded-xl bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-400 text-xs border border-red-200 dark:border-red-500/20">
-          {error}
-        </div>
-      )}
-
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Section 1: Informations Générales & Fournisseur */}
-        <div className="bg-white dark:bg-gray-900 p-6 rounded-2xl border border-gray-200 dark:border-white/[0.07] shadow-sm space-y-4">
-          <h3 className="text-sm font-bold text-gray-800 dark:text-white flex items-center gap-2 border-b border-gray-100 dark:border-white/[0.05] pb-3">
-            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-brand-50 text-brand-600 dark:bg-brand-500/15 dark:text-brand-400 text-xs font-bold">
-              1
-            </span>
-            Fournisseur & Dates de Livraison
-          </h3>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block mb-1.5 text-xs font-semibold text-gray-700 dark:text-gray-300">
-                Fournisseur <span className="text-red-500">*</span>
-              </label>
-              <select
-                required
-                value={supplierId}
-                onChange={(e) => handleSupplierChange(e.target.value)}
-                className="w-full rounded-xl border border-gray-200 dark:border-white/[0.1] bg-white dark:bg-gray-800 px-3 py-2 text-xs text-gray-800 dark:text-white focus:border-brand-500 focus:outline-none"
-              >
-                <option value="">Sélectionnez un fournisseur...</option>
-                {safeSuppliers.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name} ({s.code || "Sans code"})
-                  </option>
-                ))}
-              </select>
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+              <div className="md:col-span-3">
+                <Label>Supplier *</Label>
+                <select value={supplierId} onChange={(e) => handleSupplierChange(e.target.value)} className={SELECT_CLASS}>
+                  <option value="">Select a supplier...</option>
+                  {safeSuppliers.map((sup) => (
+                    <option key={sup.id} value={sup.id}>
+                      {sup.name} {sup.code ? `(${sup.code})` : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <Label>Order Date *</Label>
+                <Input type="date" value={orderDate} onChange={(e) => setOrderDate(e.target.value)} />
+              </div>
+              <div>
+                <Label>Expected Delivery</Label>
+                <Input type="date" value={expectedDeliveryDate} min={orderDate} onChange={(e) => setExpectedDeliveryDate(e.target.value)} />
+              </div>
+              <div>
+                <Label>Currency</Label>
+                <select value={currencyCode} onChange={(e) => setCurrencyCode(e.target.value)} className={SELECT_CLASS}>
+                  <option value="MAD">MAD (Moroccan Dirham)</option>
+                  <option value="EUR">EUR (Euro)</option>
+                  <option value="USD">USD (US Dollar)</option>
+                </select>
+              </div>
             </div>
+          </FormSection>
 
-            <div>
-              <label className="block mb-1.5 text-xs font-semibold text-gray-700 dark:text-gray-300">
-                Date de la Commande <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="date"
-                required
-                value={orderDate}
-                onChange={(e) => setOrderDate(e.target.value)}
-                className="w-full rounded-xl border border-gray-200 dark:border-white/[0.1] bg-white dark:bg-gray-800 px-3 py-2 text-xs text-gray-800 dark:text-white focus:border-brand-500 focus:outline-none"
-              />
+          <FormSection title="Terms">
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-4">
+              <div className="md:col-span-2">
+                <Label>Payment Terms</Label>
+                <Input value={paymentTerms} onChange={(e) => setPaymentTerms(e.target.value)} placeholder="e.g. Bank transfer, 30 days" />
+              </div>
+              <div>
+                <Label>Payment Delay (days)</Label>
+                <Input type="number" min="0" value={paymentDelayDays} onChange={(e) => setPaymentDelayDays(parseInt(e.target.value) || 0)} />
+              </div>
+              <div>
+                <Label>Incoterm</Label>
+                <Input value={incoterm} onChange={(e) => setIncoterm(e.target.value)} placeholder="e.g. DAP, FOB, EXW" />
+              </div>
+              <div className="md:col-span-4">
+                <Label>Delivery Terms</Label>
+                <Input value={deliveryTerms} onChange={(e) => setDeliveryTerms(e.target.value)} placeholder="e.g. Delivered on site" />
+              </div>
             </div>
+          </FormSection>
 
-            <div>
-              <label className="block mb-1.5 text-xs font-semibold text-gray-700 dark:text-gray-300">
-                Date de Livraison Prévue
-              </label>
-              <input
-                type="date"
-                value={expectedDeliveryDate}
-                onChange={(e) => setExpectedDeliveryDate(e.target.value)}
-                className="w-full rounded-xl border border-gray-200 dark:border-white/[0.1] bg-white dark:bg-gray-800 px-3 py-2 text-xs text-gray-800 dark:text-white focus:border-brand-500 focus:outline-none"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-2">
-            <div>
-              <label className="block mb-1 text-xs font-medium text-gray-600 dark:text-gray-300">
-                Devise
-              </label>
-              <select
-                value={currencyCode}
-                onChange={(e) => setCurrencyCode(e.target.value)}
-                className="w-full rounded-xl border border-gray-200 dark:border-white/[0.1] bg-white dark:bg-gray-800 px-3 py-2 text-xs text-gray-800 dark:text-white focus:border-brand-500 focus:outline-none"
-              >
-                <option value="MAD">MAD (Dirham Marocain)</option>
-                <option value="EUR">EUR (€ Euro)</option>
-                <option value="USD">USD ($ Dollar)</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block mb-1 text-xs font-medium text-gray-600 dark:text-gray-300">
-                Conditions de Paiement
-              </label>
-              <input
-                type="text"
-                value={paymentTerms}
-                onChange={(e) => setPaymentTerms(e.target.value)}
-                placeholder="Ex: Virement 30j"
-                className="w-full rounded-xl border border-gray-200 dark:border-white/[0.1] bg-white dark:bg-gray-800 px-3 py-2 text-xs text-gray-800 dark:text-white focus:border-brand-500 focus:outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="block mb-1 text-xs font-medium text-gray-600 dark:text-gray-300">
-                Délai de Paiement (jours)
-              </label>
-              <input
-                type="number"
-                min="0"
-                value={paymentDelayDays}
-                onChange={(e) => setPaymentDelayDays(parseInt(e.target.value) || 0)}
-                className="w-full rounded-xl border border-gray-200 dark:border-white/[0.1] bg-white dark:bg-gray-800 px-3 py-2 text-xs text-gray-800 dark:text-white focus:border-brand-500 focus:outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="block mb-1 text-xs font-medium text-gray-600 dark:text-gray-300">
-                Incoterm
-              </label>
-              <input
-                type="text"
-                value={incoterm}
-                onChange={(e) => setIncoterm(e.target.value)}
-                placeholder="Ex: DAP, FOB, EXW"
-                className="w-full rounded-xl border border-gray-200 dark:border-white/[0.1] bg-white dark:bg-gray-800 px-3 py-2 text-xs text-gray-800 dark:text-white focus:border-brand-500 focus:outline-none"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Section 2: Lignes d'articles commandés */}
-        <div className="bg-white dark:bg-gray-900 p-6 rounded-2xl border border-gray-200 dark:border-white/[0.07] shadow-sm space-y-4">
-          <div className="flex items-center justify-between border-b border-gray-100 dark:border-white/[0.05] pb-3">
-            <h3 className="text-sm font-bold text-gray-800 dark:text-white flex items-center gap-2">
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-brand-50 text-brand-600 dark:bg-brand-500/15 dark:text-brand-400 text-xs font-bold">
-                2
-              </span>
-              Articles & Lignes de Commande
-            </h3>
-            {/* An order from a requisition orders exactly its lines (the backend checks it): no extra lines. */}
-            {originRequisition ? (
-              <span className="text-[11px] text-gray-500 dark:text-gray-400">
-                Lignes de la demande : quantités réductibles, articles fixes.
-              </span>
-            ) : (
-              <Button type="button" variant="outline" size="sm" onClick={handleAddLine}>
-                + Ajouter une Ligne
-              </Button>
-            )}
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-100 dark:divide-white/[0.05] text-xs">
-              <thead>
-                <tr className="text-left font-semibold text-gray-500 dark:text-gray-400">
-                  <th className="py-2 pr-2">#</th>
-                  <th className="py-2 px-2 w-64">Article / Matériel</th>
-                  <th className="py-2 px-2 w-48">Code</th>
-                  <th className="py-2 px-2 w-28 text-right">Quantité</th>
-                  <th className="py-2 px-2 w-32 text-right">Prix Unitaire</th>
-                  <th className="py-2 px-2 text-right">Total Ligne</th>
-                  <th className="py-2 pl-2 w-10"></th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
-                {lines.map((l, index) => {
-                  const lineTotal = (Number(l.quantity) || 0) * (Number(l.unitPrice) || 0);
-
-                  return (
-                    <tr key={l.tempId}>
-                      <td className="py-2 pr-2 text-gray-400 font-medium">
-                        {index + 1}
-                      </td>
-
-                      {/* Select Material */}
-                      <td className="py-2 px-2">
+          <FormSection
+            title={`Order Lines (${lines.length})`}
+            aside={
+              !originRequisition ? (
+                <Button type="button" size="sm" variant="outline" onClick={handleAddLine}>
+                  Add Line
+                </Button>
+              ) : undefined
+            }
+          >
+            <div className="space-y-4">
+              {lines.map((l, index) => {
+                const lineTotal = (Number(l.quantity) || 0) * (Number(l.unitPrice) || 0);
+                const maxQuantity = requestedQuantity(l.requisitionLineId);
+                return (
+                  <div key={l.tempId} className="space-y-4 rounded-xl border border-gray-200 p-4 dark:border-white/[0.05]">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-sm font-medium text-gray-800 dark:text-white/90">Line {index + 1}</span>
+                      {lines.length > 1 && !originRequisition && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveLine(l.tempId)}
+                          className="text-theme-xs font-medium text-error-500 hover:underline"
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-6">
+                      <div className="lg:col-span-2">
+                        <Label>Material</Label>
                         <select
                           value={l.materialId || ""}
                           disabled={!!originRequisition}
-                          onChange={(e) =>
-                            handleLineChange(l.tempId, "materialId", e.target.value)
-                          }
-                          className="w-full rounded-lg border border-gray-200 dark:border-white/[0.1] bg-white dark:bg-gray-800 p-2 text-xs text-gray-800 dark:text-white focus:border-brand-500 focus:outline-none"
+                          onChange={(e) => handleLineChange(l.tempId, "materialId", e.target.value)}
+                          className={SELECT_CLASS}
                         >
-                          <option value="">Sélectionner un catalogue...</option>
+                          <option value="">Select from the catalogue...</option>
                           {safeMaterials.map((m) => (
                             <option key={m.id} value={m.id}>
                               {m.name} ({m.code})
                             </option>
                           ))}
                         </select>
-                      </td>
-
-                      {/* Material Code */}
-                      <td className="py-2 px-2">
-                        <input
-                          type="text"
-                          required
-                          placeholder="Code (ex: MAT-001)"
-                          value={l.materialCode}
-                          onChange={(e) =>
-                            handleLineChange(l.tempId, "materialCode", e.target.value)
-                          }
-                          className="w-full rounded-lg border border-gray-200 dark:border-white/[0.1] bg-white dark:bg-gray-800 p-2 text-xs text-gray-800 dark:text-white focus:border-brand-500 focus:outline-none font-semibold text-brand-600 dark:text-brand-400"
-                        />
-                      </td>
-
-                      {/* Quantity */}
-                      <td className="py-2 px-2">
-                        <input
+                      </div>
+                      <div>
+                        <Label>Code *</Label>
+                        <Input value={l.materialCode} placeholder="e.g. MAT-001" onChange={(e) => handleLineChange(l.tempId, "materialCode", e.target.value)} />
+                      </div>
+                      <div>
+                        <Label>Quantity *</Label>
+                        <Input
                           type="number"
-                          required
                           min="1"
-                          max={requestedQuantity(l.requisitionLineId)}
+                          max={maxQuantity !== undefined ? String(maxQuantity) : undefined}
                           value={l.quantity}
-                          onChange={(e) =>
-                            handleLineChange(l.tempId, "quantity", parseInt(e.target.value) || 0)
-                          }
-                          className="w-full rounded-lg border border-gray-200 dark:border-white/[0.1] bg-white dark:bg-gray-800 p-2 text-xs text-right text-gray-800 dark:text-white focus:border-brand-500 focus:outline-none"
+                          onChange={(e) => handleLineChange(l.tempId, "quantity", parseInt(e.target.value) || 0)}
+                          hint={maxQuantity !== undefined ? `Requested: ${maxQuantity}` : undefined}
                         />
-                      </td>
-
-                      {/* Unit Price */}
-                      <td className="py-2 px-2">
-                        <input
+                      </div>
+                      <div>
+                        <Label>Unit Price *</Label>
+                        <Input
                           type="number"
-                          required
                           min="0"
-                          step="0.01"
+                          step={0.01}
                           value={l.unitPrice}
-                          onChange={(e) =>
-                            handleLineChange(l.tempId, "unitPrice", parseFloat(e.target.value) || 0)
-                          }
-                          className="w-full rounded-lg border border-gray-200 dark:border-white/[0.1] bg-white dark:bg-gray-800 p-2 text-xs text-right text-gray-800 dark:text-white focus:border-brand-500 focus:outline-none"
+                          onChange={(e) => handleLineChange(l.tempId, "unitPrice", parseFloat(e.target.value) || 0)}
                         />
-                      </td>
-
-                      {/* Line Total */}
-                      <td className="py-2 px-2 text-right font-bold text-gray-900 dark:text-white">
-                        {lineTotal.toFixed(2)} {currencyCode}
-                      </td>
-
-                      {/* Remove Button */}
-                      <td className="py-2 pl-2 text-center">
-                        {lines.length > 1 && !originRequisition && (
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveLine(l.tempId)}
-                            className="p-1 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
-                          >
-                            <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Financial Totals */}
-          <div className="flex flex-col items-end pt-4 border-t border-gray-100 dark:border-white/[0.05] space-y-2 text-xs">
-            <div className="flex justify-between w-64 text-gray-600 dark:text-gray-400">
-              <span>Sous-total HT :</span>
-              <span className="font-semibold text-gray-800 dark:text-gray-200">
-                {subtotal.toFixed(2)} {currencyCode}
-              </span>
+                      </div>
+                      <div>
+                        <Label>Line Total</Label>
+                        <p className="flex h-11 items-center text-sm font-semibold text-gray-800 dark:text-white/90">
+                          {formatAmount(lineTotal, currencyCode)}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
+          </FormSection>
 
-            <div className="flex items-center justify-between w-64 text-gray-600 dark:text-gray-400">
-              <span>TVA / Taxes :</span>
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={taxAmount}
-                onChange={(e) => setTaxAmount(parseFloat(e.target.value) || 0)}
-                className="w-24 rounded-lg border border-gray-200 dark:border-white/[0.1] bg-white dark:bg-gray-800 p-1 text-xs text-right text-gray-800 dark:text-white"
-              />
+          <FormSection title="Totals">
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-4">
+              <div>
+                <Label>Subtotal excl. Tax</Label>
+                <p className="flex h-11 items-center text-sm font-medium text-gray-800 dark:text-white/90">{formatAmount(subtotal, currencyCode)}</p>
+              </div>
+              <div>
+                <Label>Tax</Label>
+                <Input type="number" min="0" step={0.01} value={taxAmount} onChange={(e) => setTaxAmount(parseFloat(e.target.value) || 0)} />
+              </div>
+              <div>
+                <Label>Shipping</Label>
+                <Input type="number" min="0" step={0.01} value={shippingCost} onChange={(e) => setShippingCost(parseFloat(e.target.value) || 0)} />
+              </div>
+              <div>
+                <Label>Grand Total</Label>
+                <p className="flex h-11 items-center text-base font-semibold text-brand-500">{formatAmount(grandTotal, currencyCode)}</p>
+              </div>
             </div>
+          </FormSection>
 
-            <div className="flex items-center justify-between w-64 text-gray-600 dark:text-gray-400">
-              <span>Frais de port :</span>
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={shippingCost}
-                onChange={(e) => setShippingCost(parseFloat(e.target.value) || 0)}
-                className="w-24 rounded-lg border border-gray-200 dark:border-white/[0.1] bg-white dark:bg-gray-800 p-1 text-xs text-right text-gray-800 dark:text-white"
-              />
+          <FormSection title="Notes">
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+              <div>
+                <Label>For the Supplier</Label>
+                <TextArea rows={3} value={notes} onChange={setNotes} placeholder="e.g. Please quote the order number on the delivery note" />
+              </div>
+              <div>
+                <Label>Internal</Label>
+                <TextArea rows={3} value={internalNotes} onChange={setInternalNotes} placeholder="Only visible to your team" />
+              </div>
             </div>
+          </FormSection>
 
-            <div className="flex justify-between w-64 pt-2 border-t border-gray-200 dark:border-white/[0.1] text-sm font-bold text-gray-900 dark:text-white">
-              <span>Grand Total TTC :</span>
-              <span className="text-brand-600 dark:text-brand-400">
-                {grandTotal.toFixed(2)} {currencyCode}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Section 3: Remarques & Notes */}
-        <div className="bg-white dark:bg-gray-900 p-6 rounded-2xl border border-gray-200 dark:border-white/[0.07] shadow-sm space-y-4">
-          <h3 className="text-sm font-bold text-gray-800 dark:text-white flex items-center gap-2 border-b border-gray-100 dark:border-white/[0.05] pb-3">
-            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-brand-50 text-brand-600 dark:bg-brand-500/15 dark:text-brand-400 text-xs font-bold">
-              3
-            </span>
-            Notes & Instructions
-          </h3>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block mb-1 text-xs font-medium text-gray-700 dark:text-gray-300">
-                Instructions pour le Fournisseur (figurera sur le bon imprimé)
-              </label>
-              <textarea
-                rows={3}
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Ex: Merci de mentionner le numéro de commande sur le bon de livraison..."
-                className="w-full rounded-xl border border-gray-200 dark:border-white/[0.1] bg-white dark:bg-gray-800 p-3 text-xs text-gray-800 dark:text-white placeholder:text-gray-400 focus:border-brand-500 focus:outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="block mb-1 text-xs font-medium text-gray-700 dark:text-gray-300">
-                Remarques Internes (visibles uniquement par l'équipe)
-              </label>
-              <textarea
-                rows={3}
-                value={internalNotes}
-                onChange={(e) => setInternalNotes(e.target.value)}
-                placeholder="Ex: Validation budgétaire accordée par la direction..."
-                className="w-full rounded-xl border border-gray-200 dark:border-white/[0.1] bg-white dark:bg-gray-800 p-3 text-xs text-gray-800 dark:text-white placeholder:text-gray-400 focus:border-brand-500 focus:outline-none"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Submit Actions */}
-        <div className="flex items-center justify-end gap-3 pt-2">
-          <Link to="/purchase-orders">
-            <Button variant="outline" size="md">
-              Annuler
+          <div className="flex justify-end gap-3 border-t border-gray-100 pt-6 dark:border-gray-800">
+            <Link to={cancelTo}>
+              <Button variant="outline">Cancel</Button>
+            </Link>
+            <Button type="submit" disabled={submitting || loadingOrder || loadingRequisition}>
+              {submitting ? "Saving..." : isEdit ? "Save Changes" : "Create Order"}
             </Button>
-          </Link>
-          <Button size="md" type="submit" disabled={submitting}>
-            {isEdit
-              ? submitting
-                ? "Enregistrement..."
-                : "Enregistrer les modifications"
-              : submitting
-                ? "Création en cours..."
-                : "Créer le Bon de Commande"}
-          </Button>
-        </div>
+          </div>
+        </FormCard>
       </form>
-    </div>
+    </>
   );
 }

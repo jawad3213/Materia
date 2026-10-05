@@ -1,79 +1,54 @@
-import React from "react";
 import { TableRow, TableCell } from "../../../shared/components/ui/table";
 import type { Requisition } from "../types";
+import { formatAmount } from "../../invoices/utils/invoiceLine";
 
-export interface RequisitionExpandedRowProps {
-  requisition: Requisition;
-  formatAmount: (amt: string | number, curr?: string) => string;
-}
-
-export default function RequisitionExpandedRow({
-  requisition,
-  formatAmount,
-}: RequisitionExpandedRowProps) {
+/** The requested lines, shown under the row when it is expanded in the list. */
+export default function RequisitionExpandedRow({ requisition, colSpan }: { requisition: Requisition; colSpan: number }) {
   const lines = requisition.lines || [];
-  const linesCount = lines.length;
 
   return (
-    <TableRow className="bg-gray-50/75 dark:bg-gray-800/30 border-b border-gray-100 dark:border-white/[0.05]">
-      <TableCell colSpan={9} className="p-3 sm:px-6 sm:py-4">
-        <div className="rounded-xl border border-gray-200/80 bg-white p-4 shadow-inner dark:border-white/[0.07] dark:bg-gray-900/90">
-          <div className="flex items-center justify-between mb-3">
-            <h5 className="text-xs font-bold text-gray-800 dark:text-white flex items-center gap-2">
-              <svg className="size-4 text-brand-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-              </svg>
-              Requisition Line Items ({linesCount})
-            </h5>
+    <TableRow className="bg-gray-50/60 dark:bg-white/[0.02]">
+      <TableCell colSpan={colSpan} className="px-5 py-4">
+        <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <h5 className="text-sm font-semibold text-gray-800 dark:text-white/90">Requested Lines ({lines.length})</h5>
             {requisition.justification && (
-              <span className="text-[11px] text-gray-500 dark:text-gray-400 italic">
-                Justification: "{requisition.justification}"
-              </span>
+              <span className="text-theme-xs text-gray-500 dark:text-gray-400">Justification: {requisition.justification}</span>
             )}
           </div>
-
-          {linesCount === 0 ? (
-            <p className="text-xs text-gray-400 italic py-2">
-              No line items recorded for this requisition.
-            </p>
+          {lines.length === 0 ? (
+            <p className="py-2 text-sm text-gray-400">No line on this requisition.</p>
           ) : (
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-100 dark:divide-white/[0.05] text-xs">
+              <table className="min-w-full divide-y divide-gray-100 text-theme-sm dark:divide-white/[0.05]">
                 <thead>
-                  <tr className="text-left text-[11px] font-semibold text-gray-500 dark:text-gray-400">
-                    <th className="py-2 pr-3">Line #</th>
-                    <th className="py-2 px-3">Material Code</th>
-                    <th className="py-2 px-3">Description</th>
-                    <th className="py-2 px-3 text-right">Qty</th>
-                    <th className="py-2 px-3 text-right">Unit Price</th>
-                    <th className="py-2 px-3 text-right">Line Total</th>
+                  <tr className="text-left text-theme-xs font-medium text-gray-500 dark:text-gray-400">
+                    <th className="py-2 pr-3">#</th>
+                    <th className="px-3 py-2">Material</th>
+                    <th className="px-3 py-2 text-right">Quantity</th>
+                    <th className="px-3 py-2 text-right">Unit Price</th>
+                    <th className="px-3 py-2 text-right">Line Total</th>
                     <th className="py-2 pl-3">Supplier</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
                   {lines.map((line, idx) => (
-                    <tr key={line.id || idx} className="hover:bg-gray-50/50 dark:hover:bg-white/[0.02]">
-                      <td className="py-2 pr-3 font-medium text-gray-500">
-                        #{line.lineNumber ?? idx + 1}
+                    <tr key={line.id || idx}>
+                      <td className="py-2 pr-3 text-gray-500">{line.lineNumber ?? idx + 1}</td>
+                      <td className="px-3 py-2">
+                        <span className="font-mono font-medium text-brand-500">{line.materialCode}</span>
+                        <span className="ml-2 text-gray-600 dark:text-gray-300">{line.materialName}</span>
                       </td>
-                      <td className="py-2 px-3 font-semibold text-brand-600 dark:text-brand-400">
-                        {line.materialCode}
+                      <td className="px-3 py-2 text-right text-gray-800 dark:text-white/90">
+                        {line.quantity} {line.unitOfMeasure ?? ""}
                       </td>
-                      <td className="py-2 px-3 text-gray-800 dark:text-gray-200">
-                        {line.materialName}
-                      </td>
-                      <td className="py-2 px-3 text-right font-medium text-gray-900 dark:text-white">
-                        {line.quantity} {line.unitOfMeasure}
-                      </td>
-                      <td className="py-2 px-3 text-right text-gray-600 dark:text-gray-400">
+                      <td className="px-3 py-2 text-right text-gray-600 dark:text-gray-300">
                         {formatAmount(line.unitPrice, line.currencyCode || requisition.currencyCode)}
                       </td>
-                      <td className="py-2 px-3 text-right font-bold text-gray-900 dark:text-white">
+                      <td className="px-3 py-2 text-right font-medium text-gray-800 dark:text-white/90">
                         {formatAmount(line.lineTotal, line.currencyCode || requisition.currencyCode)}
                       </td>
-                      <td className="py-2 pl-3 text-gray-500 dark:text-gray-400">
-                        {line.supplierName || "—"}
-                      </td>
+                      <td className="py-2 pl-3 text-gray-500 dark:text-gray-400">{line.supplierName || "—"}</td>
                     </tr>
                   ))}
                 </tbody>
