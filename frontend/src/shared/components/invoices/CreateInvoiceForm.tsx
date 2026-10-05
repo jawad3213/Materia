@@ -15,7 +15,7 @@ const initialProducts = [
 ];
 
 export default function CreateInvoiceForm() {
-  const [products, setProducts] = useState(initialProducts);
+  const [products] = useState(initialProducts);
 
   const subTotal = products.reduce((sum, p) => sum + p.total, 0);
   const vat = subTotal * 0.1;

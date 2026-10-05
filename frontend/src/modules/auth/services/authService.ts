@@ -9,6 +9,7 @@ import axiosClient, {
   refreshSession,
   USER_STORAGE_KEY,
 } from '../../../shared/api/axiosClient';
+import type { BackendAuthResponse, BackendAuthUser } from '../../../shared/api/authPayload';
 import type {
   AuthResponse,
   LoginCredentials,
@@ -23,13 +24,12 @@ class AuthService {
   /**
    * Helper to normalize backend auth responses into the frontend AuthResponse structure
    */
-  private normalizeAuthResponse(data: any): AuthResponse {
-    const backendUser = data.user ?? {};
+  private normalizeAuthResponse(data: BackendAuthResponse): AuthResponse {
+    const backendUser: BackendAuthUser = data.user ?? {};
 
-    const rawRole: UserRole =
-      backendUser.role ??
+    const rawRole = (backendUser.role ??
       (typeof data.role === 'object' ? data.role?.code : data.role) ??
-      'PURCHASER';
+      'PURCHASER') as UserRole;
     const email = backendUser.email || data.email || '';
     const userId = backendUser.id || backendUser.userId || data.userId || '';
 
@@ -71,7 +71,7 @@ class AuthService {
    */
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
     const remember = credentials.rememberMe !== false;
-    const response = await axiosClient.post<any>('/auth/login', {
+    const response = await axiosClient.post<BackendAuthResponse>('/auth/login', {
       email: credentials.email.trim(),
       password: credentials.password,
       rememberMe: remember,

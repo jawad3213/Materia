@@ -24,11 +24,6 @@ function getColorForName(name: string) {
   return colors[sum % colors.length];
 }
 
-function truncate(text: string | undefined, maxLen: number): string {
-  if (!text) return "—";
-  return text.length > maxLen ? text.substring(0, maxLen) + "..." : text;
-}
-
 function formatStatus(status: string): string {
   if (!status) return "—";
   return status.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());

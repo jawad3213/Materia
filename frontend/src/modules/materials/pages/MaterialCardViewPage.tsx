@@ -3,9 +3,10 @@ import PageBreadcrumb from "../../../shared/components/common/PageBreadCrumb";
 import PageMeta from "../../../shared/components/common/PageMeta";
 import MaterialCard from "../components/MaterialCard";
 import { materialApi } from "../services/materialApi";
+import type { MaterialListItem } from "../types/MaterialListItem";
 
 export default function MaterialCardViewPage() {
-  const [materials, setMaterials] = useState<any[]>([]);
+  const [materials, setMaterials] = useState<MaterialListItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {

@@ -1,19 +1,5 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-
-export interface SidebarContextType {
-  isExpanded: boolean;
-  isMobileOpen: boolean;
-  isHovered: boolean;
-  activeSubmenu: string | null;
-  toggleSidebar: () => void;
-  toggleMobileSidebar: () => void;
-  closeMobileSidebar: () => void;
-  setIsHovered: (hovered: boolean) => void;
-  toggleSubmenu: (menuKey: string) => void;
-  isSubmenuOpen: (menuKey: string) => boolean;
-}
-
-export const SidebarContext = createContext<SidebarContextType | undefined>(undefined);
+import React, { useState, useEffect } from 'react';
+import { SidebarContext } from './sidebarContextValue';
 
 export const SidebarProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isExpanded, setIsExpanded] = useState<boolean>(true);
@@ -72,23 +58,3 @@ export const SidebarProvider: React.FC<{ children: React.ReactNode }> = ({ child
   );
 };
 
-export const useSidebar = (): SidebarContextType => {
-  const context = useContext(SidebarContext);
-  if (!context) {
-    return {
-      isExpanded: true,
-      isMobileOpen: false,
-      isHovered: false,
-      activeSubmenu: 'pages',
-      toggleSidebar: () => {},
-      toggleMobileSidebar: () => {},
-      closeMobileSidebar: () => {},
-      setIsHovered: () => {},
-      toggleSubmenu: () => {},
-      isSubmenuOpen: () => false,
-    };
-  }
-  return context;
-};
-
-export default SidebarContext;

@@ -6,6 +6,7 @@ import { categoryApi } from "../services/categoryApi";
 import type { Category } from "../types/Category";
 import Badge from "../../../shared/components/ui/badge/Badge";
 
+import { getApiErrorMessage } from '../../../shared/utils/apiError';
 const statusColorMap: Record<string, "success" | "warning" | "error" | "info" | "light"> = {
   ACTIVE: "success",
   INACTIVE: "light",
@@ -36,9 +37,9 @@ export default function CategoryDetailPage() {
         setLoading(true);
         const response = await categoryApi.getById(id);
         setCategory(response.data);
-      } catch (err: any) {
+      } catch (err) {
         console.error("Failed to load category details:", err);
-        setError(err.response?.data?.message || "Failed to load category details");
+        setError(getApiErrorMessage(err, "Failed to load category details"));
       } finally {
         setLoading(false);
       }

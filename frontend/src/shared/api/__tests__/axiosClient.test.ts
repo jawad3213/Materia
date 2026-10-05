@@ -8,6 +8,17 @@ import axiosClient, {
   SESSION_EXPIRED_EVENT,
 } from '../axiosClient';
 
+type TestConfig = { headers: Record<string, string | undefined>; url: string };
+
+/** Axios keeps registered interceptors in an internal `handlers` list; these tests call them directly. */
+interface InterceptorHandler {
+  fulfilled: (config: TestConfig) => TestConfig;
+  rejected: (error: unknown) => Promise<unknown>;
+}
+
+/** The first interceptor registered on a request or response manager. */
+const firstHandler = (manager: unknown): InterceptorHandler => (manager as { handlers: InterceptorHandler[] }).handlers[0];
+
 describe('axiosClient & Token Management', () => {
   beforeEach(() => {
     clearSessionState();
@@ -41,7 +52,7 @@ describe('axiosClient & Token Management', () => {
     setAccessToken('bearer-jwt-token');
 
     // Test request interceptor directly
-    const interceptor = (axiosClient.interceptors.request as any).handlers[0]?.fulfilled;
+    const interceptor = firstHandler(axiosClient.interceptors.request).fulfilled;
     expect(interceptor).toBeDefined();
 
     const config = { headers: {} as Record<string, string>, url: '/materials' };
@@ -53,7 +64,7 @@ describe('axiosClient & Token Management', () => {
   it('does not attach Authorization header to /auth/refresh to avoid invalid credentials', async () => {
     setAccessToken('expired-access-token');
 
-    const interceptor = (axiosClient.interceptors.request as any).handlers[0]?.fulfilled;
+    const interceptor = firstHandler(axiosClient.interceptors.request).fulfilled;
     const config = { headers: {} as Record<string, string>, url: '/auth/refresh' };
     const modifiedConfig = interceptor(config);
 
@@ -65,7 +76,7 @@ describe('axiosClient & Token Management', () => {
     window.addEventListener(SESSION_EXPIRED_EVENT, eventListener);
 
     // Call response error handler on 401
-    const errorHandler = (axiosClient.interceptors.response as any).handlers[0]?.rejected;
+    const errorHandler = firstHandler(axiosClient.interceptors.response).rejected;
     expect(errorHandler).toBeDefined();
 
     const mockError = {

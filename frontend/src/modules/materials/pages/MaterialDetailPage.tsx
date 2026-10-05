@@ -8,6 +8,7 @@ import Badge from "../../../shared/components/ui/badge/Badge";
 import MaterialStockDashboard from "../components/MaterialStockDashboard";
 import ReorderRecommendationModal from "../components/ReorderRecommendationModal";
 
+import { getApiErrorMessage } from '../../../shared/utils/apiError';
 const statusColorMap: Record<string, "success" | "warning" | "error" | "info" | "light"> = {
   ACTIVE: "success",
   INACTIVE: "light",
@@ -46,23 +47,28 @@ export default function MaterialDetailPage() {
 
   const [isReorderModalOpen, setIsReorderModalOpen] = useState(false);
 
-  const fetchMaterial = async () => {
-    if (!id) return;
-    try {
-      setLoading(true);
-      const response = await materialApi.getById(id);
-      setMaterial(response.data);
-    } catch (err: any) {
-      console.error("Failed to load material details:", err);
-      setError(err.response?.data?.message || "Failed to load material details");
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Incremented to reload the material after an action changed it (a reorder).
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
-    fetchMaterial();
-  }, [id]);
+    if (!id) return;
+    let cancelled = false;
+    materialApi
+      .getById(id)
+      .then((response) => {
+        if (!cancelled) setMaterial(response.data);
+      })
+      .catch((err) => {
+        console.error("Failed to load material details:", err);
+        if (!cancelled) setError(getApiErrorMessage(err, "Failed to load material details"));
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [id, reloadKey]);
 
   if (loading) {
     return (
@@ -274,7 +280,7 @@ export default function MaterialDetailPage() {
           isOpen={isReorderModalOpen}
           onClose={() => setIsReorderModalOpen(false)}
           onReorderSuccess={() => {
-            fetchMaterial();
+            setReloadKey((k) => k + 1);
           }}
         />
       )}

@@ -7,7 +7,8 @@ import CustomSelect from "../../materials/components/CustomSelect";
 import CategoryTreeSelect from "./CategoryTreeSelect";
 import { categoryApi } from "../services/categoryApi";
 import type { CreateCategoryRequest } from "../types/CreateCategoryRequest";
-import type { CategoryListItem } from "../types/CategoryListItem";
+import type { CategoryTypeValue } from "../enums/CategoryType";
+import type { CategoryStatusValue } from "../enums/CategoryStatus";
 import type { ErrorResponse } from "../../../shared/types/ErrorResponse";
 
 // Shared Components
@@ -40,7 +41,7 @@ export default function CreateCategoryForm() {
     shortDescription: "",
     parentId: searchParams.get("parentId") || "",
     categoryType: "", // Default selected type
-    status: "" as any,
+    status: "",
     createdBy: "",
   });
 
@@ -83,9 +84,9 @@ export default function CreateCategoryForm() {
         description: formData.description || undefined,
         shortDescription: formData.shortDescription || undefined,
         parentId: formData.parentId || undefined,
-        // Using type assertion since we populate from enum
-        categoryType: formData.categoryType || undefined as any, 
-        status: formData.status || undefined as any,
+        // The selects only offer enum values.
+        categoryType: (formData.categoryType || undefined) as CategoryTypeValue,
+        status: (formData.status || undefined) as CategoryStatusValue | undefined,
         createdBy: formData.createdBy,
       };
       
@@ -271,7 +272,7 @@ export default function CreateCategoryForm() {
                 shortDescription: "",
                 parentId: "",
                 categoryType: "",
-                status: "" as any,
+                status: "",
                 createdBy: formData.createdBy,
               });
               setSubmitMessage(null);

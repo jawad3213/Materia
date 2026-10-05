@@ -16,7 +16,7 @@ export default function SessionsByDeviceChart() {
       horizontalAlign: "center",
       fontFamily: "Outfit",
       markers: {
-        shape: "circle" as any,
+        shape: "circle",
       },
     },
     plotOptions: {

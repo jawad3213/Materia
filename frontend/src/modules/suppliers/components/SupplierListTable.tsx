@@ -36,7 +36,6 @@ export default function SupplierListTable() {
 
   const [suppliers, setSuppliers] = useState<SupplierListItem[]>([]);
   const [searchSuppliers, setSearchSuppliers] = useState<Supplier[]>([]);
-  const [loading, setLoading] = useState(true);
   const [selectedSuppliers, setSelectedSuppliers] = useState<string[]>([]);
   const [supplierToDelete, setSupplierToDelete] = useState<SupplierListItem | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -50,7 +49,7 @@ export default function SupplierListTable() {
 
   // Pagination state
   const [page, setPage] = useState(0);
-  const [size, setSize] = useState(10);
+  const [size] = useState(10);
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -68,56 +67,62 @@ export default function SupplierListTable() {
       return;
     }
     const timer = setTimeout(() => {
-      if (page === 0) {
-        setRefreshTrigger((prev) => prev + 1);
-      } else {
-        setPage(0);
-      }
+      setPage(0);
+      setRefreshTrigger((prev) => prev + 1);
     }, 350);
     return () => clearTimeout(timer);
   }, [searchKeyword]);
 
+  // Search and filters are read when a load starts; loads follow the page and refreshTrigger.
+  const queryRef = useRef({ searchKeyword, filterStatus, filterCurrency, filterCountry });
   useEffect(() => {
-    fetchSuppliers();
-  }, [page, size, refreshTrigger]);
+    queryRef.current = { searchKeyword, filterStatus, filterCurrency, filterCountry };
+  });
 
-  const fetchSuppliers = async () => {
-    try {
-      setLoading(true);
+  const requestKey = `${page}|${size}|${refreshTrigger}`;
+  const [loadedKey, setLoadedKey] = useState<string | null>(null);
+  const loading = loadedKey !== requestKey;
 
-      let res;
-      if (searchKeyword.trim()) {
-        res = await supplierApi.searchAdvancedList({
-          code: searchKeyword.trim(),
-          name: searchKeyword.trim(),
-          description: searchKeyword.trim(),
-          contactPerson: searchKeyword.trim(),
-          contactEmail: searchKeyword.trim(),
-          fullAddress: searchKeyword.trim(),
-          status: filterStatus || undefined,
-          currencyCode: filterCurrency || undefined,
-          country: filterCountry || undefined,
-        }, page, size);
+  useEffect(() => {
+    let cancelled = false;
+    const { searchKeyword: keyword, filterStatus: status, filterCurrency: currencyCode, filterCountry: country } = queryRef.current;
+    const filters = { status: status || undefined, currencyCode: currencyCode || undefined, country: country || undefined };
+
+    const load = async () => {
+      const term = keyword.trim();
+      if (term) {
+        const res = await supplierApi.searchAdvancedList(
+          { code: term, name: term, description: term, contactPerson: term, contactEmail: term, fullAddress: term, ...filters },
+          page,
+          size
+        );
+        if (cancelled) return;
         setSearchSuppliers(res.data.content || []);
-      } else if (!filterStatus && !filterCurrency && !filterCountry) {
-        res = await supplierApi.getAllList(page, size);
-        setSuppliers(res.data.content || []);
-      } else {
-        res = await supplierApi.filterList({
-          status: filterStatus || undefined,
-          currencyCode: filterCurrency || undefined,
-          country: filterCountry || undefined,
-        }, page, size);
-        setSuppliers(res.data.content || []);
+        setTotalPages(res.data.totalPages || 0);
+        setTotalElements(res.data.totalElements || 0);
+        return;
       }
-
+      const res = !status && !currencyCode && !country ? await supplierApi.getAllList(page, size) : await supplierApi.filterList(filters, page, size);
+      if (cancelled) return;
+      setSuppliers(res.data.content || []);
       setTotalPages(res.data.totalPages || 0);
       setTotalElements(res.data.totalElements || 0);
-    } catch (err) {
-      console.error("Failed to load suppliers:", err);
-    } finally {
-      setLoading(false);
-    }
+    };
+
+    load()
+      .catch((err) => console.error("Failed to load suppliers:", err))
+      .finally(() => {
+        if (!cancelled) setLoadedKey(requestKey);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [requestKey, page, size]);
+
+  /** Reloads with the current search and filters, from the first page. */
+  const reload = () => {
+    setPage(0);
+    setRefreshTrigger((prev) => prev + 1);
   };
 
   const handleApplyFilters = () => {
@@ -215,12 +220,12 @@ export default function SupplierListTable() {
               onChange={(e) => {
                 setSearchKeyword(e.target.value);
                 if (e.target.value === "") {
-                  fetchSuppliers();
+                  reload();
                 }
               }}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
-                  fetchSuppliers();
+                  reload();
                 }
               }}
               className="w-full rounded-lg border border-gray-200 bg-transparent py-2 pl-9 pr-8 text-sm text-gray-700 outline-none focus:border-brand-500 dark:border-gray-800 dark:text-gray-300 sm:w-64"
@@ -230,7 +235,7 @@ export default function SupplierListTable() {
                 type="button"
                 onClick={() => {
                   setSearchKeyword("");
-                  fetchSuppliers();
+                  reload();
                 }}
                 className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
               >

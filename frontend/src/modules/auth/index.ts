@@ -5,7 +5,8 @@ export * from './types/auth.types';
 export { default as authService } from './services/authService';
 
 // Context & Hooks
-export { AuthContext, AuthProvider, default as AuthContextProvider } from './context/AuthContext';
+export { AuthProvider } from './context/AuthContext';
+export { AuthContext, type AuthContextType } from './context/authContextValue';
 export { default as useAuth } from './hooks/useAuth';
 
 // Components

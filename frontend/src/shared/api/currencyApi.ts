@@ -1,5 +1,5 @@
 import axiosClient from './axiosClient';
-import type { CurrencyInfo, ExchangeRatePair, MoneyConversion, CurrencyCode } from '../types/currency';
+import type { CurrencyInfo, ExchangeRatePair, MoneyConversion } from '../types/currency';
 
 const BASE_URL = '/currencies';
 

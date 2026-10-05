@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { renderHook } from "@testing-library/react";
 import React from "react";
-import { AuthProvider, AuthContext } from "../AuthContext";
+import { AuthProvider } from "../AuthContext";
+import { AuthContext } from "../authContextValue";
 import authService from "../../services/authService";
 import { matrix } from "../../../../test/actionMatrix";
 

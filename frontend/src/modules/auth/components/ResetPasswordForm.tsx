@@ -23,11 +23,13 @@ export default function ResetPasswordForm() {
   const [isSuccess, setIsSuccess] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  // Automatically update state if URL query parameters change
-  React.useEffect(() => {
+  // When the link's token or email change, they replace what the fields hold (adjusting state during render).
+  const [linkParams, setLinkParams] = useState({ urlToken, urlEmail });
+  if (linkParams.urlToken !== urlToken || linkParams.urlEmail !== urlEmail) {
+    setLinkParams({ urlToken, urlEmail });
     if (urlToken) setToken(urlToken);
     if (urlEmail) setEmail(urlEmail);
-  }, [urlToken, urlEmail]);
+  }
 
   const hasTokenInUrl = !!urlToken.trim();
 

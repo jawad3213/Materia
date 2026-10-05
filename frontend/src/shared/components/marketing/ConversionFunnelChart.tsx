@@ -72,7 +72,7 @@ export default function ConversionFunnelChart() {
       horizontalAlign: "left",
       fontFamily: "Outfit",
       markers: {
-        shape: "circle" as any,
+        shape: "circle",
       },
     },
   };

@@ -17,35 +17,33 @@ export default function CategoryHierarchy() {
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedCodes, setExpandedCodes] = useState<Set<string>>(new Set());
   const [selectedCategoryCode, setSelectedCategoryCode] = useState<string | null>(null);
-  const [selectedDetail, setSelectedDetail] = useState<Category | null>(null);
-  const [loadingDetail, setLoadingDetail] = useState(false);
+  // Details of the selected category, tagged with the category they were loaded for.
+  const [loadedDetail, setLoadedDetail] = useState<{ id: string; detail: Category | null } | null>(null);
   const [categoryToDelete, setCategoryToDelete] = useState<CategoryListItem | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Loads the tree once: roots start expanded and the first root is selected.
   useEffect(() => {
-    fetchCategories();
+    let cancelled = false;
+    categoryApi
+      .getAll(0, 1000)
+      .then((res) => {
+        if (cancelled) return;
+        setCategories(res.data);
+        const roots = res.data.filter((c) => !c.parentCode || c.level === 0);
+        setExpandedCodes(new Set(roots.map((r) => r.code)));
+        if (roots.length > 0) {
+          setSelectedCategoryCode((current) => current ?? roots[0].code);
+        }
+      })
+      .catch((err) => console.error("Failed to load categories:", err))
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
-
-  const fetchCategories = async () => {
-    try {
-      setLoading(true);
-      const res = await categoryApi.getAll(0, 1000);
-      setCategories(res.data);
-
-      // Auto expand root categories and select the first root
-      const roots = res.data.filter((c) => !c.parentCode || c.level === 0);
-      const rootCodes = new Set(roots.map((r) => r.code));
-      setExpandedCodes(rootCodes);
-
-      if (roots.length > 0 && !selectedCategoryCode) {
-        setSelectedCategoryCode(roots[0].code);
-      }
-    } catch (err) {
-      console.error("Failed to load categories:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // Build tree from flat categories
   const { tree, codeToNodeMap } = useMemo(() => {
@@ -80,31 +78,27 @@ export default function CategoryHierarchy() {
     return codeToNodeMap.get(selectedCategoryCode) || null;
   }, [selectedCategoryCode, codeToNodeMap]);
 
-  // Fetch full details whenever selected node changes
+  // Fetch full details whenever the selected node changes; until they arrive the panel shows it is loading.
+  const selectedId = selectedNode?.id ?? null;
+  const selectedDetail = loadedDetail && loadedDetail.id === selectedId ? loadedDetail.detail : null;
+  const loadingDetail = selectedId !== null && loadedDetail?.id !== selectedId;
+
   useEffect(() => {
-    if (!selectedNode) {
-      setSelectedDetail(null);
-      return;
-    }
-    let isMounted = true;
-    setLoadingDetail(true);
+    if (!selectedId) return;
+    let cancelled = false;
     categoryApi
-      .getById(selectedNode.id)
+      .getById(selectedId)
       .then((res) => {
-        if (isMounted) setSelectedDetail(res.data);
+        if (!cancelled) setLoadedDetail({ id: selectedId, detail: res.data });
       })
       .catch((err) => {
         console.error("Failed to fetch category details:", err);
-        if (isMounted) setSelectedDetail(null);
-      })
-      .finally(() => {
-        if (isMounted) setLoadingDetail(false);
+        if (!cancelled) setLoadedDetail({ id: selectedId, detail: null });
       });
-
     return () => {
-      isMounted = false;
+      cancelled = true;
     };
-  }, [selectedNode]);
+  }, [selectedId]);
 
   // Build breadcrumb trail from root to selected node
   const breadcrumbTrail = useMemo(() => {
@@ -166,12 +160,11 @@ export default function CategoryHierarchy() {
     return matchingCodes;
   }, [categories, searchQuery, codeToNodeMap]);
 
-  // When search changes, expand all matching branches
-  useEffect(() => {
-    if (searchMatches && searchMatches.size > 0) {
-      setExpandedCodes((prev) => new Set([...prev, ...searchMatches]));
-    }
-  }, [searchMatches]);
+  // While searching, every branch leading to a match is shown open.
+  const openCodes = useMemo(
+    () => (searchMatches && searchMatches.size > 0 ? new Set([...expandedCodes, ...searchMatches]) : expandedCodes),
+    [expandedCodes, searchMatches]
+  );
 
   const handleDeleteConfirm = async () => {
     if (!categoryToDelete) return;
@@ -195,7 +188,7 @@ export default function CategoryHierarchy() {
   // Render tree item recursively
   const renderTreeNode = (node: HierarchyNode, depth = 0) => {
     const hasChildren = node.children && node.children.length > 0;
-    const isExpanded = expandedCodes.has(node.code);
+    const isExpanded = openCodes.has(node.code);
     const isSelected = selectedCategoryCode === node.code;
     const isMatching = searchMatches ? searchMatches.has(node.code) : true;
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Modal } from '../../../shared/components/ui/modal';
 import Button from '../../../shared/components/ui/button/Button';
 import InputField from '../../../shared/components/form/input/InputField';
@@ -7,6 +7,8 @@ import Select from '../../../shared/components/form/Select';
 import type { UserItem, UpdateUserRequest } from '../types';
 import { EmploymentStatus } from '../enums/EmploymentStatus';
 
+import { getApiErrorMessage } from '../../../shared/utils/apiError';
+import type { EmploymentStatusValue } from '../enums/EmploymentStatus';
 interface EditUserModalProps {
   isOpen: boolean;
   user: UserItem | null;
@@ -24,21 +26,22 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (user) {
-      setFormData({
-        firstName: user.firstName,
-        lastName: user.lastName,
-        phone: user.phone || '',
-        status: user.status,
-      });
-      setError(null);
-    }
-  }, [user]);
+  // Another employee opened in the modal: the form starts from their record (adjusting state during render).
+  const [editedUser, setEditedUser] = useState<typeof user>(null);
+  if (user && user !== editedUser) {
+    setEditedUser(user);
+    setFormData({
+      firstName: user.firstName,
+      lastName: user.lastName,
+      phone: user.phone || '',
+      status: user.status,
+    });
+    setError(null);
+  }
 
   if (!user) return null;
 
-  const handleChange = (field: keyof UpdateUserRequest, value: any) => {
+  const handleChange = <K extends keyof UpdateUserRequest>(field: K, value: UpdateUserRequest[K]) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -55,8 +58,8 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
       };
       await onSuccess(user.id, payload);
       onClose();
-    } catch (err: any) {
-      const msg = err.response?.data?.message || err.message || 'Failed to update employee';
+    } catch (err) {
+      const msg = getApiErrorMessage(err, 'Failed to update employee');
       setError(msg);
     } finally {
       setLoading(false);
@@ -123,7 +126,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
                 { value: EmploymentStatus.TERMINATED, label: 'Terminated' },
               ]}
               value={formData.status || EmploymentStatus.ACTIVE}
-              onChange={(val) => handleChange('status', val)}
+              onChange={(val) => handleChange('status', val as EmploymentStatusValue)}
             />
           </div>
         </div>

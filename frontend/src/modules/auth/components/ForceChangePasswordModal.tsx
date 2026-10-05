@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import useAuth from '../hooks/useAuth';
 import { EyeIcon, EyeCloseIcon } from '../../../shared/icons';
 
+import { getApiErrorMessage } from '../../../shared/utils/apiError';
 export const ForceChangePasswordModal: React.FC = () => {
   const { user, changePassword, logout } = useAuth();
 
@@ -60,12 +61,8 @@ export const ForceChangePasswordModal: React.FC = () => {
 
       setSuccessMessage(message || 'Password successfully updated!');
       // State in AuthContext automatically clears mustChangePassword
-    } catch (err: any) {
-      const msg =
-        err.response?.data?.message ||
-        err.response?.data?.detail ||
-        err.message ||
-        'Failed to update password. Please check your credentials and try again.';
+    } catch (err) {
+      const msg = getApiErrorMessage(err, 'Failed to update password. Please check your credentials and try again.');
       setError(msg);
       setIsSubmitting(false);
     }

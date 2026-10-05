@@ -7,10 +7,13 @@ import { materialApi } from "../services/materialApi";
 import type { MaterialListItem } from "../types/MaterialListItem";
 import type { Material } from "../types/Material";
 
+/** A list item, possibly carrying the detail fields of the full material record. */
+type MaterialInfo = MaterialListItem & Partial<Pick<Material, "alternativeName" | "createdAt" | "createdBy" | "updatedAt" | "updatedBy">>;
+
 interface MaterialInfoModalProps {
   isOpen: boolean;
   onClose: () => void;
-  material: MaterialListItem | any | null;
+  material: MaterialInfo | null;
 }
 
 const colorClasses: Record<string, string> = {
@@ -58,28 +61,35 @@ export default function MaterialInfoModal({
   onClose,
   material,
 }: MaterialInfoModalProps) {
-  const [fullMaterial, setFullMaterial] = useState<Material | null>(null);
+  // The full record of the material shown; details loaded for another material are ignored.
+  const shownId = isOpen && material?.id ? material.id : null;
+  const [loaded, setLoaded] = useState<{ id: string; material: Material | null } | null>(null);
+  const fullMaterial = loaded && loaded.id === shownId ? loaded.material : null;
 
   useEffect(() => {
-    if (isOpen && material?.id) {
-      materialApi
-        .getById(material.id)
-        .then((res) => {
-          setFullMaterial(res.data);
-        })
-        .catch(() => {
-          setFullMaterial(null);
-        });
-    } else {
-      setFullMaterial(null);
-    }
-  }, [isOpen, material?.id]);
+    if (!shownId) return;
+    let cancelled = false;
+    materialApi
+      .getById(shownId)
+      .then((res) => {
+        if (!cancelled) setLoaded({ id: shownId, material: res.data });
+      })
+      .catch(() => {
+        if (!cancelled) setLoaded({ id: shownId, material: null });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [shownId]);
 
   if (!material) return null;
 
   const color = getColorForName(material.name);
   const initials = getInitials(material.name);
   const current = fullMaterial || material;
+  // List items carry the price currency; the full record only has the material currency.
+  const priceCurrency =
+    ("standardPriceCurrency" in current && current.standardPriceCurrency) || current.currencyCode || "MAD";
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} className="max-w-2xl p-6 sm:p-8">
@@ -170,14 +180,14 @@ export default function MaterialInfoModal({
               <span className="block text-[11px] text-gray-400 dark:text-gray-500">Standard Price</span>
               <span className="text-sm font-semibold text-gray-800 dark:text-white/90 block">
                 {current.standardPrice !== undefined && current.standardPrice !== null
-                  ? `${current.standardPrice} ${current.standardPriceCurrency || current.currencyCode || "MAD"}`
+                  ? `${current.standardPrice} ${priceCurrency}`
                   : "—"}
               </span>
             </div>
             <div>
               <span className="block text-[11px] text-gray-400 dark:text-gray-500">Currency</span>
               <Badge size="sm" variant="light" color="success">
-                {current.standardPriceCurrency || current.currencyCode || "MAD"}
+                {priceCurrency}
               </Badge>
             </div>
             <div>

@@ -10,6 +10,9 @@ import { UserRole } from '../enums/UserRole';
 import { userApi } from '../services/userApi';
 import type { OnboardUserRequest } from '../types';
 
+import { getApiErrorMessage } from '../../../shared/utils/apiError';
+import type { EmploymentStatusValue } from '../enums/EmploymentStatus';
+import type { UserRoleValue } from '../enums/UserRole';
 export default function CreateUserForm() {
   const navigate = useNavigate();
 
@@ -30,7 +33,7 @@ export default function CreateUserForm() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
-  const handleChange = (field: keyof OnboardUserRequest, value: any) => {
+  const handleChange = <K extends keyof OnboardUserRequest>(field: K, value: OnboardUserRequest[K]) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     if (fieldErrors[field]) {
       setFieldErrors((prev) => ({ ...prev, [field]: '' }));
@@ -91,13 +94,8 @@ export default function CreateUserForm() {
       setTimeout(() => {
         navigate('/users');
       }, 1200);
-    } catch (err: any) {
-      const msg =
-        err.response?.data?.message ||
-        err.response?.data?.detail ||
-        err.response?.data?.error ||
-        err.message ||
-        'Failed to onboard employee';
+    } catch (err) {
+      const msg = getApiErrorMessage(err, 'Failed to onboard employee');
       setErrorMessage(msg);
     } finally {
       setIsSubmitting(false);
@@ -217,7 +215,7 @@ export default function CreateUserForm() {
                   { value: EmploymentStatus.ON_LEAVE, label: 'On Leave' },
                 ]}
                 value={formData.status || EmploymentStatus.ACTIVE}
-                onChange={(val) => handleChange('status', val)}
+                onChange={(val) => handleChange('status', val as EmploymentStatusValue)}
               />
             </div>
           </div>
@@ -259,7 +257,7 @@ export default function CreateUserForm() {
                       { value: UserRole.ADMIN, label: 'ADMIN — Full System Access' },
                     ]}
                     value={formData.roleCode || UserRole.PURCHASER}
-                    onChange={(val) => handleChange('roleCode', val)}
+                    onChange={(val) => handleChange('roleCode', val as UserRoleValue)}
                   />
                   <p className="mt-1.5 text-xs text-gray-400">
                     Determines route access, approval rights, and JWT authority scopes.

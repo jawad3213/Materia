@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useParams, useNavigate } from "react-router-dom";
 import { CategoryType } from "../enums/CategoryType";
+import type { CategoryTypeValue } from "../enums/CategoryType";
+import type { CategoryStatusValue } from "../enums/CategoryStatus";
 import { CategoryStatus } from "../enums/CategoryStatus";
 import CustomSelect from "../../materials/components/CustomSelect";
 import CategoryTreeSelect from "./CategoryTreeSelect";
@@ -31,7 +33,7 @@ export default function EditCategoryForm() {
     shortDescription: "",
     parentId: "",
     categoryType: "",
-    status: "" as any,
+    status: "",
     updatedBy: "Admin", // Should be derived from logged in user ideally
   });
 
@@ -52,7 +54,7 @@ export default function EditCategoryForm() {
           status: cat.status || "",
           updatedBy: "Admin",
         });
-      } catch (err: any) {
+      } catch (err) {
         console.error("Failed to load category details:", err);
         setSubmitMessage({ type: 'error', text: "Failed to load category data. It may have been deleted." });
       } finally {
@@ -111,8 +113,9 @@ export default function EditCategoryForm() {
         description: formData.description || undefined,
         shortDescription: formData.shortDescription || undefined,
         parentId: formData.parentId || undefined,
-        categoryType: formData.categoryType as any,
-        status: formData.status as any,
+        // The selects only offer enum values.
+        categoryType: (formData.categoryType || undefined) as CategoryTypeValue | undefined,
+        status: (formData.status || undefined) as CategoryStatusValue | undefined,
         updatedBy: formData.updatedBy,
       };
       

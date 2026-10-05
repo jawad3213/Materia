@@ -1,4 +1,5 @@
-import { createContext, useState, useEffect, type ReactNode } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
+import { AuthContext, type AuthContextType } from './authContextValue';
 import type {
   User,
   UserRole,
@@ -10,23 +11,7 @@ import type {
 import authService from '../services/authService';
 import { SESSION_EXPIRED_EVENT } from '../../../shared/api/axiosClient';
 
-export interface AuthContextType {
-  user: User | null;
-  isAuthenticated: boolean;
-  isLoading: boolean;
-  error: string | null;
-  login: (credentials: LoginCredentials) => Promise<void>;
-  logout: () => Promise<void>;
-  changePassword: (data: ChangePasswordCredentials) => Promise<string>;
-  clearMustChangePassword: () => void;
-  resetPassword: (data: ResetPasswordCredentials) => Promise<string>;
-  confirmPasswordReset: (data: ConfirmResetPasswordCredentials) => Promise<string>;
-  hasRole: (roles: UserRole | UserRole[]) => boolean;
-  hasPermission: (permission: string) => boolean;
-  clearError: () => void;
-}
-
-export const AuthContext = createContext<AuthContextType | undefined>(undefined);
+import { getApiErrorMessage, getApiErrorStatus } from '../../../shared/utils/apiError';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(() => authService.getStoredUser());
@@ -50,8 +35,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (isMounted) {
           setUser(authData.user);
         }
-      } catch (err: any) {
-        const status = err?.response?.status;
+      } catch (err) {
+        const status = getApiErrorStatus(err);
         if (status === 401 || status === 403) {
           if (isMounted) {
             setUser(null);
@@ -89,13 +74,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const response = await authService.login(credentials);
       setUser(response.user);
-    } catch (err: any) {
-      const message =
-        err.response?.data?.message ||
-        err.response?.data?.detail ||
-        err.response?.data?.error ||
-        err.message ||
-        'Login failed';
+    } catch (err) {
+      const message = getApiErrorMessage(err, 'Login failed');
       setError(message);
       throw err;
     } finally {
@@ -119,8 +99,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const res = await authService.resetPassword(data);
       return res.message;
-    } catch (err: any) {
-      const message = err.response?.data?.message || err.message || 'Password reset failed';
+    } catch (err) {
+      const message = getApiErrorMessage(err, 'Password reset failed');
       setError(message);
       throw err;
     } finally {
@@ -134,8 +114,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const res = await authService.confirmPasswordReset(data);
       return res.message;
-    } catch (err: any) {
-      const message = err.response?.data?.message || err.message || 'Password update failed';
+    } catch (err) {
+      const message = getApiErrorMessage(err, 'Password update failed');
       setError(message);
       throw err;
     } finally {
@@ -152,12 +132,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser({ ...user, mustChangePassword: false });
       }
       return res.message;
-    } catch (err: any) {
-      const message =
-        err.response?.data?.message ||
-        err.response?.data?.detail ||
-        err.message ||
-        'Password update failed';
+    } catch (err) {
+      const message = getApiErrorMessage(err, 'Password update failed');
       setError(message);
       throw err;
     } finally {
@@ -224,4 +200,4 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
-export default AuthContext;
+export default AuthProvider;

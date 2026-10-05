@@ -30,27 +30,30 @@ export default function CategoryList() {
 
   // Pagination state
   const [page, setPage] = useState(0);
-  const [size, setSize] = useState(10);
+  const [size] = useState(10);
 
-  useEffect(() => {
+  /** New filters show the first page of results. */
+  const applyFilters = (next: CategoryFilters) => {
+    setFilters(next);
     setPage(0);
-  }, [filters]);
-
-  useEffect(() => {
-    fetchCategories();
-  }, []);
-
-  const fetchCategories = async () => {
-    try {
-      setLoading(true);
-      const res = await categoryApi.getAll(page, size);
-      setCategories(res.data);
-    } catch (err) {
-      console.error("Failed to load categories:", err);
-    } finally {
-      setLoading(false);
-    }
   };
+
+  // Loads the categories once.
+  useEffect(() => {
+    let cancelled = false;
+    categoryApi
+      .getAll(0, size)
+      .then((res) => {
+        if (!cancelled) setCategories(res.data);
+      })
+      .catch((err) => console.error("Failed to load categories:", err))
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [size]);
 
   // Derive unique parent codes and levels from the loaded data
   const parentCodes = useMemo(() => {
@@ -123,7 +126,7 @@ export default function CategoryList() {
     <>
       <CategoryFilterPanel
         filters={filters}
-        onChange={setFilters}
+        onChange={applyFilters}
         parentCodes={parentCodes}
         levels={levels}
         isOpen={showFilters}
@@ -265,7 +268,7 @@ export default function CategoryList() {
                       </span>
                       {activeFilterCount > 0 && (
                         <button
-                          onClick={() => setFilters(EMPTY_FILTERS)}
+                          onClick={() => applyFilters(EMPTY_FILTERS)}
                           className="text-sm text-brand-500 hover:underline"
                         >
                           Clear all filters

@@ -61,7 +61,7 @@ export default function UpdateMaterialForm({ id }: Props) {
       .then((res) => {
         const data = Array.isArray(res.data)
           ? res.data
-          : (res.data as any)?.content || [];
+          : (res.data as { content?: SupplierListItem[] } | null)?.content || [];
         setSuppliers(data);
       })
       .catch((err) => console.error("Failed to load suppliers", err));
@@ -70,7 +70,6 @@ export default function UpdateMaterialForm({ id }: Props) {
   // Load material data by ID
   useEffect(() => {
     if (!id) return;
-    setIsLoading(true);
     materialApi
       .getById(id)
       .then((res) => {

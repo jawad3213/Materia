@@ -7,7 +7,6 @@ import CategoryTreeSelect from "../../categories/components/CategoryTreeSelect";
 import { materialApi } from "../services/materialApi";
 import { supplierApi } from "../../suppliers/services/supplierApi";
 import type { CreateMaterialRequest } from "../types/CreateMaterialRequest";
-import type { CategoryListItem } from "../../categories/types/CategoryListItem";
 import type { SupplierListItem } from "../../suppliers/types/SupplierListItem";
 import type { ErrorResponse } from "../../../shared/types/ErrorResponse";
 
@@ -33,7 +32,7 @@ export default function CreateMaterialForm() {
       .then((res) => {
         const data = Array.isArray(res.data)
           ? res.data
-          : (res.data as any)?.content || [];
+          : (res.data as { content?: SupplierListItem[] } | null)?.content || [];
         setSuppliers(data);
       })
       .catch((err) => console.error("Failed to load suppliers", err));
@@ -132,13 +131,14 @@ export default function CreateMaterialForm() {
     try {
       const requestPayload: CreateMaterialRequest = {
         ...formData,
-        materialType: formData.materialType || undefined as any,
-        unitOfMeasure: formData.unitOfMeasure || undefined as any,
-        status: formData.status || undefined as any,
-        standardPriceCurrency: formData.standardPriceCurrency || undefined as any,
-        costPriceCurrency: formData.costPriceCurrency || undefined as any,
-        categoryId: formData.categoryId || undefined as any,
-        supplierId: formData.supplierId || undefined as any,
+        // Empty selections are sent as absent; the backend validates the required ones.
+        materialType: (formData.materialType || undefined) as string,
+        unitOfMeasure: (formData.unitOfMeasure || undefined) as string,
+        status: formData.status || undefined,
+        standardPriceCurrency: (formData.standardPriceCurrency || undefined) as string,
+        costPriceCurrency: formData.costPriceCurrency || undefined,
+        categoryId: (formData.categoryId || undefined) as string,
+        supplierId: (formData.supplierId || undefined) as string,
         searchKeywords: keywords.join(","),
         // Ensure numbers are properly cast for the backend
         currentStock: Number(formData.currentStock) || 0,

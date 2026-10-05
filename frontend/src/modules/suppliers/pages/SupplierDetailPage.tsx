@@ -6,6 +6,7 @@ import { supplierApi } from "../services/supplierApi";
 import type { Supplier } from "../types/Supplier";
 import Badge from "../../../shared/components/ui/badge/Badge";
 
+import { getApiErrorMessage } from '../../../shared/utils/apiError';
 const statusColorMap: Record<string, "success" | "warning" | "error" | "info" | "light"> = {
   ACTIVE: "success",
   INACTIVE: "light",
@@ -36,9 +37,9 @@ export default function SupplierDetailPage() {
         setLoading(true);
         const response = await supplierApi.getById(id);
         setSupplier(response.data);
-      } catch (err: any) {
+      } catch (err) {
         console.error("Failed to load supplier details:", err);
-        setError(err.response?.data?.message || "Failed to load supplier details");
+        setError(getApiErrorMessage(err, "Failed to load supplier details"));
       } finally {
         setLoading(false);
       }

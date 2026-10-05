@@ -9,6 +9,9 @@ import type { OnboardUserRequest } from '../types';
 import { EmploymentStatus } from '../enums/EmploymentStatus';
 import { UserRole } from '../enums/UserRole';
 
+import { getApiErrorMessage } from '../../../shared/utils/apiError';
+import type { EmploymentStatusValue } from '../enums/EmploymentStatus';
+import type { UserRoleValue } from '../enums/UserRole';
 interface OnboardUserModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -35,7 +38,7 @@ export const OnboardUserModal: React.FC<OnboardUserModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleChange = (field: keyof OnboardUserRequest, value: any) => {
+  const handleChange = <K extends keyof OnboardUserRequest>(field: K, value: OnboardUserRequest[K]) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -64,8 +67,8 @@ export const OnboardUserModal: React.FC<OnboardUserModalProps> = ({
       };
       await onSuccess(payload);
       onClose();
-    } catch (err: any) {
-      const msg = err.response?.data?.message || err.message || 'Failed to onboard employee';
+    } catch (err) {
+      const msg = getApiErrorMessage(err, 'Failed to onboard employee');
       setError(msg);
     } finally {
       setLoading(false);
@@ -159,7 +162,7 @@ export const OnboardUserModal: React.FC<OnboardUserModalProps> = ({
                 { value: EmploymentStatus.ON_LEAVE, label: 'On Leave' },
               ]}
               value={formData.status || EmploymentStatus.ACTIVE}
-              onChange={(val) => handleChange('status', val)}
+              onChange={(val) => handleChange('status', val as EmploymentStatusValue)}
             />
           </div>
         </div>
@@ -187,7 +190,7 @@ export const OnboardUserModal: React.FC<OnboardUserModalProps> = ({
                     { value: UserRole.ADMIN, label: 'Admin (Administrateur)' },
                   ]}
                   value={formData.roleCode || UserRole.PURCHASER}
-                  onChange={(val) => handleChange('roleCode', val)}
+                  onChange={(val) => handleChange('roleCode', val as UserRoleValue)}
                 />
               </div>
               <div>

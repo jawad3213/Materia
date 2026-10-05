@@ -32,11 +32,42 @@ const colorClasses: Record<string, string> = {
 
 const colors = ["red", "orange", "purple", "green", "blue"];
 
+/** Fills derived stock flags and a clean price, whatever endpoint the item came from. */
+const normalizeMaterial = (item: MaterialListItem): MaterialListItem => {
+  let price = item.standardPrice;
+  if (typeof price === "string") {
+    const match = price.match(/[\d,.]+/);
+    if (match) price = match[0];
+  }
+  const currency = item.standardPriceCurrency || item.currencyCode || "USD";
+
+  const isOut = item.currentStock === 0 || item.stockStatus === "OUT_OF_STOCK" || item.isOutOfStock;
+  const isCrit = item.stockStatus === "CRITICAL" || (!isOut && item.safetyStock != null && item.safetyStock > 0 && item.currentStock <= item.safetyStock);
+  const isReorder = item.stockStatus === "REORDER_NEEDED" || item.isReorderNeeded || (!isOut && !isCrit && item.reorderPoint != null && item.reorderPoint > 0 && item.currentStock <= item.reorderPoint);
+
+  const derivedStockStatus = isOut
+    ? "OUT_OF_STOCK"
+    : isCrit
+    ? "CRITICAL"
+    : isReorder
+    ? "REORDER_NEEDED"
+    : "IN_STOCK";
+
+  return {
+    ...item,
+    standardPrice: price,
+    standardPriceCurrency: currency,
+    stockStatus: item.stockStatus || derivedStockStatus,
+    stockOnOrder: item.stockOnOrder ?? 0,
+    isOutOfStock: isOut,
+    isReorderNeeded: isReorder,
+  };
+};
+
 export default function MaterialListTable() {
   const { hasPermission } = useAuth();
   const canReadStock = hasPermission("material:stock:read");
   const [materials, setMaterials] = useState<MaterialListItem[]>([]);
-  const [loading, setLoading] = useState(true);
   const [selectedMaterials, setSelectedMaterials] = useState<string[]>([]);
   const [materialToDelete, setMaterialToDelete] = useState<MaterialListItem | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -44,7 +75,6 @@ export default function MaterialListTable() {
   // Filter state
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [filterCategoryId, setFilterCategoryId] = useState("");
-  const [filterCategoryName, setFilterCategoryName] = useState("");
   const [filterMaterialType, setFilterMaterialType] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
   const [searchKeyword, setSearchKeyword] = useState("");
@@ -76,28 +106,25 @@ export default function MaterialListTable() {
   const isFirstMount = useRef(true);
   const activeFiltersCount = [filterCategoryId, filterMaterialType, filterStatus].filter(Boolean).length;
 
+  // Stock tab counts, reloaded with the list.
   useEffect(() => {
-    if (canReadStock) fetchStockCounts();
+    if (!canReadStock) return;
+    let cancelled = false;
+    Promise.all([materialApi.getReorderNeeded(), materialApi.getCriticalStock(), materialApi.getOutOfStock()])
+      .then(([reorderRes, criticalRes, outRes]) => {
+        if (cancelled) return;
+        setStockCounts((prev) => ({
+          ...prev,
+          reorderNeeded: reorderRes.data?.length || 0,
+          critical: criticalRes.data?.length || 0,
+          outOfStock: outRes.data?.length || 0,
+        }));
+      })
+      .catch((err) => console.error("Failed to load stock counts:", err));
+    return () => {
+      cancelled = true;
+    };
   }, [refreshTrigger, canReadStock]);
-
-  const fetchStockCounts = async () => {
-    try {
-      const [reorderRes, criticalRes, outRes] = await Promise.all([
-        materialApi.getReorderNeeded(),
-        materialApi.getCriticalStock(),
-        materialApi.getOutOfStock(),
-      ]);
-
-      setStockCounts((prev) => ({
-        ...prev,
-        reorderNeeded: reorderRes.data?.length || 0,
-        critical: criticalRes.data?.length || 0,
-        outOfStock: outRes.data?.length || 0,
-      }));
-    } catch (err) {
-      console.error("Failed to load stock counts:", err);
-    }
-  };
 
   const handleSelectStockFilter = (filter: StockFilterType) => {
     setActiveStockFilter((prev) => (prev === filter ? "ALL" : filter));
@@ -105,45 +132,26 @@ export default function MaterialListTable() {
     setRefreshTrigger((prev) => prev + 1);
   };
 
-  const normalizeMaterial = (item: any): MaterialListItem => {
-    let price = item.standardPrice;
-    if (typeof price === "string") {
-      const match = price.match(/[\d,.]+/);
-      if (match) price = match[0];
-    }
-    const currency = item.standardPriceCurrency || item.currencyCode || "USD";
-
-    const isOut = item.currentStock === 0 || item.stockStatus === "OUT_OF_STOCK" || item.isOutOfStock;
-    const isCrit = item.stockStatus === "CRITICAL" || (!isOut && item.safetyStock != null && item.safetyStock > 0 && item.currentStock <= item.safetyStock);
-    const isReorder = item.stockStatus === "REORDER_NEEDED" || item.isReorderNeeded || (!isOut && !isCrit && item.reorderPoint != null && item.reorderPoint > 0 && item.currentStock <= item.reorderPoint);
-
-    const derivedStockStatus = isOut
-      ? "OUT_OF_STOCK"
-      : isCrit
-      ? "CRITICAL"
-      : isReorder
-      ? "REORDER_NEEDED"
-      : "IN_STOCK";
-
-    return {
-      ...item,
-      standardPrice: price,
-      standardPriceCurrency: currency,
-      stockStatus: item.stockStatus || derivedStockStatus,
-      stockOnOrder: item.stockOnOrder ?? 0,
-      isOutOfStock: isOut,
-      isReorderNeeded: isReorder,
-    };
-  };
+  // Name of the category filter, shown on its pill; the id stands in until it is loaded.
+  const [fetchedCategory, setFetchedCategory] = useState<{ id: string; name: string } | null>(null);
+  const filterCategoryName = !filterCategoryId
+    ? ""
+    : fetchedCategory?.id === filterCategoryId
+    ? fetchedCategory.name
+    : filterCategoryId;
 
   useEffect(() => {
-    if (filterCategoryId) {
-      categoryApi.getById(filterCategoryId)
-        .then(res => setFilterCategoryName(res.data.name))
-        .catch(() => setFilterCategoryName(filterCategoryId));
-    } else {
-      setFilterCategoryName("");
-    }
+    if (!filterCategoryId) return;
+    let cancelled = false;
+    categoryApi
+      .getById(filterCategoryId)
+      .then((res) => {
+        if (!cancelled) setFetchedCategory({ id: filterCategoryId, name: res.data.name });
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
   }, [filterCategoryId]);
 
   useEffect(() => {
@@ -152,116 +160,87 @@ export default function MaterialListTable() {
       return;
     }
     const timer = setTimeout(() => {
-      if (page === 0) {
-        setRefreshTrigger(prev => prev + 1);
-      } else {
-        setPage(0);
-      }
+      setPage(0);
+      setRefreshTrigger((prev) => prev + 1);
     }, 350);
     return () => clearTimeout(timer);
   }, [searchKeyword]);
 
+  // Search and filters are read when a load starts; loads follow the page, the stock tab and refreshTrigger.
+  const queryRef = useRef({ searchKeyword, filterCategoryId, filterMaterialType, filterStatus });
   useEffect(() => {
-    fetchMaterials();
-  }, [page, size, refreshTrigger, activeStockFilter]);
+    queryRef.current = { searchKeyword, filterCategoryId, filterMaterialType, filterStatus };
+  });
 
-  const fetchMaterials = async () => {
-    try {
-      setLoading(true);
+  const requestKey = `${page}|${size}|${refreshTrigger}|${activeStockFilter}`;
+  const [loadedKey, setLoadedKey] = useState<string | null>(null);
+  const loading = loadedKey !== requestKey;
 
-      // 1. If a stock filter tab is active (Reorder, Critical, or Out of Stock)
-      if (activeStockFilter === "REORDER_NEEDED") {
-        const res = await materialApi.getReorderNeeded();
+  useEffect(() => {
+    let cancelled = false;
+    const { searchKeyword: keyword, filterCategoryId: categoryId, filterMaterialType: materialType, filterStatus: status } = queryRef.current;
+
+    const load = async () => {
+      // 1. A stock tab lists that stock situation, searched and paged here.
+      const stockLists = {
+        REORDER_NEEDED: materialApi.getReorderNeeded,
+        CRITICAL: materialApi.getCriticalStock,
+        OUT_OF_STOCK: materialApi.getOutOfStock,
+      } as const;
+      if (activeStockFilter in stockLists) {
+        const res = await stockLists[activeStockFilter as keyof typeof stockLists]();
         let items: MaterialListItem[] = (res.data || []).map(normalizeMaterial);
-        if (searchKeyword.trim()) {
-          const kw = searchKeyword.toLowerCase();
-          items = items.filter(m => 
-            m.name?.toLowerCase().includes(kw) || 
-            m.code?.toLowerCase().includes(kw) ||
-            m.description?.toLowerCase().includes(kw)
+        if (keyword.trim()) {
+          const kw = keyword.toLowerCase();
+          items = items.filter(
+            (m) => m.name?.toLowerCase().includes(kw) || m.code?.toLowerCase().includes(kw) || m.description?.toLowerCase().includes(kw)
           );
         }
+        if (cancelled) return;
         setTotalElements(items.length);
         setTotalPages(Math.ceil(items.length / size) || 1);
         setMaterials(items.slice(page * size, (page + 1) * size));
-        setLoading(false);
-        return;
-      } else if (activeStockFilter === "CRITICAL") {
-        const res = await materialApi.getCriticalStock();
-        let items: MaterialListItem[] = (res.data || []).map(normalizeMaterial);
-        if (searchKeyword.trim()) {
-          const kw = searchKeyword.toLowerCase();
-          items = items.filter(m => 
-            m.name?.toLowerCase().includes(kw) || 
-            m.code?.toLowerCase().includes(kw) ||
-            m.description?.toLowerCase().includes(kw)
-          );
-        }
-        setTotalElements(items.length);
-        setTotalPages(Math.ceil(items.length / size) || 1);
-        setMaterials(items.slice(page * size, (page + 1) * size));
-        setLoading(false);
-        return;
-      } else if (activeStockFilter === "OUT_OF_STOCK") {
-        const res = await materialApi.getOutOfStock();
-        let items: MaterialListItem[] = (res.data || []).map(normalizeMaterial);
-        if (searchKeyword.trim()) {
-          const kw = searchKeyword.toLowerCase();
-          items = items.filter(m => 
-            m.name?.toLowerCase().includes(kw) || 
-            m.code?.toLowerCase().includes(kw) ||
-            m.description?.toLowerCase().includes(kw)
-          );
-        }
-        setTotalElements(items.length);
-        setTotalPages(Math.ceil(items.length / size) || 1);
-        setMaterials(items.slice(page * size, (page + 1) * size));
-        setLoading(false);
         return;
       }
 
-      // 2. Default: ALL
-      let res;
-      if (searchKeyword) {
-        // If there's a search keyword, search across all fields
-        res = await materialApi.searchAdvancedList({
-          code: searchKeyword,
-          name: searchKeyword,
-          description: searchKeyword,
-          shortDescription: searchKeyword,
-          searchKeywords: searchKeyword,
-          alternativeName: searchKeyword,
-          categoryId: filterCategoryId || undefined,
-          materialType: filterMaterialType || undefined,
-          status: filterStatus || undefined,
-        }, page, size);
-      } else if (!filterCategoryId && !filterMaterialType && !filterStatus) {
-        // No filters applied, use the standard getAll with pagination
-        res = await materialApi.getAll(page, size);
-      } else {
-        // Filters applied, use filterList
-        res = await materialApi.filterList({
-          categoryId: filterCategoryId || undefined,
-          materialType: filterMaterialType || undefined,
-          status: filterStatus || undefined,
-        }, page, size);
-      }
-      
-      const rawContent: any[] = res.data.content || [];
+      // 2. All materials: searched, filtered or plain, paged by the server.
+      const filters = { categoryId: categoryId || undefined, materialType: materialType || undefined, status: status || undefined };
+      const res = keyword
+        ? await materialApi.searchAdvancedList(
+            {
+              code: keyword,
+              name: keyword,
+              description: keyword,
+              shortDescription: keyword,
+              searchKeywords: keyword,
+              alternativeName: keyword,
+              ...filters,
+            },
+            page,
+            size
+          )
+        : !categoryId && !materialType && !status
+        ? await materialApi.getAll(page, size)
+        : await materialApi.filterList(filters, page, size);
+      if (cancelled) return;
+      const rawContent: MaterialListItem[] = res.data.content || [];
       setMaterials(rawContent.map(normalizeMaterial));
       setTotalPages(res.data.totalPages || 0);
       setTotalElements(res.data.totalElements || 0);
-
-      // Update total catalog items count
-      if (!searchKeyword && !filterCategoryId && !filterMaterialType && !filterStatus) {
-        setStockCounts(prev => ({ ...prev, total: res.data.totalElements || 0 }));
+      if (!keyword && !categoryId && !materialType && !status) {
+        setStockCounts((prev) => ({ ...prev, total: res.data.totalElements || 0 }));
       }
-    } catch (err) {
-      console.error("Failed to load materials:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+
+    load()
+      .catch((err) => console.error("Failed to load materials:", err))
+      .finally(() => {
+        if (!cancelled) setLoadedKey(requestKey);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [requestKey, page, size, activeStockFilter]);
 
   const handleDeleteConfirm = async () => {
     if (!materialToDelete) return;
@@ -279,11 +258,8 @@ export default function MaterialListTable() {
 
   const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
-      if (page !== 0) {
-        setPage(0);
-      } else {
-        fetchMaterials();
-      }
+      setPage(0);
+      setRefreshTrigger((prev) => prev + 1);
     }
   };
 
@@ -292,13 +268,12 @@ export default function MaterialListTable() {
     if (page === 0) {
       setRefreshTrigger(prev => prev + 1);
     } else {
-      setPage(0); // This will trigger useEffect to fetchMaterials
+      setPage(0); // the page change reloads the list
     }
   };
 
   const handleClearFilters = () => {
     setFilterCategoryId("");
-    setFilterCategoryName("");
     setFilterMaterialType("");
     setFilterStatus("");
     setIsFilterOpen(false);
@@ -498,8 +473,7 @@ export default function MaterialListTable() {
                 type="button"
                 onClick={() => {
                   setFilterCategoryId("");
-                  setFilterCategoryName("");
-                  if (page === 0) setRefreshTrigger(prev => prev + 1);
+                              if (page === 0) setRefreshTrigger(prev => prev + 1);
                   else setPage(0);
                 }}
                 className="hover:text-brand-900 dark:hover:text-white"
@@ -884,10 +858,7 @@ export default function MaterialListTable() {
           setIsReorderModalOpen(false);
           setReorderMaterialId(null);
         }}
-        onReorderSuccess={() => {
-          fetchMaterials();
-          fetchStockCounts();
-        }}
+        onReorderSuccess={() => setRefreshTrigger((prev) => prev + 1)}
       />
     </div>
     </>

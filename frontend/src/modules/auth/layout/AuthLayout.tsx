@@ -1,5 +1,5 @@
 import React from 'react';
-import { useTheme } from '../../../shared/context/ThemeContext';
+import { useTheme } from '../../../shared/context/useTheme';
 
 interface AuthLayoutProps {
   children: React.ReactNode;

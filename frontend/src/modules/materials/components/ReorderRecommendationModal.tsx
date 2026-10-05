@@ -4,6 +4,7 @@ import Badge from "../../../shared/components/ui/badge/Badge";
 import { materialApi } from "../services/materialApi";
 import type { ReorderRecommendation } from "../types/Material";
 
+import { getApiErrorMessage } from '../../../shared/utils/apiError';
 interface ReorderRecommendationModalProps {
   materialId: string | null;
   isOpen: boolean;
@@ -25,30 +26,40 @@ export default function ReorderRecommendationModal({
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (isOpen && materialId) {
-      setSuccessMessage(null);
-      setErrorMessage(null);
-      fetchRecommendation(materialId);
-    } else {
-      setRecommendation(null);
-    }
-  }, [isOpen, materialId]);
+  // Opening the modal for a material starts afresh (adjusting state during render), then the effect loads it.
+  const shownId = isOpen && materialId ? materialId : null;
+  const [openedFor, setOpenedFor] = useState<string | null>(null);
+  if (shownId !== openedFor) {
+    setOpenedFor(shownId);
+    setRecommendation(null);
+    setSuccessMessage(null);
+    setErrorMessage(null);
+    setLoading(!!shownId);
+  }
 
-  const fetchRecommendation = async (id: string) => {
-    try {
-      setLoading(true);
-      const res = await materialApi.getReorderRecommendation(id);
-      setRecommendation(res.data);
-      setQuantity(res.data.recommendedQuantity || 100);
-      setReason(res.data.reason || "Automatic threshold replenishment");
-    } catch (err: any) {
-      console.error("Failed to load reorder recommendation:", err);
-      setErrorMessage("Could not load reorder recommendation for this material.");
-    } finally {
-      setLoading(false);
-    }
-  };
+  useEffect(() => {
+    if (!shownId) return;
+    let cancelled = false;
+    materialApi
+      .getReorderRecommendation(shownId)
+      .then((res) => {
+        if (cancelled) return;
+        setRecommendation(res.data);
+        setQuantity(res.data.recommendedQuantity || 100);
+        setReason(res.data.reason || "Automatic threshold replenishment");
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        console.error("Failed to load reorder recommendation:", err);
+        setErrorMessage("Could not load reorder recommendation for this material.");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [shownId]);
 
   const handleConfirmReorder = async () => {
     if (!materialId || quantity <= 0) return;
@@ -68,9 +79,9 @@ export default function ReorderRecommendationModal({
       setTimeout(() => {
         onClose();
       }, 2000);
-    } catch (err: any) {
+    } catch (err) {
       console.error("Failed to trigger reorder:", err);
-      setErrorMessage(err.response?.data?.message || "Failed to trigger reorder.");
+      setErrorMessage(getApiErrorMessage(err, "Failed to trigger reorder."));
     } finally {
       setSubmitting(false);
     }

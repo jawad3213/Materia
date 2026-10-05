@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { useSidebar } from '../../context/SidebarContext';
+import { useSidebar } from '../../context/useSidebar';
 import useAuth from '../../../modules/auth/hooks/useAuth';
 import type { UserRole } from '../../../modules/auth/types/auth.types';
 import {

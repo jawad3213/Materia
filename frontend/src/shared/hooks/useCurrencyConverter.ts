@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { currencyApi } from '../api/currencyApi';
-import type { CurrencyInfo, CurrencyCode } from '../types/currency';
+import type { CurrencyInfo } from '../types/currency';
 
 // Default live fallback rates relative to 1 EUR
 const DEFAULT_EUR_RATES: Record<string, number> = {
@@ -85,7 +85,8 @@ export function convertCurrency(
 export function useCurrencyConverter(targetCurrency: string = 'MAD') {
   const [eurRates, setEurRates] = useState<Record<string, number>>(DEFAULT_EUR_RATES);
   const [currencies, setCurrencies] = useState<CurrencyInfo[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  // True until the live rates have been fetched (or failed, leaving the defaults).
+  const [isLoading, setIsLoading] = useState(true);
 
   // Load supported currencies & latest EUR rates on mount
   useEffect(() => {
@@ -100,7 +101,6 @@ export function useCurrencyConverter(targetCurrency: string = 'MAD') {
         console.warn('Could not load currencies list:', err);
       });
 
-    setIsLoading(true);
     // Fetch live rates relative to EUR
     currencyApi
       .getRates('EUR')

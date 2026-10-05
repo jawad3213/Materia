@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import axios from "axios";
 import { supplierApi } from "../services/supplierApi";
 import type { UpdateSupplierRequest } from "../types/UpdateSupplierRequest";
@@ -16,7 +16,6 @@ import { EnvelopeIcon } from "../../../shared/icons";
 
 export default function UpdateSupplierForm() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});

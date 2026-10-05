@@ -6,6 +6,7 @@ import Label from '../../../shared/components/form/Label';
 import TextArea from '../../../shared/components/form/input/TextArea';
 import type { UserItem, UserListItem, OffboardUserRequest } from '../types';
 
+import { getApiErrorMessage } from '../../../shared/utils/apiError';
 interface OffboardUserModalProps {
   isOpen: boolean;
   user: UserItem | UserListItem | null;
@@ -45,8 +46,8 @@ export const OffboardUserModal: React.FC<OffboardUserModalProps> = ({
         revokeUserAccess: true,
       });
       onClose();
-    } catch (err: any) {
-      const msg = err.response?.data?.message || err.message || 'Failed to offboard employee';
+    } catch (err) {
+      const msg = getApiErrorMessage(err, 'Failed to offboard employee');
       setError(msg);
     } finally {
       setLoading(false);

@@ -10,6 +10,7 @@ import { EmploymentStatus, type EmploymentStatusValue } from '../enums/Employmen
 import { userApi } from '../services/userApi';
 import type { UserItem, UpdateUserRequest } from '../types';
 
+import { getApiErrorMessage } from '../../../shared/utils/apiError';
 interface UpdateUserFormProps {
   id: string;
 }
@@ -47,12 +48,9 @@ export default function UpdateUserForm({ id }: UpdateUserFormProps) {
           setPhone(u.phone || '');
           setStatus(u.status || EmploymentStatus.ACTIVE);
         }
-      } catch (err: any) {
+      } catch (err) {
         if (isMounted) {
-          const msg =
-            err.response?.data?.message ||
-            err.message ||
-            'Failed to load employee details';
+          const msg = getApiErrorMessage(err, 'Failed to load employee details');
           setLoadError(msg);
         }
       } finally {
@@ -103,13 +101,8 @@ export default function UpdateUserForm({ id }: UpdateUserFormProps) {
       setTimeout(() => {
         navigate('/users');
       }, 1000);
-    } catch (err: any) {
-      const msg =
-        err.response?.data?.message ||
-        err.response?.data?.detail ||
-        err.response?.data?.error ||
-        err.message ||
-        'Failed to update employee';
+    } catch (err) {
+      const msg = getApiErrorMessage(err, 'Failed to update employee');
       setErrorMessage(msg);
     } finally {
       setIsSubmitting(false);

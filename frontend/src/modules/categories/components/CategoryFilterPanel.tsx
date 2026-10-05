@@ -56,7 +56,6 @@ export default function CategoryFilterPanel({
   parentCodes,
   levels,
   isOpen,
-  onToggle,
 }: Props) {
   const handleChange = (key: keyof CategoryFilters, value: string) => {
     onChange({ ...filters, [key]: value });

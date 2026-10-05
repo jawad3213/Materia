@@ -8,11 +8,18 @@ import type {
 } from '../types';
 import userService from '../services/userService';
 
+import { getApiErrorMessage } from '../../../shared/utils/apiError';
 export function useUsers(initialFilters?: UserFilterRequest) {
   const [users, setUsers] = useState<UserItem[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [filters, setFilters] = useState<UserFilterRequest>(initialFilters || {});
+  const [filters, setFiltersState] = useState<UserFilterRequest>(initialFilters || {});
+
+  /** New filters reload the list. */
+  const setFilters = useCallback((next: UserFilterRequest) => {
+    setIsLoading(true);
+    setFiltersState(next);
+  }, []);
 
   const fetchUsers = useCallback(async () => {
     setIsLoading(true);
@@ -20,17 +27,35 @@ export function useUsers(initialFilters?: UserFilterRequest) {
     try {
       const data = await userService.fetchUsers(filters);
       setUsers(data);
-    } catch (err: any) {
-      const msg = err.response?.data?.message || err.message || 'Failed to fetch users';
+    } catch (err) {
+      const msg = getApiErrorMessage(err, 'Failed to fetch users');
       setError(msg);
     } finally {
       setIsLoading(false);
     }
   }, [filters]);
 
+  // Loads the list whenever the filters change; a newer request supersedes an older one.
   useEffect(() => {
-    fetchUsers();
-  }, [fetchUsers]);
+    let cancelled = false;
+    userService
+      .fetchUsers(filters)
+      .then((data) => {
+        if (!cancelled) {
+          setUsers(data);
+          setError(null);
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) setError(getApiErrorMessage(err, 'Failed to fetch users'));
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [filters]);
 
   const onboard = async (payload: OnboardUserRequest): Promise<UserItem> => {
     const created = await userService.onboardUser(payload);

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { EyeCloseIcon, EyeIcon } from '../../../shared/icons';
 import Label from '../../../shared/components/form/Label';
@@ -36,12 +36,13 @@ export default function LoginForm() {
   const navigate = useNavigate();
   const { login, isLoading, error, clearError } = useAuth();
 
-  const [email, setEmail] = useState('');
+  // A remembered email is restored when the form opens.
+  const [email, setEmail] = useState(() => authService.getRememberedEmail() || '');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(() => {
-    return localStorage.getItem('materia_remember_me') !== 'false';
-  });
+  const [rememberMe, setRememberMe] = useState(
+    () => !!authService.getRememberedEmail() || localStorage.getItem('materia_remember_me') !== 'false'
+  );
   const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({});
   const [socialLoading, setSocialLoading] = useState<string | null>(null);
   const [activeDevRole, setActiveDevRole] = useState<string | null>(null);
@@ -58,15 +59,6 @@ export default function LoginForm() {
       // ignore clipboard error
     }
   };
-
-  // Restore remembered email on mount if previously saved
-  useEffect(() => {
-    const savedEmail = authService.getRememberedEmail();
-    if (savedEmail) {
-      setEmail(savedEmail);
-      setRememberMe(true);
-    }
-  }, []);
 
   const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setEmail(e.target.value);

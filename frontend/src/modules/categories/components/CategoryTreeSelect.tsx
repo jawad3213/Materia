@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
 import { categoryApi } from "../services/categoryApi";
 import type { CategoryListItem } from "../types/CategoryListItem";
 
@@ -60,13 +60,9 @@ export default function CategoryTreeSelect({
     fetchRoots();
   }, []);
 
-  // Update selected label if value changes
-  useEffect(() => {
-    if (!value) {
-      setSelectedLabel("");
-      return;
-    }
-    // Deep search in nodes
+  // The selected category's name: from the loaded tree, otherwise fetched once for that id.
+  const treeLabel = useMemo(() => {
+    if (!value) return null;
     const findLabel = (nodesList: TreeNode[]): string | null => {
       for (const node of nodesList) {
         if (node.id === value) return node.name;
@@ -77,14 +73,25 @@ export default function CategoryTreeSelect({
       }
       return null;
     };
-    const label = findLabel(nodes);
-    if (label) {
-      setSelectedLabel(label);
-    } else {
-      // If we can't find it in our current loaded tree, we fetch it
-      categoryApi.getById(value).then(res => setSelectedLabel(res.data.name)).catch(() => {});
-    }
+    return findLabel(nodes);
   }, [value, nodes]);
+  const [fetchedLabel, setFetchedLabel] = useState<{ id: string; name: string } | null>(null);
+
+  useEffect(() => {
+    if (!value || treeLabel) return;
+    let cancelled = false;
+    categoryApi
+      .getById(value)
+      .then((res) => {
+        if (!cancelled) setFetchedLabel({ id: value, name: res.data.name });
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [value, treeLabel]);
+
+  const displayLabel = !value ? "" : treeLabel ?? (fetchedLabel?.id === value ? fetchedLabel.name : selectedLabel);
 
   const handleToggleExpand = async (e: React.MouseEvent, node: TreeNode) => {
     e.stopPropagation(); // prevent selecting the item
@@ -205,7 +212,7 @@ export default function CategoryTreeSelect({
         onClick={() => setIsOpen(!isOpen)}
       >
         <span className="block truncate">
-          {selectedLabel || placeholder}
+          {displayLabel || placeholder}
         </span>
       </div>
 
