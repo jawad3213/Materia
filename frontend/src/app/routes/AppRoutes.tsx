@@ -17,6 +17,10 @@ import ForgotPasswordPage from '../../modules/auth/pages/ForgotPasswordPage';
 import ResetPasswordPage from '../../modules/auth/pages/ResetPasswordPage';
 import NotFoundPage from '../../shared/pages/NotFoundPage';
 import AppLayout from '../../shared/layout/AppLayout';
+import PublicLayout from '../../modules/landing/layout/PublicLayout';
+import HomePage from '../../modules/landing/pages/HomePage';
+import FeaturesPage from '../../modules/landing/pages/FeaturesPage';
+import SecurityPage from '../../modules/landing/pages/SecurityPage';
 import PrivateRoute from './PrivateRoute';
 import PublicRoute from './PublicRoute';
 import RoleGuard from './RoleGuard';
@@ -24,15 +28,12 @@ import RoleGuard from './RoleGuard';
 export default function AppRoutes() {
   return (
     <Routes>
-      {/* Root redirect: Authenticated users will go to /materials, unauthenticated will be caught by PrivateRoute and redirected to /login */}
-      <Route
-        path="/"
-        element={
-          <PrivateRoute>
-            <Navigate to="/materials" replace />
-          </PrivateRoute>
-        }
-      />
+      {/* Public marketing pages, open to everyone; the header offers sign-in or the dashboard */}
+      <Route element={<PublicLayout />}>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/features" element={<FeaturesPage />} />
+        <Route path="/security" element={<SecurityPage />} />
+      </Route>
 
       {/* Public Auth Routes */}
       <Route

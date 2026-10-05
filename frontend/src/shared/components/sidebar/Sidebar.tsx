@@ -276,7 +276,7 @@ export const Sidebar: React.FC = () => {
           }`}
         >
           <NavLink
-            to="/"
+            to="/dashboard"
             className="flex items-center gap-3 overflow-hidden"
             onClick={closeMobileSidebar}
           >

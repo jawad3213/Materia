@@ -54,7 +54,7 @@ const Header: React.FC<HeaderProps> = ({ onClick, onToggle }) => {
             </svg>
           </button>
 
-          <Link to="/" className="flex items-center gap-2.5 lg:hidden">
+          <Link to="/dashboard" className="flex items-center gap-2.5 lg:hidden">
             <img
               src="/images/Black_White_Minimalist_Professional_Initial_Logo__1_-removebg-preview332.png"
               alt="Materia Logo"
