@@ -1,5 +1,6 @@
 import PageMeta from "../../../shared/components/common/PageMeta";
 import Hero from "../components/Hero";
+import ProductPreview from "../components/ProductPreview";
 import ProofStrip from "../components/ProofStrip";
 import ProcurementCycle from "../components/ProcurementCycle";
 import FeatureGrid from "../components/FeatureGrid";
@@ -16,6 +17,7 @@ export default function HomePage() {
         description="Requisitions, purchase orders, receiving, returns, three-way matched invoices and payments in one controlled system."
       />
       <Hero />
+      <ProductPreview />
       <ProofStrip />
       <ProcurementCycle />
       <FeatureGrid />

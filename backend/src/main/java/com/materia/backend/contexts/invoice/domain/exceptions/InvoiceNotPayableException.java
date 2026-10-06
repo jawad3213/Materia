@@ -8,6 +8,6 @@ public class InvoiceNotPayableException extends RuntimeException {
     private static final long serialVersionUID = 1L;
     
     public InvoiceNotPayableException(String invoiceId, String status) {
-        super("La facture " + invoiceId + " ne peut pas être payée. Statut actuel: " + status);
+        super("Invoice " + invoiceId + " cannot be paid. Current status: " + status);
     }
 }

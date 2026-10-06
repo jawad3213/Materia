@@ -107,7 +107,63 @@ class InvoiceRulesTest {
         assertTrue(l.isHasQuantityDiscrepancy());
         assertEquals(3, l.getQuantityDiscrepancy());
         assertTrue(l.getDiscrepancyNotes().contains("(2)"));
-        assertTrue(l.getDiscrepancyNotes().contains("Prix unitaire (5.5)"));
+        assertTrue(l.getDiscrepancyNotes().contains("Unit price (5.5)"));
+        assertTrue(l.isHasPriceDiscrepancy());
+        assertEquals(0, new BigDecimal("10.00").compareTo(l.getPriceVariancePercent()));
+    }
+
+    @Test
+    @DisplayName("match: a price within the tolerance of the order price is recorded but is not a discrepancy")
+    void recordMatch_priceWithinTolerance() {
+        InvoiceLine l = line(4, "5.08", null, CurrencyCode.MAD);
+
+        l.recordMatch(10, 6, 6, Money.of("5.00", CurrencyCode.MAD), new BigDecimal("2"));
+
+        assertFalse(l.isHasPriceDiscrepancy());
+        assertFalse(l.hasDiscrepancy());
+        assertEquals(0, new BigDecimal("1.60").compareTo(l.getPriceVariancePercent()));
+        assertEquals(0, new BigDecimal("5.00").compareTo(l.getOrderUnitPrice().getAmount()));
+        assertNull(l.getDiscrepancyNotes());
+    }
+
+    @Test
+    @DisplayName("match: a price below the order price beyond the tolerance is a discrepancy too")
+    void recordMatch_priceBelowTolerance() {
+        InvoiceLine l = line(4, "4.80", null, CurrencyCode.MAD);
+
+        l.recordMatch(10, 6, 6, Money.of("5.00", CurrencyCode.MAD), new BigDecimal("2"));
+
+        assertTrue(l.isHasPriceDiscrepancy());
+        assertEquals(0, new BigDecimal("-4.00").compareTo(l.getPriceVariancePercent()));
+        assertTrue(l.getDiscrepancyNotes().contains("-4%"));
+    }
+
+    @Test
+    @DisplayName("verify: an invoice billed above the order price beyond the tolerance cannot be verified")
+    void verify_refusedOnPriceDiscrepancy() {
+        InvoiceLine l = line(2, "6.00", null, CurrencyCode.MAD);
+        Invoice invoice = invoice("MAD", l);
+        invoice.submit("buyer-1");
+        l.recordMatch(2, 2, 2, Money.of("5.00", CurrencyCode.MAD), new BigDecimal("2"));
+        invoice.refreshDiscrepancies();
+
+        InvoiceRuleViolationException ex = assertThrows(InvoiceRuleViolationException.class, () -> invoice.verify("admin-1", "Ada"));
+
+        assertTrue(ex.getMessage().contains("line"));
+        assertEquals(InvoiceStatus.SUBMITTED, invoice.getStatus());
+        assertTrue(invoice.isHasDiscrepancy());
+    }
+
+    @Test
+    @DisplayName("verify: an invoice billing more than was received cannot be verified")
+    void verify_refusedOnQuantityDiscrepancy() {
+        InvoiceLine l = line(5, "5.00", null, CurrencyCode.MAD);
+        Invoice invoice = invoice("MAD", l);
+        invoice.submit("buyer-1");
+        l.recordMatch(10, 3, 3, Money.of("5.00", CurrencyCode.MAD), new BigDecimal("2"));
+
+        assertThrows(InvoiceRuleViolationException.class, () -> invoice.verify("admin-1", "Ada"));
+        assertEquals(InvoiceStatus.SUBMITTED, invoice.getStatus());
     }
 
     @Test
@@ -133,7 +189,7 @@ class InvoiceRulesTest {
 
         invoice.refreshDiscrepancies();
         assertTrue(invoice.hasDiscrepancy());
-        assertTrue(invoice.getDiscrepancySummary().startsWith("Ligne 2 :"));
+        assertTrue(invoice.getDiscrepancySummary().startsWith("Line 2: "));
 
         over.recordMatch(10, 5, 5, Money.of("5.00", CurrencyCode.MAD));
         invoice.refreshDiscrepancies();
@@ -230,6 +286,6 @@ class InvoiceRulesTest {
         Invoice verified = inStatus(InvoiceStatus.VERIFIED);
         verified.cancel("admin-1", "Supplier withdrew it");
         assertEquals(InvoiceStatus.CANCELLED, verified.getStatus());
-        assertTrue(verified.getNotes().endsWith("Annulée: Supplier withdrew it"));
+        assertTrue(verified.getNotes().endsWith("Cancelled: Supplier withdrew it"));
     }
 }

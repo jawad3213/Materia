@@ -1,5 +1,6 @@
 package com.materia.backend.contexts.invoice.infrastructure.adapters.out.persistence;
 
+import com.materia.backend.common.infrastructure.persistence.PersistenceIds;
 import com.materia.backend.contexts.invoice.domain.entities.Invoice;
 import com.materia.backend.contexts.invoice.domain.enums.InvoiceStatus;
 import com.materia.backend.contexts.invoice.domain.ports.out.InvoiceRepository;
@@ -94,14 +95,18 @@ public class InvoicePersistenceAdapter implements InvoiceRepository {
 
     @Override
     public List<Invoice> findBySupplierId(String supplierId) {
-        return invoiceSpringDataRepository.findBySupplierId(supplierId).stream()
+        UUID id = PersistenceIds.toUuidOrNull(supplierId);
+        if (id == null) return List.of();
+        return invoiceSpringDataRepository.findBySupplierId(id).stream()
                 .map(mapper::toDomain)
                 .collect(Collectors.toList());
     }
 
     @Override
     public List<Invoice> findByPurchaseOrderId(String purchaseOrderId) {
-        return invoiceSpringDataRepository.findByPurchaseOrderId(purchaseOrderId).stream()
+        UUID id = PersistenceIds.toUuidOrNull(purchaseOrderId);
+        if (id == null) return List.of();
+        return invoiceSpringDataRepository.findByPurchaseOrderId(id).stream()
                 .map(mapper::toDomain)
                 .collect(Collectors.toList());
     }

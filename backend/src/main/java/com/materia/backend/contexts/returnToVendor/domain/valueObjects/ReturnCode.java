@@ -28,10 +28,10 @@ public class ReturnCode {
 
     public static ReturnCode fromPrefixYearAndNumber(String prefix, int year, int number) {
         if (prefix == null || prefix.trim().isEmpty()) {
-            throw new ReturnToVendorValidationException("Le préfixe est obligatoire");
+            throw new ReturnToVendorValidationException("The prefix is required");
         }
         if (number < 0 || number > 9999) {
-            throw new ReturnToVendorValidationException("Le numéro doit être entre 0 et 9999");
+            throw new ReturnToVendorValidationException("The number must be between 0 and 9999");
         }
         String id = prefix.trim().toUpperCase() + "-" + year + "-" + String.format("%04d", number);
         return new ReturnCode(id);
@@ -63,15 +63,15 @@ public class ReturnCode {
     
     private void validate(String value) {
         if (value == null) {
-            throw new ReturnToVendorValidationException("Le code de retour est obligatoire");
+            throw new ReturnToVendorValidationException("The return code is required");
         }
         String trimmed = value.trim();
         if (trimmed.isEmpty()) {
-            throw new ReturnToVendorValidationException("Le code de retour ne peut pas être vide");
+            throw new ReturnToVendorValidationException("The return code cannot be empty");
         }
         if (!PATTERN.matcher(trimmed).matches()) {
             throw new ReturnToVendorValidationException(
-                "Format invalide pour le code de retour: '" + value + 
+                "Invalid return code format: '" + value + 
                 "'. Format attendu: RTN-YYYY-0001 (ex: RTN-2026-0001) ou legacy RTN-0001"
             );
         }

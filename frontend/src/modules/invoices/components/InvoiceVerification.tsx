@@ -9,7 +9,8 @@ import { BODY_CELL, HEAD_CELL } from "../../../shared/components/page/pageStyles
 
 /**
  * Three-way match: for each line, what was ordered, what was received and what is billed.
- * Lines whose billed quantity exceeds what was received (or whose price differs) are highlighted.
+ * Lines whose billed quantity exceeds what was received, or whose price is beyond the tolerance around the order
+ * price, are highlighted: the invoice cannot be verified until they are corrected.
  */
 export default function InvoiceVerification({ invoice }: { invoice: Invoice }) {
   return (
@@ -38,13 +39,14 @@ export default function InvoiceVerification({ invoice }: { invoice: Invoice }) {
               <TableCell isHeader className={HEAD_CELL}>Received</TableCell>
               <TableCell isHeader className={HEAD_CELL}>Invoiced</TableCell>
               <TableCell isHeader className={HEAD_CELL}>Unit Price</TableCell>
+              <TableCell isHeader className={HEAD_CELL}>Order Price</TableCell>
               <TableCell isHeader className={HEAD_CELL}>Tax</TableCell>
               <TableCell isHeader className={HEAD_CELL}>Total incl. Tax</TableCell>
             </TableRow>
           </TableHeader>
           <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
             {invoice.lines.map((l) => (
-              <TableRow key={l.id} className={l.hasQuantityDiscrepancy || l.discrepancyNotes ? "bg-warning-50/50 dark:bg-warning-500/[0.06]" : ""}>
+              <TableRow key={l.id} className={l.hasQuantityDiscrepancy || l.hasPriceDiscrepancy || l.discrepancyNotes ? "bg-warning-50/50 dark:bg-warning-500/[0.06]" : ""}>
                 <TableCell className={BODY_CELL}>
                   <StackedCell main={<span className="font-mono">{l.materialCode || "—"}</span>} sub={l.discrepancyNotes || l.materialName} />
                 </TableCell>
@@ -56,7 +58,20 @@ export default function InvoiceVerification({ invoice }: { invoice: Invoice }) {
                     sub={l.hasQuantityDiscrepancy && l.quantityDiscrepancy ? `+${l.quantityDiscrepancy} over` : undefined}
                   />
                 </TableCell>
-                <TableCell className={BODY_CELL}>{formatAmount(l.unitPrice, invoice.currencyCode)}</TableCell>
+                <TableCell className={BODY_CELL}>
+                  <StackedCell
+                    main={formatAmount(l.unitPrice, invoice.currencyCode)}
+                    sub={
+                      l.priceVariancePercent != null && l.priceVariancePercent !== 0 ? (
+                        <span className={l.hasPriceDiscrepancy ? "font-medium text-error-500" : undefined}>
+                          {l.priceVariancePercent > 0 ? "+" : ""}
+                          {l.priceVariancePercent}% vs order
+                        </span>
+                      ) : undefined
+                    }
+                  />
+                </TableCell>
+                <TableCell className={BODY_CELL}>{l.orderUnitPrice != null ? formatAmount(l.orderUnitPrice, invoice.currencyCode) : "—"}</TableCell>
                 <TableCell className={BODY_CELL}>{formatAmount(l.taxAmount, invoice.currencyCode)}</TableCell>
                 <TableCell className={`${BODY_CELL} whitespace-nowrap`}>
                   {formatAmount(l.lineTotalWithTax ?? l.lineTotal, invoice.currencyCode)}

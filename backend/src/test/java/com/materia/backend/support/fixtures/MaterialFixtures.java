@@ -48,8 +48,8 @@ public final class MaterialFixtures {
         private int safetyStock = 5;
         private int stockOnOrder = 0;
         private String standardPrice = "10.00";
-        private String categoryId = UUID.randomUUID().toString();
-        private String supplierId = UUID.randomUUID().toString();
+        private String categoryId = ReferenceRows.CATEGORY_ID.toString();
+        private String supplierId = ReferenceRows.SUPPLIER_ID.toString();
 
         public Builder code(String code) { this.code = code; return this; }
         public Builder name(String name) { this.name = name; return this; }

@@ -25,7 +25,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Every cell of the purchase order transition table in {@code specs/002-purchase-order-tests/data-model.md}
- * (US1, FR-002, SC-001): 9 statuses × 9 actions = 81 cells.
+ * (US1, FR-002, SC-001): 8 statuses × 9 actions = 72 cells.
  *
  * <p>Permitted cells assert the resulting status. Forbidden cells assert refusal <em>and</em> that
  * the order is left unchanged, since a transition that throws after mutating would silently corrupt it.
@@ -61,7 +61,6 @@ class PurchaseOrderTransitionMatrixTest {
                     Action.RECEIVE_PART, PARTIALLY_RECEIVED, Action.CANCEL, CANCELLED),
             PARTIALLY_RECEIVED, Map.of(Action.TRACK, PARTIALLY_RECEIVED, Action.RECEIVE_ALL, COMPLETED,
                     Action.RECEIVE_PART, PARTIALLY_RECEIVED, Action.COMPLETE, COMPLETED),
-            RECEIVED, Map.of(Action.COMPLETE, COMPLETED),
             COMPLETED, Map.of(),
             CANCELLED, Map.of(),
             REJECTED, Map.of()
@@ -79,10 +78,10 @@ class PurchaseOrderTransitionMatrixTest {
     }
 
     @Test
-    @DisplayName("matrix: the table covers all 81 cells, one row per status (SC-001)")
+    @DisplayName("matrix: the table covers all 72 cells, one row per status (SC-001)")
     void matrix_coversEveryCell() {
         assertEquals(EnumSet.allOf(OrderStatus.class), PERMITTED.keySet());
-        assertEquals(81, permittedCells().count() + forbiddenCells().count());
+        assertEquals(72, permittedCells().count() + forbiddenCells().count());
     }
 
     @ParameterizedTest(name = "{0} --{1}--> {2}")
@@ -115,10 +114,10 @@ class PurchaseOrderTransitionMatrixTest {
 
     @ParameterizedTest(name = "no action from {0} yields a retired status")
     @EnumSource(OrderStatus.class)
-    @DisplayName("matrix: no action from any status yields a status outside the 9 defined ones (IN_PROGRESS retired)")
+    @DisplayName("matrix: no action from any status yields a status outside the 8 defined ones (IN_PROGRESS and RECEIVED retired)")
     void noActionYieldsRetiredStatus(OrderStatus from) {
         Set<String> defined = Set.of("DRAFT", "SUBMITTED", "CONFIRMED", "READY_FOR_RECEIPT", "PARTIALLY_RECEIVED",
-                "RECEIVED", "COMPLETED", "CANCELLED", "REJECTED");
+                "COMPLETED", "CANCELLED", "REJECTED");
         assertEquals(defined.size(), OrderStatus.values().length, "OrderStatus gained or lost a constant");
         for (Action action : PERMITTED.get(from).keySet()) {
             PurchaseOrder order = anOrder().inStatus(from).build();

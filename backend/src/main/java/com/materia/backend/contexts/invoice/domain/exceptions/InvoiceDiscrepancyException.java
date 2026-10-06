@@ -12,7 +12,7 @@ public class InvoiceDiscrepancyException extends RuntimeException {
     private final Object actual;
     
     public InvoiceDiscrepancyException(String field, Object expected, Object actual) {
-        super("Écart détecté pour le champ '" + field + "': attendu " + expected + ", reçu " + actual);
+        super("Discrepancy detected for field '" + field + "': attendu " + expected + ", received " + actual);
         this.field = field;
         this.expected = expected;
         this.actual = actual;

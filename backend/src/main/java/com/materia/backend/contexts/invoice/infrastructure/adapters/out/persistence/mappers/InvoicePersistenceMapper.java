@@ -1,5 +1,6 @@
 package com.materia.backend.contexts.invoice.infrastructure.adapters.out.persistence.mappers;
 
+import com.materia.backend.common.infrastructure.persistence.PersistenceIds;
 import com.materia.backend.contexts.invoice.domain.entities.Invoice;
 import com.materia.backend.contexts.invoice.domain.entities.InvoiceLine;
 import com.materia.backend.contexts.invoice.domain.valueObjects.InvoiceCode;
@@ -25,11 +26,11 @@ public class InvoicePersistenceMapper {
         // Without the stored version, Spring Data treats every save as an insert of a new invoice.
         entity.setVersion(domain.getVersion());
         entity.setInvoiceCode(domain.getInvoiceCode() != null ? domain.getInvoiceCode().getValue() : null);
-        entity.setPurchaseOrderId(domain.getPurchaseOrderId());
+        entity.setPurchaseOrderId(PersistenceIds.toUuid(domain.getPurchaseOrderId()));
         entity.setPurchaseOrderCode(domain.getPurchaseOrderCode());
-        entity.setGoodsReceiptId(domain.getGoodsReceiptId());
+        entity.setGoodsReceiptId(PersistenceIds.toUuid(domain.getGoodsReceiptId()));
         entity.setGoodsReceiptCode(domain.getGoodsReceiptCode());
-        entity.setSupplierId(domain.getSupplierId());
+        entity.setSupplierId(PersistenceIds.toUuid(domain.getSupplierId()));
         entity.setSupplierName(domain.getSupplierName());
         entity.setSupplierCode(domain.getSupplierCode());
         entity.setInvoiceType(domain.getInvoiceType());
@@ -76,11 +77,11 @@ public class InvoicePersistenceMapper {
 
         Invoice.Builder builder = Invoice.builder()
                 .id(entity.getId())
-                .purchaseOrderId(entity.getPurchaseOrderId())
+                .purchaseOrderId(PersistenceIds.toText(entity.getPurchaseOrderId()))
                 .purchaseOrderCode(entity.getPurchaseOrderCode())
-                .goodsReceiptId(entity.getGoodsReceiptId())
+                .goodsReceiptId(PersistenceIds.toText(entity.getGoodsReceiptId()))
                 .goodsReceiptCode(entity.getGoodsReceiptCode())
-                .supplierId(entity.getSupplierId())
+                .supplierId(PersistenceIds.toText(entity.getSupplierId()))
                 .supplierName(entity.getSupplierName())
                 .supplierCode(entity.getSupplierCode())
                 .invoiceType(entity.getInvoiceType())
@@ -153,8 +154,8 @@ public class InvoicePersistenceMapper {
         entity.setId(domain.getId());
         entity.setVersion(domain.getVersion());
         entity.setLineNumber(domain.getLineNumber());
-        entity.setPurchaseOrderLineId(domain.getPurchaseOrderLineId());
-        entity.setGoodsReceiptLineId(domain.getGoodsReceiptLineId());
+        entity.setPurchaseOrderLineId(PersistenceIds.toUuid(domain.getPurchaseOrderLineId()));
+        entity.setGoodsReceiptLineId(PersistenceIds.toUuid(domain.getGoodsReceiptLineId()));
         entity.setMaterialCode(domain.getMaterialCode());
         entity.setMaterialName(domain.getMaterialName());
         entity.setUnitOfMeasure(domain.getUnitOfMeasure());
@@ -171,6 +172,9 @@ public class InvoicePersistenceMapper {
         entity.setCurrencyCode(domain.getCurrencyCode());
         entity.setHasQuantityDiscrepancy(domain.isHasQuantityDiscrepancy());
         entity.setDiscrepancyNotes(domain.getDiscrepancyNotes());
+        entity.setOrderUnitPrice(domain.getOrderUnitPrice() != null ? domain.getOrderUnitPrice().getAmount() : null);
+        entity.setPriceVariancePercent(domain.getPriceVariancePercent());
+        entity.setHasPriceDiscrepancy(domain.isHasPriceDiscrepancy());
         entity.setNotes(domain.getNotes());
         return entity;
     }
@@ -185,8 +189,8 @@ public class InvoicePersistenceMapper {
         InvoiceLine domain = InvoiceLine.builder()
                 .id(entity.getId())
                 .lineNumber(entity.getLineNumber())
-                .purchaseOrderLineId(entity.getPurchaseOrderLineId())
-                .goodsReceiptLineId(entity.getGoodsReceiptLineId())
+                .purchaseOrderLineId(PersistenceIds.toText(entity.getPurchaseOrderLineId()))
+                .goodsReceiptLineId(PersistenceIds.toText(entity.getGoodsReceiptLineId()))
                 .materialCode(entity.getMaterialCode())
                 .materialName(entity.getMaterialName())
                 .unitOfMeasure(entity.getUnitOfMeasure())
@@ -205,6 +209,10 @@ public class InvoicePersistenceMapper {
         domain.setQuantityDiscrepancy(entity.getQuantityDiscrepancy());
         domain.setHasQuantityDiscrepancy(entity.isHasQuantityDiscrepancy());
         domain.setDiscrepancyNotes(entity.getDiscrepancyNotes());
+        domain.setOrderUnitPrice(entity.getOrderUnitPrice() != null
+                ? Money.of(entity.getOrderUnitPrice(), CurrencyCode.valueOf(entity.getCurrencyCode())) : null);
+        domain.setPriceVariancePercent(entity.getPriceVariancePercent());
+        domain.setHasPriceDiscrepancy(entity.isHasPriceDiscrepancy());
         return domain;
     }
 }

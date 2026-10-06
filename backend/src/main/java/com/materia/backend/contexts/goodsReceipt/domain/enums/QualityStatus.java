@@ -24,14 +24,14 @@ public enum QualityStatus {
     
     public static QualityStatus fromCode(String code) {
         if (code == null || code.isEmpty()) {
-            throw new IllegalArgumentException("Le code est obligatoire");
+            throw new IllegalArgumentException("The code is required");
         }
         for (QualityStatus status : values()) {
             if (status.code.equals(code)) {
                 return status;
             }
         }
-        throw new IllegalArgumentException("Statut inconnu : " + code);
+        throw new IllegalArgumentException("Unknown status: " + code);
     }
     
     public boolean isAccepted() {

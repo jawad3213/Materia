@@ -6,7 +6,6 @@ export type OrderStatus =
   | 'SUBMITTED'
   | 'CONFIRMED'
   | 'READY_FOR_RECEIPT'
-  | 'RECEIVED'
   | 'PARTIALLY_RECEIVED'
   | 'COMPLETED'
   | 'CANCELLED'
@@ -17,7 +16,6 @@ export const OrderStatusEnum = {
   SUBMITTED: 'SUBMITTED',
   CONFIRMED: 'CONFIRMED',
   READY_FOR_RECEIPT: 'READY_FOR_RECEIPT',
-  RECEIVED: 'RECEIVED',
   PARTIALLY_RECEIVED: 'PARTIALLY_RECEIVED',
   COMPLETED: 'COMPLETED',
   CANCELLED: 'CANCELLED',
@@ -56,12 +54,6 @@ export const ORDER_STATUS_INFO: Record<OrderStatus, OrderStatusInfo> = {
     description: 'Assigned to a receiver',
     color: '#0ea5e9',
   },
-  RECEIVED: {
-    code: 'RECEIVED',
-    label: 'Received',
-    description: 'Order received',
-    color: '#10b981',
-  },
   PARTIALLY_RECEIVED: {
     code: 'PARTIALLY_RECEIVED',
     label: 'Partly Received',
@@ -89,10 +81,10 @@ export const ORDER_STATUS_INFO: Record<OrderStatus, OrderStatusInfo> = {
 };
 
 export const isOrderStatusActive = (status: OrderStatus): boolean =>
-  status !== 'CANCELLED' && status !== 'REJECTED' && status !== 'COMPLETED' && status !== 'RECEIVED';
+  status !== 'CANCELLED' && status !== 'REJECTED' && status !== 'COMPLETED';
 
 export const isOrderStatusModifiable = (status: OrderStatus): boolean =>
   status === 'DRAFT' || status === 'SUBMITTED';
 
 export const isOrderStatusCancellable = (status: OrderStatus): boolean =>
-  isOrderStatusActive(status) && status !== 'COMPLETED' && status !== 'RECEIVED';
+  isOrderStatusActive(status) && status !== 'COMPLETED';

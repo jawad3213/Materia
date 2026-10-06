@@ -60,7 +60,7 @@ describe("public pages", () => {
     visitAs(false);
     renderAt("/");
 
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(/first request to the last payment/i);
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(/procure-to-pay,\s*in one continuous flow/i);
     CYCLE.forEach((step) => expect(screen.getByRole("heading", { name: step.title })).toBeInTheDocument());
     expect(screen.getAllByRole("link", { name: /sign in/i }).length).toBeGreaterThan(0);
     expect(screen.getByText("Illustrative data")).toBeInTheDocument();
@@ -72,6 +72,17 @@ describe("public pages", () => {
 
     expect(screen.getAllByRole("link", { name: /dashboard/i })[0]).toHaveAttribute("href", "/dashboard");
     expect(screen.queryByRole("link", { name: /^sign in$/i })).not.toBeInTheDocument();
+  });
+
+  it("rule: the top navigation links Overview, Modules and Security, with sign in for guests", () => {
+    visitAs(false);
+    renderAt("/");
+
+    const nav = screen.getByRole("navigation", { name: "Main" });
+    expect(within(nav).getByRole("link", { name: "Overview" })).toHaveAttribute("href", "/");
+    expect(within(nav).getByRole("link", { name: "Modules" })).toHaveAttribute("href", "/features");
+    expect(within(nav).getByRole("link", { name: "Security" })).toHaveAttribute("href", "/security");
+    expect(screen.getAllByRole("link", { name: /sign in/i })[0]).toHaveAttribute("href", "/login");
   });
 
   it("rule: the role tabs switch the abilities shown", () => {

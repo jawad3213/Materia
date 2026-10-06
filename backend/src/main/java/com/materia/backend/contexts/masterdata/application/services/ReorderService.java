@@ -41,23 +41,23 @@ public class ReorderService {
     
     @EventListener
     public void onMaterialBelowReorderPoint(MaterialBelowReorderPointEvent event) {
-        log.info("🔔 Matériau {} en dessous du point de réapprovisionnement", event.getMaterialCode());
+        log.info("🔔 Material {} below its reorder point", event.getMaterialCode());
         
         // 1. Récupérer le matériau
         Material material = materialRepository.findById(event.getEntityId())
-                .orElseThrow(() -> new RuntimeException("Matériau non trouvé"));
+                .orElseThrow(() -> new RuntimeException("Material not found"));
         
         // 2. Calculer la quantité recommandée
         ReorderQuantity reorderQuantity = stockDomainService.getRecommendedReorderQuantity(material);
         
         if (reorderQuantity == null) {
-            log.warn("❌ Pas de quantité de réapprovisionnement calculée pour {}", event.getMaterialCode());
+            log.warn("❌ No reorder quantity calculated for {}", event.getMaterialCode());
             return;
         }
 
         // A requisition already in progress covers it: do not raise a second one.
         if (hasOpenRequisition(material)) {
-            log.info("⏭️ Demande déjà en cours pour {}, pas de nouvelle demande", event.getMaterialCode());
+            log.info("⏭️ A request is already open for {}, no new request", event.getMaterialCode());
             return;
         }
         
@@ -85,21 +85,21 @@ public class ReorderService {
         
         // 4. Notifier l'acheteur
         String message = String.format(
-                "📦 Réapprovisionnement automatique pour %s\n" +
-                "Quantité recommandée: %d\n" +
-                "Raison: %s\n" +
+                "📦 Automatic reorder for %s\n" +
+                "Recommended quantity: %d\n" +
+                "Reason: %s\n" +
                 "Urgent: %s\n" +
-                "Demande: %s",
+                "Request: %s",
                 material.getName(),
                 reorderQuantity.getQuantity(),
                 reorderQuantity.getReason(),
-                reorderQuantity.isUrgent() ? "⚠️ OUI" : "NON",
+                reorderQuantity.isUrgent() ? "⚠️ YES" : "NO",
                 requisitionId
         );
         
         notificationService.sendAlert(
                 "acheteur@email.com",
-                "⚠️ Réapprovisionnement automatique - " + material.getName(),
+                "⚠️ Automatic reorder - " + material.getName(),
                 message
         );
     }
@@ -127,7 +127,7 @@ public class ReorderService {
 
         if (customQuantity != null && customQuantity > 0) {
             quantity = customQuantity;
-            reason = customReason != null && !customReason.isBlank() ? customReason : "Réapprovisionnement manuel (1-clic)";
+            reason = customReason != null && !customReason.isBlank() ? customReason : "Manual reorder (one click)";
             isUrgent = material.isBelowSafetyStock();
         } else if (reorderQuantity != null) {
             quantity = reorderQuantity.getQuantity();
@@ -136,7 +136,7 @@ public class ReorderService {
         } else {
             quantity = material.getEconomicOrderQuantity() != null && material.getEconomicOrderQuantity() > 0
                     ? material.getEconomicOrderQuantity() : 100;
-            reason = customReason != null && !customReason.isBlank() ? customReason : "Réapprovisionnement manuel (1-clic)";
+            reason = customReason != null && !customReason.isBlank() ? customReason : "Manual reorder (one click)";
             isUrgent = material.isBelowSafetyStock();
         }
 
@@ -159,26 +159,26 @@ public class ReorderService {
                 isUrgent
         ));
 
-        log.info("✅ Réapprovisionnement manuel déclenché pour {} (Qté: {}, Demande: {})",
+        log.info("✅ Manual reorder triggered for {} (Qty: {}, Request: {})",
                 material.getCode() != null ? material.getCode().getValue() : material.getId(),
                 quantity,
                 requisitionId);
 
         String message = String.format(
-                "📦 Réapprovisionnement manuel (1-clic) pour %s\n" +
-                "Quantité commandée: %d\n" +
-                "Raison: %s\n" +
+                "📦 Manual reorder (one click) for %s\n" +
+                "Ordered quantity: %d\n" +
+                "Reason: %s\n" +
                 "Urgent: %s\n" +
-                "Demande d'achat: %s",
+                "Purchase requisition: %s",
                 material.getName(),
                 quantity,
                 reason,
-                isUrgent ? "⚠️ OUI" : "NON",
+                isUrgent ? "⚠️ YES" : "NO",
                 requisitionId
         );
         notificationService.sendAlert(
                 "acheteur@email.com",
-                "⚠️ Réapprovisionnement manuel - " + material.getName(),
+                "⚠️ Manual reorder - " + material.getName(),
                 message
         );
 
@@ -191,7 +191,7 @@ public class ReorderService {
     
     @Scheduled(cron = "0 0 6 * * *")
     public void nightlyReorderCheck() {
-        log.info("🌅 Début de la vérification nocturne des réapprovisionnements");
+        log.info("🌅 Starting the nightly reorder check");
         
         // 1. Récupérer tous les matériaux actifs
         List<Material> activeMaterials = materialRepository.findByStatus(MaterialStatus.ACTIVE);
@@ -202,11 +202,11 @@ public class ReorderService {
                 .collect(Collectors.toList());
         
         if (materialsToReorder.isEmpty()) {
-            log.info("✅ Aucun matériau à réapprovisionner");
+            log.info("✅ No material to reorder");
             return;
         }
         
-        log.info("🔔 {} matériaux à réapprovisionner", materialsToReorder.size());
+        log.info("🔔 {} materials to reorder", materialsToReorder.size());
         
         // 3. Grouper par fournisseur
         // groupingBy refuses a null key, so materials without a supplier are grouped under "" (F-020).
@@ -233,11 +233,11 @@ public class ReorderService {
         String summary = generateReorderSummary(materialsToReorder);
         notificationService.sendReport(
                 "acheteur@email.com",
-                "📊 Résumé des réapprovisionnements - " + LocalDate.now(),
+                "📊 Reorder summary - " + LocalDate.now(),
                 summary
         );
         
-        log.info("✅ Vérification nocturne terminée");
+        log.info("✅ Nightly check finished");
     }
     
     private void createReorderForMaterial(Material material) {
@@ -258,7 +258,7 @@ public class ReorderService {
                     material.getSupplierId(),
                     reorderQuantity.isUrgent()
             ));
-            log.info("✅ Demande créée pour {}", material.getCode());
+            log.info("✅ Request created for {}", material.getCode());
         }
     }
     
@@ -269,7 +269,7 @@ public class ReorderService {
 
     private void createGroupedRequisition(String supplierId, List<Material> materials) {
         // Créer une demande groupée pour un fournisseur
-        log.info("📦 Création d'une demande groupée pour le fournisseur {}", supplierId);
+        log.info("📦 Creating a grouped request for supplier {}", supplierId);
         
         List<RequisitionLine> lines = new ArrayList<>();
         for (Material material : materials) {
@@ -287,7 +287,7 @@ public class ReorderService {
     
     private String generateReorderSummary(List<Material> materials) {
         StringBuilder sb = new StringBuilder();
-        sb.append("📊 RÉSUMÉ DES RÉAPPROVISIONNEMENTS\n");
+        sb.append("📊 REORDER SUMMARY\n");
         sb.append("================================\n");
         sb.append("Date: ").append(LocalDate.now()).append("\n\n");
         
@@ -296,10 +296,10 @@ public class ReorderService {
             int reorderQty = material.calculateReorderQuantity();
             sb.append(String.format(
                     "🔹 %s (%s)\n" +
-                    "   - Stock actuel: %d\n" +
+                    "   - Current stock: %d\n" +
                     "   - ROP: %d\n" +
                     "   - Status: %s\n" +
-                    "   - Quantité recommandée: %d\n\n",
+                    "   - Recommended quantity: %d\n\n",
                     material.getCode() != null ? material.getCode().getValue() : "",
                     material.getName(),
                     material.getCurrentStock(),

@@ -1,5 +1,6 @@
 package com.materia.backend.contexts.masterData.infrastructure.adapters.out.persistence.entities;
 
+import java.util.UUID;
 import com.materia.backend.common.infrastructure.persistence.BaseJpaEntity;
 import com.materia.backend.contexts.masterData.domain.enums.MaterialCategoryType;
 
@@ -35,7 +36,7 @@ public class CategoryJpaEntity extends BaseJpaEntity {
 
     // ---- HIERARCHY ----
     @Column(name = "parent_id")
-    private String parentId;
+    private UUID parentId;
 
     @Column(name = "parent_code", length = 50)
     private String parentCode;
@@ -92,8 +93,8 @@ public class CategoryJpaEntity extends BaseJpaEntity {
     public String getShortDescription() { return shortDescription; }
     public void setShortDescription(String shortDescription) { this.shortDescription = shortDescription; }
 
-    public String getParentId() { return parentId; }
-    public void setParentId(String parentId) { this.parentId = parentId; }
+    public UUID getParentId() { return parentId; }
+    public void setParentId(UUID parentId) { this.parentId = parentId; }
 
     public String getParentCode() { return parentCode; }
     public void setParentCode(String parentCode) { this.parentCode = parentCode; }

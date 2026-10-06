@@ -196,7 +196,7 @@ public class GoodsReceipt extends BaseEntity {
         
         public Builder addLine(GoodsReceiptLine line) {
             if (line == null) {
-                throw new GoodsReceiptInvalidLineException("La ligne ne peut pas etre nulle");
+                throw new GoodsReceiptInvalidLineException("The line cannot be null");
             }
             if (this.lines == null) {
                 this.lines = new ArrayList<>();
@@ -207,7 +207,7 @@ public class GoodsReceipt extends BaseEntity {
         
         public Builder lines(List<GoodsReceiptLine> lines) {
             if (lines == null) {
-                throw new GoodsReceiptLineRequiredException("La liste des lignes ne peut pas etre nulle");
+                throw new GoodsReceiptLineRequiredException("The list of lines cannot be null");
             }
             this.lines = new ArrayList<>(lines);
             return this;
@@ -242,30 +242,30 @@ public class GoodsReceipt extends BaseEntity {
         
         private void validateRequiredFields() {
             if (this.purchaseOrderId == null || this.purchaseOrderId.trim().isEmpty()) {
-                throw new GoodsReceiptValidationException("La commande d'achat est obligatoire");
+                throw new GoodsReceiptValidationException("The purchase order is required");
             }
             if (this.receivedBy == null || this.receivedBy.trim().isEmpty()) {
-                throw new GoodsReceiptValidationException("Le receptionnaire est obligatoire");
+                throw new GoodsReceiptValidationException("The receiver is required");
             }
             if (this.receivedByName == null || this.receivedByName.trim().isEmpty()) {
-                throw new GoodsReceiptValidationException("Le nom du receptionnaire est obligatoire");
+                throw new GoodsReceiptValidationException("The receiver name is required");
             }
         }
         
         private void validateLines() {
             if (this.lines == null || this.lines.isEmpty()) {
-                throw new GoodsReceiptLineRequiredException("Au moins une ligne est requise");
+                throw new GoodsReceiptLineRequiredException("At least one line is required");
             }
             for (int i = 0; i < this.lines.size(); i++) {
                 GoodsReceiptLine line = this.lines.get(i);
                 if (line.getMaterialCode() == null || line.getMaterialCode().trim().isEmpty()) {
-                    throw new GoodsReceiptInvalidLineException("Le materiau est obligatoire pour la ligne " + (i + 1));
+                    throw new GoodsReceiptInvalidLineException("The material is required for line " + (i + 1));
                 }
                 if (line.getQuantityReceived() == null || line.getQuantityReceived() < 0) {
-                    throw new GoodsReceiptInvalidQuantityException("La quantite recue est invalide pour la ligne " + (i + 1));
+                    throw new GoodsReceiptInvalidQuantityException("The received quantity is invalid for line " + (i + 1));
                 }
                 if (line.getQuantityRejected() == null || line.getQuantityRejected() < 0) {
-                    throw new GoodsReceiptInvalidQuantityException("La quantite rejetee est invalide pour la ligne " + (i + 1));
+                    throw new GoodsReceiptInvalidQuantityException("The rejected quantity is invalid for line " + (i + 1));
                 }
             }
         }
@@ -308,20 +308,20 @@ public class GoodsReceipt extends BaseEntity {
     public void complete(String userId) {
         if (status != ReceiptStatus.IN_PROGRESS && status != ReceiptStatus.DRAFT) {
             throw new GoodsReceiptInvalidStatusTransitionException(
-                "Seule une reception en cours ou en brouillon peut etre terminee"
+                "Only a draft or in-progress receipt can be completed"
             );
         }
         
         for (GoodsReceiptLine line : this.lines) {
             if (line.getQualityStatus() == null || line.getQualityStatus().isPending()) {
                 throw new GoodsReceiptQualityInspectionRequiredException(
-                    "Le controle qualite doit etre termine pour la ligne: " + line.getMaterialCode()
+                    "Quality control must be completed for line: " + line.getMaterialCode()
                 );
             }
             if (line.getQuantityRejected() != null && line.getQuantityRejected() > 0
                     && (line.getRejectionReason() == null || line.getRejectionReason().isBlank())) {
                 throw new GoodsReceiptValidationException(
-                    "Le motif de rejet est obligatoire pour la ligne: " + line.getMaterialCode()
+                    "A rejection reason is required for line: " + line.getMaterialCode()
                 );
             }
         }
@@ -335,22 +335,22 @@ public class GoodsReceipt extends BaseEntity {
     public void cancel(String userId, String reason) {
         if (!status.isCancellable()) {
             throw new GoodsReceiptInvalidStatusTransitionException(
-                "Cette reception ne peut pas etre annulee"
+                "This receipt cannot be cancelled"
             );
         }
         this.status = ReceiptStatus.CANCELLED;
-        this.notes = (this.notes != null ? this.notes + " " : "") + "Annulée: " + reason;
+        this.notes = (this.notes != null ? this.notes + " " : "") + "Cancelled: " + reason;
         this.setUpdatedAt(LocalDateTime.now());
         this.setUpdatedBy(userId);
     }
     
     public void addLine(GoodsReceiptLine line) {
         if (line == null) {
-            throw new GoodsReceiptInvalidLineException("La ligne ne peut pas etre nulle");
+            throw new GoodsReceiptInvalidLineException("The line cannot be null");
         }
         if (status != ReceiptStatus.DRAFT && status != ReceiptStatus.IN_PROGRESS) {
             throw new GoodsReceiptNotModifiableException(
-                "Impossible d'ajouter une ligne a une reception terminee"
+                "Cannot add a line to a completed receipt"
             );
         }
         this.lines.add(line);
@@ -360,11 +360,11 @@ public class GoodsReceipt extends BaseEntity {
     
     public void removeLine(int index) {
         if (index < 0 || index >= this.lines.size()) {
-            throw new GoodsReceiptInvalidLineException("Index de ligne invalide: " + index);
+            throw new GoodsReceiptInvalidLineException("Invalid line index: " + index);
         }
         if (status != ReceiptStatus.DRAFT && status != ReceiptStatus.IN_PROGRESS) {
             throw new GoodsReceiptNotModifiableException(
-                "Impossible de supprimer une ligne d'une reception terminee"
+                "Cannot remove a line from a completed receipt"
             );
         }
         this.lines.remove(index);

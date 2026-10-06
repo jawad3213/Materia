@@ -177,6 +177,23 @@ public class User extends BaseEntity {
         this.mustChangePassword = mustChangePassword;
     }
 
+    /**
+     * The user changes their own name and phone number; the full name follows the new name.
+     */
+    public void updateProfile(String firstName, String lastName, String phone) {
+        if (firstName == null || firstName.isBlank()) {
+            throw new IllegalArgumentException("First name is required");
+        }
+        if (lastName == null || lastName.isBlank()) {
+            throw new IllegalArgumentException("Last name is required");
+        }
+        this.firstName = firstName.trim();
+        this.lastName = lastName.trim();
+        this.fullName = computeFullName(this.firstName, this.lastName);
+        this.phone = phone == null || phone.isBlank() ? null : phone.trim();
+        this.updatedAt = java.time.LocalDateTime.now();
+    }
+
     // Builder
     public static class Builder {
         private UUID id;

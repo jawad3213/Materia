@@ -33,6 +33,6 @@ public enum StockStatus {
                 return status;
             }
         }
-        throw new IllegalArgumentException("Statut inconnu : " + code);
+        throw new IllegalArgumentException("Unknown status: " + code);
     }
 }

@@ -22,8 +22,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  *
  * Unlike {@code RequisitionFixtures}, the status is reached by driving the real transitions
  * (submit, confirm, assign, receive), so a fixture can never produce an order the system could
- * not reach — e.g. a "ready for receipt" order with no assigned receiver. The one exception is
- * the legacy {@code RECEIVED} status, which no transition produces any more.
+ * not reach — e.g. a "ready for receipt" order with no assigned receiver.
  */
 public final class PurchaseOrderFixtures {
 
@@ -45,11 +44,11 @@ public final class PurchaseOrderFixtures {
         return String.format("PO-%d-%04d", LocalDate.now().getYear(), 5000 + (SEQUENCE.getAndIncrement() - 5000) % 5000);
     }
 
-    /** A priced line for one fresh material: {@code quantity × unitPrice} in the given currency. */
+    /** A priced line for the reference material: {@code quantity × unitPrice} in the given currency. */
     public static PurchaseOrderLine aLine(int quantity, String unitPrice, CurrencyCode currency) {
         return PurchaseOrderLine.builder()
                 .materialCode("MAT-" + UUID.randomUUID().toString().substring(0, 6).toUpperCase())
-                .materialId(UUID.randomUUID())
+                .materialId(ReferenceRows.MATERIAL_ID)
                 .materialName("Test material")
                 .unitOfMeasure("PCE")
                 .quantity(quantity)
@@ -66,7 +65,7 @@ public final class PurchaseOrderFixtures {
         private String requisitionCode;
         private String receiverId = DEFAULT_RECEIVER_ID;
         private String receiverName = DEFAULT_RECEIVER_NAME;
-        private UUID supplierId = UUID.randomUUID();
+        private UUID supplierId = ReferenceRows.SUPPLIER_ID;
         private String notes;
 
         public Builder inStatus(OrderStatus status) {
@@ -168,11 +167,6 @@ public final class PurchaseOrderFixtures {
                 case REJECTED -> {
                     order.submit(BUYER);
                     order.reject(BUYER, "Supplier cannot deliver");
-                }
-                // Legacy: no transition produces RECEIVED any more; kept so existing rows load.
-                case RECEIVED -> {
-                    readyForReceipt(order);
-                    order.setStatus(OrderStatus.RECEIVED);
                 }
             }
         }

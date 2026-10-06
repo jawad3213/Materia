@@ -44,5 +44,16 @@ override.tf.json
 *_override.tf.json
 .terraformrc
 terraform.rc
+# Saved plans contain every value, secrets included
+*.tfplan
+*.tfplan.json
+tfplan
+# Account-specific backend settings (backend.hcl.example is tracked)
+backend.hcl
+*.backend.hcl
+# Local copies of the deploy environment (written on the host from Parameter Store)
+aws/deploy/.env
+aws/deploy/.env.*
+# .terraform.lock.hcl stays tracked so every run uses the same provider versions
 
 

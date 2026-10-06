@@ -60,7 +60,7 @@ class MaterialStockControllerTest extends AbstractWebMvcTest {
 
     private ReorderRecommendationOutput recommendation() {
         return new ReorderRecommendationOutput(id, "MAT-2026-0001", "Printer paper", 8, 0, 8, 20, 5, 100,
-                new BigDecimal("250.00"), "MAD", "Point de réapprovisionnement atteint", false, "REORDER_NEEDED");
+                new BigDecimal("250.00"), "MAD", "Reorder point reached", false, "REORDER_NEEDED");
     }
 
     // ---- Stock movements ----

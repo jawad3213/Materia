@@ -18,9 +18,9 @@ public interface InvoiceSpringDataRepository extends JpaRepository<InvoiceJpaEnt
 
     List<InvoiceJpaEntity> findByStatus(InvoiceStatus status);
 
-    List<InvoiceJpaEntity> findBySupplierId(String supplierId);
+    List<InvoiceJpaEntity> findBySupplierId(UUID supplierId);
 
-    List<InvoiceJpaEntity> findByPurchaseOrderId(String purchaseOrderId);
+    List<InvoiceJpaEntity> findByPurchaseOrderId(UUID purchaseOrderId);
 
     boolean existsByInvoiceCode(String invoiceCode);
 

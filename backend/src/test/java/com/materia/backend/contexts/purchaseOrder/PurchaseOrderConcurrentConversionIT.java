@@ -1,5 +1,6 @@
 package com.materia.backend.contexts.purchaseOrder;
 
+import com.materia.backend.support.fixtures.ReferenceRows;
 import com.materia.backend.common.domain.enums.CurrencyCode;
 import com.materia.backend.common.domain.valueObjects.Money;
 import com.materia.backend.contexts.purchaseOrder.application.dtos.CreatePurchaseOrderInput;
@@ -53,6 +54,8 @@ class PurchaseOrderConcurrentConversionIT extends AbstractIntegrationTest {
         if (requisitionId == null) {
             return;
         }
+        // The requisition points at its order: unlink it before the order goes.
+        jdbc.update("update purchase_requisitions set purchase_order_id = null where id = ?", requisitionId);
         jdbc.update("delete from purchase_order_lines where purchase_order_id in "
                 + "(select id from purchase_orders where requisition_id = ?)", requisitionId);
         jdbc.update("delete from purchase_orders where requisition_id = ?", requisitionId);
@@ -70,7 +73,7 @@ class PurchaseOrderConcurrentConversionIT extends AbstractIntegrationTest {
         line.setUnitPrice(Money.of("4.00", CurrencyCode.MAD));
         CreatePurchaseOrderInput input = new CreatePurchaseOrderInput();
         input.setRequisitionId(id);
-        input.setSupplierId(UUID.randomUUID());
+        input.setSupplierId(ReferenceRows.newSupplier(jdbc));
         input.setSupplierName("Acme Supplies");
         input.setOrderedBy("buyer-1");
         input.setCurrencyCode("MAD");

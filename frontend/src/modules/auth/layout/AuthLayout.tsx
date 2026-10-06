@@ -1,5 +1,5 @@
 import React from 'react';
-import { useTheme } from '../../../shared/context/useTheme';
+import { Link } from 'react-router-dom';
 
 interface AuthLayoutProps {
   children: React.ReactNode;
@@ -10,37 +10,56 @@ export default function AuthLayout({
   children,
   backgroundImage = 'https://ik.imagekit.io/jaouad/pexels-tiger-lily-4483772.jpg',
 }: AuthLayoutProps) {
-  const { theme, toggleTheme } = useTheme();
-
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-white dark:bg-gray-900 transition-colors">
+    <div className="flex h-screen w-full overflow-hidden bg-white dark:bg-gray-900 transition-colors relative">
+      {/* Back to Home Button (Extra Left / Top-Left) */}
+      <Link
+        to="/"
+        aria-label="Back to home"
+        title="Back to public home page"
+        className="absolute top-4 left-4 sm:top-6 sm:left-6 z-30 inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white bg-white/90 dark:bg-gray-800/90 backdrop-blur-md rounded-xl border border-gray-200/80 dark:border-gray-700/80 shadow-xs hover:shadow-md hover:bg-gray-50 dark:hover:bg-gray-750 transition-all group"
+      >
+        <svg
+          className="size-4.5 transition-transform duration-200 group-hover:-translate-x-1 text-gray-500 dark:text-gray-400 group-hover:text-brand-500 dark:group-hover:text-brand-400"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2.2}
+            d="M10 19l-7-7m0 0l7-7m-7 7h18"
+          />
+        </svg>
+        <span className="font-medium text-xs sm:text-sm">Home</span>
+      </Link>
+
       {/* Left Column: Form Section */}
       <div
         className="flex flex-col justify-between w-full lg:w-1/2 h-full overflow-y-auto no-scrollbar px-6 sm:px-12 md:px-16 lg:px-12 xl:px-20 py-4 sm:py-6"
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
-        {/* Top Header Bar (Mobile Theme Toggle only on small screens) */}
-        <div className="flex items-center justify-end w-full max-w-md mx-auto">
-          <button
-            type="button"
-            onClick={toggleTheme}
-            aria-label="Toggle theme"
-            className="lg:hidden p-2 text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 transition-colors rounded-lg bg-gray-100 dark:bg-gray-800"
-          >
-            {theme === 'dark' ? (
-              <svg className="size-5 text-amber-400" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clipRule="evenodd" />
-              </svg>
-            ) : (
-              <svg className="size-5 text-gray-700" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
-              </svg>
-            )}
-          </button>
-        </div>
+        {/* Top spacer */}
+        <div className="w-full max-w-md mx-auto h-4" />
 
         {/* Center: Children Form */}
         <div className="w-full max-w-md mx-auto my-auto py-2 sm:py-4">
+          {/* Centered Materia Wordmark Logo */}
+          <div className="flex justify-center pb-4 mb-3 sm:pb-6 sm:mb-4">
+            <Link
+              to="/"
+              className="inline-flex items-center transition-transform duration-200 hover:opacity-90"
+              aria-label="Materia home"
+            >
+              <img
+                src="/images/Black_White_Minimalist_Professional_Initial_Logo__2_-removebg-preview.png"
+                alt="Materia"
+                className="h-5.5 w-auto sm:h-6 object-contain dark:invert"
+              />
+            </Link>
+          </div>
+
           {children}
         </div>
 

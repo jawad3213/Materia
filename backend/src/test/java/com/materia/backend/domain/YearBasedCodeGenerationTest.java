@@ -12,8 +12,8 @@ import com.materia.backend.contexts.masterData.application.services.SupplierCode
 import com.materia.backend.contexts.masterData.domain.enums.MaterialType;
 import com.materia.backend.contexts.masterData.domain.ports.out.CodeSequenceRepository;
 import com.materia.backend.contexts.masterData.domain.valueObjects.MaterialCode;
-import com.materia.backend.contexts.payement.application.services.PaymentCodeGeneratorService;
-import com.materia.backend.contexts.payement.domain.valueObjects.PaymentCode;
+import com.materia.backend.contexts.payment.application.services.PaymentCodeGeneratorService;
+import com.materia.backend.contexts.payment.domain.valueObjects.PaymentCode;
 import com.materia.backend.contexts.purchaseOrder.application.services.PurchaseOrderCodeGeneratorService;
 import com.materia.backend.contexts.purchaseOrder.domain.valueObjects.OrderCode;
 import com.materia.backend.contexts.purchaseRequisition.application.services.RequisitionCodeGeneratorService;

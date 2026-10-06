@@ -32,9 +32,11 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.math.BigDecimal;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
@@ -50,7 +52,7 @@ public class InvoiceService extends AbstractCrudApplicationService<
 
     /** Orders that have received goods; nothing can be invoiced before a receipt. */
     private static final Set<OrderStatus> INVOICEABLE_ORDER_STATUSES =
-            EnumSet.of(OrderStatus.PARTIALLY_RECEIVED, OrderStatus.RECEIVED, OrderStatus.COMPLETED);
+            EnumSet.of(OrderStatus.PARTIALLY_RECEIVED, OrderStatus.COMPLETED);
 
     private static final Set<ReceiptStatus> VALIDATED_RECEIPT_STATUSES =
             EnumSet.of(ReceiptStatus.COMPLETED, ReceiptStatus.PARTIAL);
@@ -61,6 +63,7 @@ public class InvoiceService extends AbstractCrudApplicationService<
     private final PurchaseOrderRepository purchaseOrderRepository;
     private final GoodsReceiptRepository goodsReceiptRepository;
     private final UserDirectory userDirectory;
+    private BigDecimal priceTolerancePercent = InvoiceLine.DEFAULT_PRICE_TOLERANCE_PERCENT;
 
     public InvoiceService(InvoiceRepository invoiceRepository,
                           InvoiceMapper invoiceMapper,
@@ -75,6 +78,12 @@ public class InvoiceService extends AbstractCrudApplicationService<
         this.purchaseOrderRepository = purchaseOrderRepository;
         this.goodsReceiptRepository = goodsReceiptRepository;
         this.userDirectory = userDirectory;
+    }
+
+    /** How far, in percent, an invoiced unit price may be from the order price before verification is refused. */
+    @Value("${app.invoice.price-tolerance-percent:2}")
+    public void setPriceTolerancePercent(BigDecimal priceTolerancePercent) {
+        this.priceTolerancePercent = priceTolerancePercent != null ? priceTolerancePercent : InvoiceLine.DEFAULT_PRICE_TOLERANCE_PERCENT;
     }
 
     @Override
@@ -143,11 +152,13 @@ public class InvoiceService extends AbstractCrudApplicationService<
     }
 
     @Override
+    @Transactional(readOnly = true)
     public InvoiceOutput getById(UUID id) {
         return toResponse(getInvoiceById(id));
     }
 
     @Override
+    @Transactional(readOnly = true)
     public InvoiceOutput getByCode(String code) {
         return toResponse(
                 invoiceRepository.findByInvoiceCode(code)
@@ -156,27 +167,32 @@ public class InvoiceService extends AbstractCrudApplicationService<
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<InvoiceOutput> getAll() {
         return getAllResponses();
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<InvoiceOutput> getByStatus(String status) {
         InvoiceStatus invoiceStatus = InvoiceStatus.valueOf(status.toUpperCase());
         return toResponseList(invoiceRepository.findByStatus(invoiceStatus));
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<InvoiceOutput> getBySupplierId(String supplierId) {
         return toResponseList(invoiceRepository.findBySupplierId(supplierId));
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<InvoiceOutput> getByPurchaseOrderId(String purchaseOrderId) {
         return toResponseList(invoiceRepository.findByPurchaseOrderId(purchaseOrderId));
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<InvoiceOutput> searchByKeyword(String keyword) {
         return toResponseList(invoiceRepository.search(keyword));
     }
@@ -264,7 +280,7 @@ public class InvoiceService extends AbstractCrudApplicationService<
             int receivedQty = received.getOrDefault(key, 0);
             int alreadyInvoiced = invoiced.getOrDefault(key, 0);
             int billable = creditNote ? alreadyInvoiced : receivedQty - alreadyInvoiced;
-            line.recordMatch(orderLine.getQuantity(), receivedQty, billable, orderLine.getUnitPrice());
+            line.recordMatch(orderLine.getQuantity(), receivedQty, billable, orderLine.getUnitPrice(), priceTolerancePercent);
         }
         invoice.refreshDiscrepancies();
     }

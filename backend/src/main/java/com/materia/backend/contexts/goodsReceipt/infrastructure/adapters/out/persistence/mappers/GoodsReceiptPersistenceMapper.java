@@ -1,5 +1,6 @@
 package com.materia.backend.contexts.goodsReceipt.infrastructure.adapters.out.persistence.mappers;
 
+import com.materia.backend.common.infrastructure.persistence.PersistenceIds;
 import com.materia.backend.contexts.goodsReceipt.domain.entities.GoodsReceipt;
 import com.materia.backend.contexts.goodsReceipt.domain.entities.GoodsReceiptLine;
 import com.materia.backend.contexts.goodsReceipt.domain.valueObjects.ReceiptCode;
@@ -25,7 +26,7 @@ public class GoodsReceiptPersistenceMapper {
         GoodsReceiptJpaEntity jpa = new GoodsReceiptJpaEntity();
         jpa.setId(domain.getId());
         jpa.setReceiptCode(domain.getReceiptCode() != null ? domain.getReceiptCode().getValue() : null);
-        jpa.setPurchaseOrderId(domain.getPurchaseOrderId());
+        jpa.setPurchaseOrderId(PersistenceIds.toUuid(domain.getPurchaseOrderId()));
         jpa.setPurchaseOrderCode(domain.getPurchaseOrderCode());
         jpa.setStatus(domain.getStatus());
         jpa.setReceiptDate(domain.getReceiptDate());
@@ -33,7 +34,7 @@ public class GoodsReceiptPersistenceMapper {
         jpa.setReceivedBy(domain.getReceivedBy());
         jpa.setReceivedByName(domain.getReceivedByName());
         jpa.setNotes(domain.getNotes());
-        jpa.setSupplierId(domain.getSupplierId());
+        jpa.setSupplierId(PersistenceIds.toUuid(domain.getSupplierId()));
         jpa.setSupplierName(domain.getSupplierName());
         jpa.setTotalQuantityOrdered(domain.getTotalQuantityOrdered());
         jpa.setTotalQuantityReceived(domain.getTotalQuantityReceived());
@@ -63,7 +64,7 @@ public class GoodsReceiptPersistenceMapper {
         if (jpa.getReceiptCode() != null) {
             domain.setReceiptCode(ReceiptCode.of(jpa.getReceiptCode()));
         }
-        domain.setPurchaseOrderId(jpa.getPurchaseOrderId());
+        domain.setPurchaseOrderId(PersistenceIds.toText(jpa.getPurchaseOrderId()));
         domain.setPurchaseOrderCode(jpa.getPurchaseOrderCode());
         domain.setStatus(jpa.getStatus());
         domain.setReceiptDate(jpa.getReceiptDate());
@@ -71,7 +72,7 @@ public class GoodsReceiptPersistenceMapper {
         domain.setReceivedBy(jpa.getReceivedBy());
         domain.setReceivedByName(jpa.getReceivedByName());
         domain.setNotes(jpa.getNotes());
-        domain.setSupplierId(jpa.getSupplierId());
+        domain.setSupplierId(PersistenceIds.toText(jpa.getSupplierId()));
         domain.setSupplierName(jpa.getSupplierName());
         domain.setTotalQuantityOrdered(jpa.getTotalQuantityOrdered());
         domain.setTotalQuantityReceived(jpa.getTotalQuantityReceived());
@@ -106,7 +107,7 @@ public class GoodsReceiptPersistenceMapper {
         jpa.setId(domain.getId());
         jpa.setGoodsReceipt(parent);
         jpa.setLineNumber(domain.getLineNumber());
-        jpa.setPurchaseOrderLineId(domain.getPurchaseOrderLineId());
+        jpa.setPurchaseOrderLineId(PersistenceIds.toUuid(domain.getPurchaseOrderLineId()));
         jpa.setMaterialCode(domain.getMaterialCode());
         jpa.setMaterialId(domain.getMaterialId());
         jpa.setMaterialName(domain.getMaterialName());
@@ -124,7 +125,7 @@ public class GoodsReceiptPersistenceMapper {
         jpa.setUnitPrice(toAmount(domain.getUnitPrice()));
         jpa.setLineTotal(toAmount(resolveLineTotal(domain)));
         jpa.setCurrencyCode(resolveCurrencyCode(domain.getUnitPrice(), domain.getLineTotal()));
-        jpa.setSupplierId(domain.getSupplierId());
+        jpa.setSupplierId(PersistenceIds.toUuid(domain.getSupplierId()));
         jpa.setSupplierName(domain.getSupplierName());
         jpa.setBatchNumber(domain.getBatchNumber());
         jpa.setExpiryDate(domain.getExpiryDate());
@@ -147,7 +148,7 @@ public class GoodsReceiptPersistenceMapper {
         GoodsReceiptLine domain = new GoodsReceiptLine();
         domain.setId(jpa.getId());
         domain.setLineNumber(jpa.getLineNumber());
-        domain.setPurchaseOrderLineId(jpa.getPurchaseOrderLineId());
+        domain.setPurchaseOrderLineId(PersistenceIds.toText(jpa.getPurchaseOrderLineId()));
         domain.setMaterialCode(jpa.getMaterialCode());
         domain.setMaterialId(jpa.getMaterialId());
         domain.setMaterialName(jpa.getMaterialName());
@@ -164,7 +165,7 @@ public class GoodsReceiptPersistenceMapper {
         domain.setStockAfter(jpa.getStockAfter());
         domain.setUnitPrice(toMoney(jpa.getUnitPrice(), jpa.getCurrencyCode()));
         domain.setLineTotal(resolveDomainLineTotal(jpa));
-        domain.setSupplierId(jpa.getSupplierId());
+        domain.setSupplierId(PersistenceIds.toText(jpa.getSupplierId()));
         domain.setSupplierName(jpa.getSupplierName());
         domain.setBatchNumber(jpa.getBatchNumber());
         domain.setExpiryDate(jpa.getExpiryDate());

@@ -1,5 +1,6 @@
 package com.materia.backend.contexts.invoice.infrastructure.adapters.out.persistence;
 
+import com.materia.backend.support.ReferenceColumnTypes;
 import com.materia.backend.support.AbstractIntegrationTest;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -34,6 +35,9 @@ class InvoiceMigrationIT extends AbstractIntegrationTest {
 
     private static final Path MIGRATION =
             Path.of("src/main/resources/db/migration/V20261004_01__create_invoice_tables.sql");
+    /** Later invoice migrations, applied after the tables exist to reach the current structure. */
+    private static final Path PRICE_MATCH_MIGRATION =
+            Path.of("src/main/resources/db/migration/V20261005_02__add_invoice_line_price_match.sql");
     private static final Path PREVIOUS_STRUCTURE =
             Path.of("src/test/resources/db/test-migration/V20260925_04__create_out_of_scope_tables.sql");
 
@@ -149,6 +153,13 @@ class InvoiceMigrationIT extends AbstractIntegrationTest {
     @DisplayName("structure: the migrated columns match the schema the entities are validated against")
     void structure_matchesValidatedSchema() throws IOException {
         applyMigration();
+        jdbc.execute(retarget(Files.readString(PRICE_MATCH_MIGRATION, StandardCharsets.UTF_8)));
+        ReferenceColumnTypes.convertToUuid(jdbc, schema,
+                "invoices.purchase_order_id",
+                "invoices.goods_receipt_id",
+                "invoices.supplier_id",
+                "invoice_lines.purchase_order_line_id",
+                "invoice_lines.goods_receipt_line_id");
 
         for (String table : List.of("invoices", "invoice_lines")) {
             assertEquals(columns("public", table), columns(schema, table),

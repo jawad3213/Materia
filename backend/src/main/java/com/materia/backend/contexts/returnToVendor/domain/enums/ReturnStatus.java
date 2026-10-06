@@ -18,7 +18,7 @@ public enum ReturnStatus {
     DRAFT("DRAFT", "Brouillon", "Retour en cours de saisie"),
     PENDING("PENDING", "En attente", "Retour soumis, en attente de traitement"),
     RESOLVED("RESOLVED", "Résolu", "Retour traité (remplacement ou avoir reçu)"),
-    CANCELLED("CANCELLED", "Annulé", "Retour annulé");
+    CANCELLED("CANCELLED", "Annulé", "Return cancelled");
     
     private final String code;
     private final String label;
@@ -36,14 +36,14 @@ public enum ReturnStatus {
     
     public static ReturnStatus fromCode(String code) {
         if (code == null || code.isEmpty()) {
-            throw new ReturnToVendorValidationException("Le code est obligatoire");
+            throw new ReturnToVendorValidationException("The code is required");
         }
         for (ReturnStatus status : values()) {
             if (status.code.equals(code)) {
                 return status;
             }
         }
-        throw new ReturnToVendorValidationException("Statut inconnu : " + code);
+        throw new ReturnToVendorValidationException("Unknown status: " + code);
     }
     
     public static boolean isValidCode(String code) {

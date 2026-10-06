@@ -1,5 +1,6 @@
 package com.materia.backend.contexts.masterData.infrastructure.adapters.out.persistence.mappers;
 
+import com.materia.backend.common.infrastructure.persistence.PersistenceIds;
 import com.materia.backend.contexts.masterData.domain.entities.Category;
 import com.materia.backend.contexts.masterData.infrastructure.adapters.out.persistence.entities.CategoryJpaEntity;
 import org.springframework.stereotype.Component;
@@ -23,7 +24,7 @@ public class CategoryPersistenceMapper {
         jpa.setName(domain.getName());
         jpa.setDescription(domain.getDescription());
         jpa.setShortDescription(domain.getShortDescription());
-        jpa.setParentId(domain.getParentId());
+        jpa.setParentId(PersistenceIds.toUuid(domain.getParentId()));
         jpa.setParentCode(domain.getParentCode());
         jpa.setLevel(domain.getLevel());
         jpa.setPath(domain.getPath());
@@ -52,7 +53,7 @@ public class CategoryPersistenceMapper {
                 .name(jpa.getName())
                 .description(jpa.getDescription())
                 .shortDescription(jpa.getShortDescription())
-                .parentId(jpa.getParentId())
+                .parentId(PersistenceIds.toText(jpa.getParentId()))
                 .parentCode(jpa.getParentCode())
                 .level(jpa.getLevel())
                 .path(jpa.getPath())

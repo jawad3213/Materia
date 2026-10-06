@@ -8,7 +8,7 @@ public class InvoiceSupplierMismatchException extends RuntimeException {
     private static final long serialVersionUID = 1L;
     
     public InvoiceSupplierMismatchException(String invoiceSupplier, String orderSupplier) {
-        super("Le fournisseur de la facture (" + invoiceSupplier + 
-              ") ne correspond pas au fournisseur de la commande (" + orderSupplier + ")");
+        super("The invoice supplier (" + invoiceSupplier + 
+              ") does not match the purchase order supplier (" + orderSupplier + ")");
     }
 }

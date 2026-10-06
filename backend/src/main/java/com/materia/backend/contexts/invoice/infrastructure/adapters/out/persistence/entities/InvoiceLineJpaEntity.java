@@ -1,5 +1,6 @@
 package com.materia.backend.contexts.invoice.infrastructure.adapters.out.persistence.entities;
 
+import java.util.UUID;
 import com.materia.backend.common.infrastructure.persistence.BaseJpaEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -21,11 +22,11 @@ public class InvoiceLineJpaEntity extends BaseJpaEntity {
     @Column(name = "line_number", nullable = false)
     private Integer lineNumber;
 
-    @Column(name = "purchase_order_line_id", length = 100)
-    private String purchaseOrderLineId;
+    @Column(name = "purchase_order_line_id")
+    private UUID purchaseOrderLineId;
 
-    @Column(name = "goods_receipt_line_id", length = 100)
-    private String goodsReceiptLineId;
+    @Column(name = "goods_receipt_line_id")
+    private UUID goodsReceiptLineId;
 
     @Column(name = "material_code", length = 50)
     private String materialCode;
@@ -69,6 +70,15 @@ public class InvoiceLineJpaEntity extends BaseJpaEntity {
     @Column(name = "discrepancy_notes", length = 1000)
     private String discrepancyNotes;
 
+    @Column(name = "order_unit_price", precision = 19, scale = 4)
+    private BigDecimal orderUnitPrice;
+
+    @Column(name = "price_variance_percent", precision = 9, scale = 2)
+    private BigDecimal priceVariancePercent;
+
+    @Column(name = "has_price_discrepancy", nullable = false)
+    private boolean hasPriceDiscrepancy;
+
     @Column(name = "notes", length = 1000)
     private String notes;
 
@@ -80,11 +90,11 @@ public class InvoiceLineJpaEntity extends BaseJpaEntity {
     public Integer getLineNumber() { return lineNumber; }
     public void setLineNumber(Integer lineNumber) { this.lineNumber = lineNumber; }
 
-    public String getPurchaseOrderLineId() { return purchaseOrderLineId; }
-    public void setPurchaseOrderLineId(String purchaseOrderLineId) { this.purchaseOrderLineId = purchaseOrderLineId; }
+    public UUID getPurchaseOrderLineId() { return purchaseOrderLineId; }
+    public void setPurchaseOrderLineId(UUID purchaseOrderLineId) { this.purchaseOrderLineId = purchaseOrderLineId; }
 
-    public String getGoodsReceiptLineId() { return goodsReceiptLineId; }
-    public void setGoodsReceiptLineId(String goodsReceiptLineId) { this.goodsReceiptLineId = goodsReceiptLineId; }
+    public UUID getGoodsReceiptLineId() { return goodsReceiptLineId; }
+    public void setGoodsReceiptLineId(UUID goodsReceiptLineId) { this.goodsReceiptLineId = goodsReceiptLineId; }
 
     public String getMaterialCode() { return materialCode; }
     public void setMaterialCode(String materialCode) { this.materialCode = materialCode; }
@@ -130,4 +140,13 @@ public class InvoiceLineJpaEntity extends BaseJpaEntity {
 
     public String getNotes() { return notes; }
     public void setNotes(String notes) { this.notes = notes; }
+
+    public BigDecimal getOrderUnitPrice() { return orderUnitPrice; }
+    public void setOrderUnitPrice(BigDecimal orderUnitPrice) { this.orderUnitPrice = orderUnitPrice; }
+
+    public BigDecimal getPriceVariancePercent() { return priceVariancePercent; }
+    public void setPriceVariancePercent(BigDecimal priceVariancePercent) { this.priceVariancePercent = priceVariancePercent; }
+
+    public boolean isHasPriceDiscrepancy() { return hasPriceDiscrepancy; }
+    public void setHasPriceDiscrepancy(boolean hasPriceDiscrepancy) { this.hasPriceDiscrepancy = hasPriceDiscrepancy; }
 }

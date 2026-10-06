@@ -387,7 +387,7 @@ public class Requisition extends BaseEntity {
         public Builder description(String description) {
             if (description != null && description.length() > MAX_DESCRIPTION_LENGTH) {
                 throw new IllegalArgumentException(
-                        "La description ne peut pas dépasser " + MAX_DESCRIPTION_LENGTH + " caractères"
+                        "The description cannot exceed " + MAX_DESCRIPTION_LENGTH + " characters"
                 );
             }
             this.description = description;
@@ -397,7 +397,7 @@ public class Requisition extends BaseEntity {
         public Builder justification(String justification) {
             if (justification != null && justification.length() > MAX_JUSTIFICATION_LENGTH) {
                 throw new IllegalArgumentException(
-                        "La justification ne peut pas dépasser " + MAX_JUSTIFICATION_LENGTH + " caractères"
+                        "The justification cannot exceed " + MAX_JUSTIFICATION_LENGTH + " characters"
                 );
             }
             this.justification = justification;
@@ -421,7 +421,7 @@ public class Requisition extends BaseEntity {
 
         public Builder requiredDate(LocalDate requiredDate) {
             if (requiredDate != null && requiredDate.isBefore(LocalDate.now())) {
-                throw new IllegalArgumentException("La date de besoin ne peut pas être dans le passé");
+                throw new IllegalArgumentException("The required date cannot be in the past");
             }
             this.requiredDate = requiredDate;
             return this;
@@ -501,7 +501,7 @@ public class Requisition extends BaseEntity {
          */
         public Builder addLine(RequisitionLine line) {
             if (line == null) {
-                throw new IllegalArgumentException("La ligne ne peut pas être nulle");
+                throw new IllegalArgumentException("The line cannot be null");
             }
             if (this.lines == null) {
                 this.lines = new ArrayList<>();
@@ -517,7 +517,7 @@ public class Requisition extends BaseEntity {
          */
         public Builder lines(List<RequisitionLine> lines) {
             if (lines == null) {
-                throw new IllegalArgumentException("La liste des lignes ne peut pas être nulle");
+                throw new IllegalArgumentException("The list of lines cannot be null");
             }
             this.lines = new ArrayList<>(lines);
             // Réassigner les numéros de ligne

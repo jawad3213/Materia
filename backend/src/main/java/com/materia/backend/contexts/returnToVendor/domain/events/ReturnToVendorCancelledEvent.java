@@ -8,8 +8,8 @@ public class ReturnToVendorCancelledEvent extends DomainEvent {
 
     private final String returnCode;
     private final String reason;
-    private final String title = "Retour annulé";
-    private final String description = "❌ Retour annulé";
+    private final String title = "Return cancelled";
+    private final String description = "❌ Return cancelled";
     private final String role = "Acheteur";
     private final String cancelledBy;
 

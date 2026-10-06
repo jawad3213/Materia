@@ -8,6 +8,6 @@ public class InvoiceAlreadyExistsException extends RuntimeException {
     private static final long serialVersionUID = 1L;
     
     public InvoiceAlreadyExistsException(String reference) {
-        super("Une facture existe déjà avec la référence: " + reference);
+        super("An invoice already exists with the reference: " + reference);
     }
 }

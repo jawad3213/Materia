@@ -26,10 +26,10 @@ public class Email {
     
     private void validate(String value) {
         if (value == null || value.trim().isEmpty()) {
-            throw new IllegalArgumentException("L'email est obligatoire");
+            throw new IllegalArgumentException("Email is required");
         }
         if (!PATTERN.matcher(value.trim()).matches()) {
-            throw new IllegalArgumentException("Format d'email invalide: " + value);
+            throw new IllegalArgumentException("Invalid email format: " + value);
         }
     }
     

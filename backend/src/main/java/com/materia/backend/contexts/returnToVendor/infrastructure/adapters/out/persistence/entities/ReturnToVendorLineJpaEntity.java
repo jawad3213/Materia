@@ -1,5 +1,6 @@
 package com.materia.backend.contexts.returnToVendor.infrastructure.adapters.out.persistence.entities;
 
+import java.util.UUID;
 import com.materia.backend.common.infrastructure.persistence.BaseJpaEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -18,14 +19,14 @@ public class ReturnToVendorLineJpaEntity extends BaseJpaEntity {
     @Column(name = "line_number")
     private Integer lineNumber;
 
-    @Column(name = "goods_receipt_line_id", length = 100)
-    private String goodsReceiptLineId;
+    @Column(name = "goods_receipt_line_id")
+    private UUID goodsReceiptLineId;
 
-    @Column(name = "purchase_order_line_id", length = 100)
-    private String purchaseOrderLineId;
+    @Column(name = "purchase_order_line_id")
+    private UUID purchaseOrderLineId;
 
-    @Column(name = "material_id", length = 100)
-    private String materialId;
+    @Column(name = "material_id")
+    private UUID materialId;
 
     @Column(name = "unit_price", precision = 19, scale = 4)
     private java.math.BigDecimal unitPrice;
@@ -72,8 +73,8 @@ public class ReturnToVendorLineJpaEntity extends BaseJpaEntity {
     public Integer getLineNumber() { return lineNumber; }
     public void setLineNumber(Integer lineNumber) { this.lineNumber = lineNumber; }
 
-    public String getGoodsReceiptLineId() { return goodsReceiptLineId; }
-    public void setGoodsReceiptLineId(String goodsReceiptLineId) { this.goodsReceiptLineId = goodsReceiptLineId; }
+    public UUID getGoodsReceiptLineId() { return goodsReceiptLineId; }
+    public void setGoodsReceiptLineId(UUID goodsReceiptLineId) { this.goodsReceiptLineId = goodsReceiptLineId; }
 
     public String getMaterialCode() { return materialCode; }
     public void setMaterialCode(String materialCode) { this.materialCode = materialCode; }
@@ -110,11 +111,11 @@ public class ReturnToVendorLineJpaEntity extends BaseJpaEntity {
 
     public String getNotes() { return notes; }
     public void setNotes(String notes) { this.notes = notes; }
-    public String getPurchaseOrderLineId() { return purchaseOrderLineId; }
-    public void setPurchaseOrderLineId(String purchaseOrderLineId) { this.purchaseOrderLineId = purchaseOrderLineId; }
+    public UUID getPurchaseOrderLineId() { return purchaseOrderLineId; }
+    public void setPurchaseOrderLineId(UUID purchaseOrderLineId) { this.purchaseOrderLineId = purchaseOrderLineId; }
 
-    public String getMaterialId() { return materialId; }
-    public void setMaterialId(String materialId) { this.materialId = materialId; }
+    public UUID getMaterialId() { return materialId; }
+    public void setMaterialId(UUID materialId) { this.materialId = materialId; }
 
     public java.math.BigDecimal getUnitPrice() { return unitPrice; }
     public void setUnitPrice(java.math.BigDecimal unitPrice) { this.unitPrice = unitPrice; }

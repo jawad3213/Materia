@@ -137,6 +137,14 @@ class AuthService {
   }
 
   /**
+   * Replace the cached user (same storage as the session), e.g. after a profile edit
+   */
+  storeUser(user: User): void {
+    const storage = isRememberMe() ? localStorage : sessionStorage;
+    storage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
+  }
+
+  /**
    * Log out user and clear stored tokens
    */
   async logout(): Promise<void> {

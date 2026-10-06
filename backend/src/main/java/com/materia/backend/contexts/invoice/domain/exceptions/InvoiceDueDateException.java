@@ -8,6 +8,6 @@ public class InvoiceDueDateException extends RuntimeException {
     private static final long serialVersionUID = 1L;
     
     public InvoiceDueDateException(String message) {
-        super("Date d'échéance invalide: " + message);
+        super("Invalid due date: " + message);
     }
 }

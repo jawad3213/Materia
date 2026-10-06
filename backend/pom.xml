@@ -278,7 +278,7 @@
                                     <element>PACKAGE</element>
                                     <!--
                                       Only contexts that have verification are gated (002 research F-009).
-                                      Add a context here when it gets tests; invoice, payement and
+                                      Add a context here when it gets tests; invoice, payment and
                                       returnToVendor are untested and would fail at 0%.
                                     -->
                                     <includes>

@@ -86,7 +86,7 @@ class ReorderServiceCoverageTest {
         verify(requisitions).createRequisitionFromReorder(eq(m), anyInt(), anyString(), eq(true));
         assertEquals(0, m.getStockOnOrder(), "stock on order is recorded by the purchase order, not the requisition");
         verify(events).publishEvent(any(MaterialReorderedEvent.class));
-        verify(notifications).sendAlert(anyString(), contains("automatique"), contains("OUI"));
+        verify(notifications).sendAlert(anyString(), contains("Automatic"), contains("YES"));
     }
 
     // ---- Manual (1-click) ----
@@ -107,7 +107,7 @@ class ReorderServiceCoverageTest {
         Material withEoq = stored(aMaterial().stock(50).reorderPoint(20).build());
         withEoq.setEconomicOrderQuantity(40);
         reorder.triggerManualReorder(withEoq.getId(), 0, " ");
-        verify(requisitions).createRequisitionFromReorder(eq(withEoq), eq(40), contains("manuel"), eq(false), isNull());
+        verify(requisitions).createRequisitionFromReorder(eq(withEoq), eq(40), contains("Manual"), eq(false), isNull());
 
         Material noEoq = stored(aMaterial().stock(50).reorderPoint(20).build());
         noEoq.setEconomicOrderQuantity(null);
@@ -122,7 +122,7 @@ class ReorderServiceCoverageTest {
 
         reorder.triggerManualReorder(m.getId(), 12, null);
 
-        verify(requisitions).createRequisitionFromReorder(eq(m), eq(12), contains("manuel"), eq(true), isNull());
+        verify(requisitions).createRequisitionFromReorder(eq(m), eq(12), contains("Manual"), eq(true), isNull());
         ArgumentCaptor<MaterialReorderedEvent> event = ArgumentCaptor.forClass(MaterialReorderedEvent.class);
         verify(events).publishEvent(event.capture());
         assertEquals(12, event.getValue().getReorderQuantity());
@@ -153,7 +153,7 @@ class ReorderServiceCoverageTest {
 
         verify(requisitions).createGroupedRequisition(eq("sup-1"), argThat(lines -> lines.size() == 2));
         verify(requisitions).createGroupedRequisition(eq("sup-2"), argThat(lines -> lines.size() == 1));
-        verify(notifications).sendReport(anyString(), contains("Résumé"), contains(a.getCode().getValue()));
+        verify(notifications).sendReport(anyString(), contains("Reorder summary"), contains(a.getCode().getValue()));
     }
 
     @Test

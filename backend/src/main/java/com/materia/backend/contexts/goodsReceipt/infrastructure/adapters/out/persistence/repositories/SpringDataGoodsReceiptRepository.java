@@ -18,13 +18,13 @@ public interface SpringDataGoodsReceiptRepository extends JpaRepository<GoodsRec
 
     boolean existsByReceiptCode(String receiptCode);
 
-    List<GoodsReceiptJpaEntity> findByPurchaseOrderId(String purchaseOrderId);
+    List<GoodsReceiptJpaEntity> findByPurchaseOrderId(UUID purchaseOrderId);
 
     List<GoodsReceiptJpaEntity> findByStatus(ReceiptStatus status);
 
     List<GoodsReceiptJpaEntity> findByReceivedBy(String receivedBy);
 
-    List<GoodsReceiptJpaEntity> findBySupplierId(String supplierId);
+    List<GoodsReceiptJpaEntity> findBySupplierId(UUID supplierId);
 
     List<GoodsReceiptJpaEntity> findByReceiptDateBetween(LocalDate startDate, LocalDate endDate);
 }

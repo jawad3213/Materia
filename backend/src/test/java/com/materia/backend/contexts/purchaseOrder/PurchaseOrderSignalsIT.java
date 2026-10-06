@@ -1,5 +1,7 @@
 package com.materia.backend.contexts.purchaseOrder;
 
+import com.materia.backend.support.fixtures.ReferenceRows;
+import org.springframework.jdbc.core.JdbcTemplate;
 import com.materia.backend.common.domain.enums.CurrencyCode;
 import com.materia.backend.common.domain.valueObjects.Money;
 import com.materia.backend.contexts.auth.domain.entities.User;
@@ -32,6 +34,8 @@ import static org.junit.jupiter.api.Assertions.*;
 @RecordApplicationEvents
 class PurchaseOrderSignalsIT extends AbstractIntegrationTest {
 
+    @Autowired private JdbcTemplate jdbc;
+
     @Autowired private PurchaseOrderUseCase orders;
     @Autowired private MaterialRepository materials;
     @Autowired private UserRepository users;
@@ -44,7 +48,7 @@ class PurchaseOrderSignalsIT extends AbstractIntegrationTest {
         line.setQuantity(5);
         line.setUnitPrice(Money.of("2.00", CurrencyCode.MAD));
         CreatePurchaseOrderInput input = new CreatePurchaseOrderInput();
-        input.setSupplierId(UUID.randomUUID());
+        input.setSupplierId(ReferenceRows.newSupplier(jdbc));
         input.setSupplierName("Acme");
         input.setOrderedBy("buyer-1");
         input.setCurrencyCode("MAD");

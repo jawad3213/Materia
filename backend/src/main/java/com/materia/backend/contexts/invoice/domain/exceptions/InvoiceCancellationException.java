@@ -8,6 +8,6 @@ public class InvoiceCancellationException extends RuntimeException {
     private static final long serialVersionUID = 1L;
     
     public InvoiceCancellationException(String invoiceId, String reason) {
-        super("Impossible d'annuler la facture " + invoiceId + ": " + reason);
+        super("Cannot cancel invoice " + invoiceId + ": " + reason);
     }
 }

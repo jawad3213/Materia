@@ -23,7 +23,7 @@ export interface InvoiceLineDraft {
 const VALIDATED_RECEIPT_STATUSES = ["COMPLETED", "PARTIAL"];
 
 /** Purchase orders that have received goods and so can be invoiced. */
-export const INVOICEABLE_ORDER_STATUSES = ["PARTIALLY_RECEIVED", "RECEIVED", "COMPLETED"];
+export const INVOICEABLE_ORDER_STATUSES = ["PARTIALLY_RECEIVED", "COMPLETED"];
 
 function acceptedOn(receipts: GoodsReceipt[], purchaseOrderLineId: string): number {
   return receipts

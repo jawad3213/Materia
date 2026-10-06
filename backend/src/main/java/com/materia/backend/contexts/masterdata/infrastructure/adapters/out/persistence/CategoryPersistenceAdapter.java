@@ -1,5 +1,6 @@
 package com.materia.backend.contexts.masterData.infrastructure.adapters.out.persistence;
 
+import com.materia.backend.common.infrastructure.persistence.PersistenceIds;
 import com.materia.backend.contexts.masterData.domain.entities.Category;
 import com.materia.backend.contexts.masterData.domain.enums.MaterialCategoryType;
 import com.materia.backend.contexts.masterData.domain.ports.out.CategoryRepository;
@@ -109,7 +110,9 @@ public class CategoryPersistenceAdapter implements CategoryRepository {
 
     @Override
     public List<Category> findByParentId(String parentId) {
-        return toDomainEntities(jpaRepository.findByParentId(parentId));
+        UUID id = PersistenceIds.toUuidOrNull(parentId);
+        if (id == null) return List.of();
+        return toDomainEntities(jpaRepository.findByParentId(id));
     }
 
     @Override
@@ -129,7 +132,8 @@ public class CategoryPersistenceAdapter implements CategoryRepository {
 
     @Override
     public boolean existsByParentId(String parentId) {
-        return jpaRepository.existsByParentId(parentId);
+        UUID id = PersistenceIds.toUuidOrNull(parentId);
+        return id != null && jpaRepository.existsByParentId(id);
     }
 
     @Override
@@ -142,21 +146,20 @@ public class CategoryPersistenceAdapter implements CategoryRepository {
             return List.of();
         }
 
-        List<String> categoryIds = jpaEntities.stream()
+        List<UUID> categoryIds = jpaEntities.stream()
                 .map(CategoryJpaEntity::getId)
-                .map(UUID::toString)
                 .toList();
 
         Map<String, List<String>> childIdsByParentId = new LinkedHashMap<>();
         for (Object[] row : jpaRepository.findChildRelationsByParentIds(categoryIds)) {
-            String parentId = (String) row[0];
+            String parentId = PersistenceIds.toText(row[0]);
             String childId = ((UUID) row[1]).toString();
             childIdsByParentId.computeIfAbsent(parentId, ignored -> new ArrayList<>()).add(childId);
         }
 
         Map<String, Integer> materialCountByCategoryId = new LinkedHashMap<>();
         for (Object[] row : materialJpaRepository.countMaterialsByCategoryIds(categoryIds)) {
-            materialCountByCategoryId.put((String) row[0], ((Long) row[1]).intValue());
+            materialCountByCategoryId.put(PersistenceIds.toText(row[0]), ((Long) row[1]).intValue());
         }
 
         return jpaEntities.stream()

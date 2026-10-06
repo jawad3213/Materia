@@ -36,7 +36,7 @@ const QUICK_FILTERS: Record<QuickFilter, (o: PurchaseOrder) => boolean> = {
   ALL: () => true,
   WITH_SUPPLIER: (o) => o.status === "SUBMITTED" || o.status === "CONFIRMED",
   READY_FOR_RECEIPT: (o) => o.status === "READY_FOR_RECEIPT" || o.status === "PARTIALLY_RECEIVED",
-  COMPLETED: (o) => o.status === "COMPLETED" || o.status === "RECEIVED",
+  COMPLETED: (o) => o.status === "COMPLETED",
 };
 
 const EMPTY_FILTERS: PurchaseOrderFilterValues = { status: "", deliveryStatus: "", dateFrom: "", dateTo: "" };

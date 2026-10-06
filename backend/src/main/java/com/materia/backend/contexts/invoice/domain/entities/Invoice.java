@@ -282,7 +282,7 @@ public class Invoice extends BaseEntity {
         
         public Builder addLine(InvoiceLine line) {
             if (line == null) {
-                throw new IllegalArgumentException("La ligne ne peut pas être nulle");
+                throw new IllegalArgumentException("The line cannot be null");
             }
             if (this.lines == null) {
                 this.lines = new ArrayList<>();
@@ -293,7 +293,7 @@ public class Invoice extends BaseEntity {
         
         public Builder lines(List<InvoiceLine> lines) {
             if (lines == null) {
-                throw new IllegalArgumentException("La liste des lignes ne peut pas être nulle");
+                throw new IllegalArgumentException("The list of lines cannot be null");
             }
             this.lines = new ArrayList<>(lines);
             return this;
@@ -339,28 +339,28 @@ public class Invoice extends BaseEntity {
         
         private void validateRequiredFields() {
             if (this.purchaseOrderId == null || this.purchaseOrderId.trim().isEmpty()) {
-                throw new IllegalArgumentException("La commande est obligatoire");
+                throw new IllegalArgumentException("The purchase order is required");
             }
             if (this.supplierId == null || this.supplierId.trim().isEmpty()) {
-                throw new IllegalArgumentException("Le fournisseur est obligatoire");
+                throw new IllegalArgumentException("The supplier is required");
             }
             if (this.supplierName == null || this.supplierName.trim().isEmpty()) {
-                throw new IllegalArgumentException("Le nom du fournisseur est obligatoire");
+                throw new IllegalArgumentException("The supplier name is required");
             }
             if (this.totalAmount == null) {
-                throw new IllegalArgumentException("Le montant total est obligatoire");
+                throw new IllegalArgumentException("The total amount is required");
             }
         }
         
         private void validateLines() {
             if (this.lines == null || this.lines.isEmpty()) {
-                throw new IllegalArgumentException("Au moins une ligne est requise");
+                throw new IllegalArgumentException("At least one line is required");
             }
             for (int i = 0; i < this.lines.size(); i++) {
                 InvoiceLine line = this.lines.get(i);
                 if (line.getMaterialCode() == null || line.getMaterialCode().trim().isEmpty()) {
                     throw new IllegalArgumentException(
-                        "Le code du matériau est obligatoire pour la ligne " + (i + 1)
+                        "The material code is required for line " + (i + 1)
                     );
                 }
             }
@@ -415,11 +415,11 @@ public class Invoice extends BaseEntity {
         boolean any = false;
         if (this.lines != null) {
             for (InvoiceLine line : this.lines) {
-                if (line.isHasQuantityDiscrepancy() || line.getDiscrepancyNotes() != null) {
+                if (line.hasDiscrepancy() || line.getDiscrepancyNotes() != null) {
                     any = true;
                     if (line.getDiscrepancyNotes() != null) {
                         if (summary.length() > 0) summary.append(" ");
-                        summary.append("Ligne ").append(line.getLineNumber()).append(" : ").append(line.getDiscrepancyNotes());
+                        summary.append("Line ").append(line.getLineNumber()).append(": ").append(line.getDiscrepancyNotes());
                     }
                 }
             }
@@ -438,7 +438,7 @@ public class Invoice extends BaseEntity {
      */
     public void submit(String userId) {
         if (status != InvoiceStatus.DRAFT) {
-            throw new InvoiceRuleViolationException("Seule une facture en brouillon peut être soumise");
+            throw new InvoiceRuleViolationException("Only a draft invoice can be submitted");
         }
         this.status = InvoiceStatus.SUBMITTED;
         this.setUpdatedAt(LocalDateTime.now());
@@ -451,6 +451,21 @@ public class Invoice extends BaseEntity {
     public void verify(String userId, String userName) {
         if (status != InvoiceStatus.SUBMITTED) {
             throw new InvoiceNotVerifiableException(String.valueOf(getId()), String.valueOf(status));
+        }
+        List<String> blocking = new ArrayList<>();
+        if (this.lines != null) {
+            for (InvoiceLine line : this.lines) {
+                if (line.hasDiscrepancy()) {
+                    blocking.add("line " + line.getLineNumber()
+                            + (line.getDiscrepancyNotes() != null ? " (" + line.getDiscrepancyNotes() + ")" : ""));
+                }
+            }
+        }
+        if (!blocking.isEmpty()) {
+            // Three-way match: an invoice that bills more than was received, or at another price than ordered
+            // beyond the tolerance, must be corrected (or credited) by the supplier before it can be approved.
+            throw new InvoiceRuleViolationException("The invoice does not match its purchase order and cannot be verified: "
+                    + String.join("; ", blocking));
         }
         this.status = InvoiceStatus.VERIFIED;
         this.isVerified = true;
@@ -471,15 +486,15 @@ public class Invoice extends BaseEntity {
             throw new InvoiceNotPayableException(String.valueOf(getId()), String.valueOf(status));
         }
         if (amount == null || !amount.isPositive()) {
-            throw new InvoiceValidationException("amount", "Le montant payé doit être positif");
+            throw new InvoiceValidationException("amount", "The amount paid must be positive");
         }
         if (currencyCode != null && !currencyCode.equalsIgnoreCase(amount.getCurrencyCode())) {
-            throw new InvoiceValidationException("amount", "Le paiement doit être dans la devise de la facture (" + currencyCode + ")");
+            throw new InvoiceValidationException("amount", "The payment must be in the invoice currency (" + currencyCode + ")");
         }
         Money outstanding = getOutstandingAmount();
         if (amount.getAmount().compareTo(outstanding.getAmount()) > 0) {
-            throw new InvoiceValidationException("amount", "Le paiement (" + amount.getAmount().stripTrailingZeros().toPlainString()
-                    + ") dépasse le reste à payer (" + outstanding.getAmount().stripTrailingZeros().toPlainString() + ")");
+            throw new InvoiceValidationException("amount", "The payment (" + amount.getAmount().stripTrailingZeros().toPlainString()
+                    + ") exceeds the amount still due (" + outstanding.getAmount().stripTrailingZeros().toPlainString() + ")");
         }
         this.paidAmount = this.paidAmount != null ? this.paidAmount.add(amount) : amount;
         this.paidAt = LocalDateTime.now();
@@ -515,18 +530,18 @@ public class Invoice extends BaseEntity {
     public void cancel(String userId, String reason) {
         if (status == InvoiceStatus.PAID || status == InvoiceStatus.CANCELLED) {
             throw new InvoiceCancellationException(String.valueOf(getId()),
-                    status == InvoiceStatus.PAID ? "une facture payée ne peut pas être annulée" : "elle est déjà annulée");
+                    status == InvoiceStatus.PAID ? "a paid invoice cannot be cancelled" : "it is already cancelled");
         }
         if (isPartiallyPaid()) {
             throw new InvoiceCancellationException(String.valueOf(getId()),
-                    "des paiements ont déjà été enregistrés");
+                    "payments have already been recorded");
         }
         if (reason == null || reason.isBlank()) {
-            throw new InvoiceValidationException("reason", "Le motif d'annulation est obligatoire");
+            throw new InvoiceValidationException("reason", "A cancellation reason is required");
         }
-        String updatedNotes = (this.notes != null ? this.notes + " " : "") + "Annulée: " + reason;
+        String updatedNotes = (this.notes != null ? this.notes + " " : "") + "Cancelled: " + reason;
         if (updatedNotes.length() > 1000) {
-            throw new InvoiceValidationException("reason", "Le motif est trop long pour les notes de la facture");
+            throw new InvoiceValidationException("reason", "The reason is too long for the invoice notes");
         }
         this.status = InvoiceStatus.CANCELLED;
         this.notes = updatedNotes;

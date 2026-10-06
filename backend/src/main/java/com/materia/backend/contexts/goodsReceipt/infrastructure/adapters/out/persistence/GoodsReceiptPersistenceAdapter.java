@@ -1,5 +1,6 @@
 package com.materia.backend.contexts.goodsReceipt.infrastructure.adapters.out.persistence;
 
+import com.materia.backend.common.infrastructure.persistence.PersistenceIds;
 import com.materia.backend.contexts.goodsReceipt.domain.entities.GoodsReceipt;
 import com.materia.backend.contexts.goodsReceipt.domain.enums.ReceiptStatus;
 import com.materia.backend.contexts.goodsReceipt.domain.ports.out.GoodsReceiptRepository;
@@ -116,7 +117,9 @@ public class GoodsReceiptPersistenceAdapter implements GoodsReceiptRepository {
 
     @Override
     public List<GoodsReceipt> findByPurchaseOrderId(String purchaseOrderId) {
-        return jpaRepository.findByPurchaseOrderId(purchaseOrderId).stream()
+        UUID id = PersistenceIds.toUuidOrNull(purchaseOrderId);
+        if (id == null) return List.of();
+        return jpaRepository.findByPurchaseOrderId(id).stream()
                 .map(mapper::toDomainEntity)
                 .collect(Collectors.toList());
     }
@@ -137,7 +140,9 @@ public class GoodsReceiptPersistenceAdapter implements GoodsReceiptRepository {
 
     @Override
     public List<GoodsReceipt> findBySupplierId(String supplierId) {
-        return jpaRepository.findBySupplierId(supplierId).stream()
+        UUID id = PersistenceIds.toUuidOrNull(supplierId);
+        if (id == null) return List.of();
+        return jpaRepository.findBySupplierId(id).stream()
                 .map(mapper::toDomainEntity)
                 .collect(Collectors.toList());
     }
@@ -172,7 +177,7 @@ public class GoodsReceiptPersistenceAdapter implements GoodsReceiptRepository {
 
                 String searchPattern = "%" + keyword.trim().toLowerCase() + "%";
                 Predicate receiptCodeMatch = cb.like(cb.lower(root.get("receiptCode")), searchPattern);
-                Predicate purchaseOrderIdMatch = cb.like(cb.lower(cb.coalesce(root.get("purchaseOrderId"), "")), searchPattern);
+                Predicate purchaseOrderIdMatch = cb.like(cb.lower(cb.coalesce(root.get("purchaseOrderId").as(String.class), "")), searchPattern);
                 Predicate purchaseOrderCodeMatch = cb.like(cb.lower(cb.coalesce(root.get("purchaseOrderCode"), "")), searchPattern);
                 Predicate supplierNameMatch = cb.like(cb.lower(cb.coalesce(root.get("supplierName"), "")), searchPattern);
                 Predicate receivedByNameMatch = cb.like(cb.lower(cb.coalesce(root.get("receivedByName"), "")), searchPattern);

@@ -8,6 +8,6 @@ public class InvoiceAlreadyVerifiedException extends RuntimeException {
     private static final long serialVersionUID = 1L;
     
     public InvoiceAlreadyVerifiedException(String invoiceId) {
-        super("La facture " + invoiceId + " a déjà été vérifiée");
+        super("Invoice " + invoiceId + " has already been verified");
     }
 }

@@ -291,7 +291,7 @@ public class MaterialService implements MaterialUseCase {
                 material.getCode() != null ? material.getCode().getValue() : null,
                 requisitionId,
                 finalQty,
-                "Demande d'achat " + requisitionId + " créée avec succès pour " + material.getName()
+                "Purchase requisition " + requisitionId + " created successfully for " + material.getName()
         );
     }
 

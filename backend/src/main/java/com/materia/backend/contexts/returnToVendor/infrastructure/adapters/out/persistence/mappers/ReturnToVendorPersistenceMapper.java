@@ -1,5 +1,6 @@
 package com.materia.backend.contexts.returnToVendor.infrastructure.adapters.out.persistence.mappers;
 
+import com.materia.backend.common.infrastructure.persistence.PersistenceIds;
 import com.materia.backend.contexts.returnToVendor.domain.entities.ReturnToVendor;
 import com.materia.backend.contexts.returnToVendor.domain.entities.ReturnToVendorLine;
 import com.materia.backend.contexts.returnToVendor.domain.enums.ResolutionType;
@@ -29,11 +30,11 @@ public class ReturnToVendorPersistenceMapper {
         jpa.setVersion(domain.getVersion());
         
         jpa.setReturnCode(domain.getReturnCode() != null ? domain.getReturnCode().getValue() : null);
-        jpa.setGoodsReceiptId(domain.getGoodsReceiptId());
+        jpa.setGoodsReceiptId(PersistenceIds.toUuid(domain.getGoodsReceiptId()));
         jpa.setGoodsReceiptCode(domain.getGoodsReceiptCode());
-        jpa.setPurchaseOrderId(domain.getPurchaseOrderId());
+        jpa.setPurchaseOrderId(PersistenceIds.toUuid(domain.getPurchaseOrderId()));
         jpa.setPurchaseOrderCode(domain.getPurchaseOrderCode());
-        jpa.setSupplierId(domain.getSupplierId());
+        jpa.setSupplierId(PersistenceIds.toUuid(domain.getSupplierId()));
         jpa.setSupplierName(domain.getSupplierName());
         jpa.setSupplierCode(domain.getSupplierCode());
         jpa.setCurrencyCode(domain.getCurrencyCode());
@@ -78,9 +79,9 @@ public class ReturnToVendorPersistenceMapper {
         jpa.setVersion(domain.getVersion());
         
         jpa.setLineNumber(domain.getLineNumber());
-        jpa.setGoodsReceiptLineId(domain.getGoodsReceiptLineId());
-        jpa.setPurchaseOrderLineId(domain.getPurchaseOrderLineId());
-        jpa.setMaterialId(domain.getMaterialId());
+        jpa.setGoodsReceiptLineId(PersistenceIds.toUuid(domain.getGoodsReceiptLineId()));
+        jpa.setPurchaseOrderLineId(PersistenceIds.toUuid(domain.getPurchaseOrderLineId()));
+        jpa.setMaterialId(PersistenceIds.toUuid(domain.getMaterialId()));
         jpa.setUnitPrice(domain.getUnitPrice());
         jpa.setMaterialCode(domain.getMaterialCode());
         jpa.setMaterialName(domain.getMaterialName());
@@ -106,11 +107,11 @@ public class ReturnToVendorPersistenceMapper {
         ReturnToVendor domain = ReturnToVendor.builder()
                 .id(jpa.getId())
                 .returnCode(jpa.getReturnCode())
-                .goodsReceiptId(jpa.getGoodsReceiptId())
+                .goodsReceiptId(PersistenceIds.toText(jpa.getGoodsReceiptId()))
                 .goodsReceiptCode(jpa.getGoodsReceiptCode())
-                .purchaseOrderId(jpa.getPurchaseOrderId())
+                .purchaseOrderId(PersistenceIds.toText(jpa.getPurchaseOrderId()))
                 .purchaseOrderCode(jpa.getPurchaseOrderCode())
-                .supplierId(jpa.getSupplierId())
+                .supplierId(PersistenceIds.toText(jpa.getSupplierId()))
                 .supplierName(jpa.getSupplierName())
                 .supplierCode(jpa.getSupplierCode())
                 .currencyCode(jpa.getCurrencyCode())
@@ -149,9 +150,9 @@ public class ReturnToVendorPersistenceMapper {
         return ReturnToVendorLine.builder()
                 .id(jpa.getId())
                 .lineNumber(jpa.getLineNumber())
-                .goodsReceiptLineId(jpa.getGoodsReceiptLineId())
-                .purchaseOrderLineId(jpa.getPurchaseOrderLineId())
-                .materialId(jpa.getMaterialId())
+                .goodsReceiptLineId(PersistenceIds.toText(jpa.getGoodsReceiptLineId()))
+                .purchaseOrderLineId(PersistenceIds.toText(jpa.getPurchaseOrderLineId()))
+                .materialId(PersistenceIds.toText(jpa.getMaterialId()))
                 .unitPrice(jpa.getUnitPrice())
                 .version(jpa.getVersion())
                 .materialCode(jpa.getMaterialCode())

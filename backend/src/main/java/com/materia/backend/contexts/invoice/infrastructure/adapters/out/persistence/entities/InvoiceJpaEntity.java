@@ -1,5 +1,6 @@
 package com.materia.backend.contexts.invoice.infrastructure.adapters.out.persistence.entities;
 
+import java.util.UUID;
 import com.materia.backend.common.infrastructure.persistence.BaseJpaEntity;
 import com.materia.backend.contexts.invoice.domain.enums.InvoiceStatus;
 import com.materia.backend.contexts.invoice.domain.enums.InvoiceType;
@@ -33,20 +34,20 @@ public class InvoiceJpaEntity extends BaseJpaEntity {
     @Column(name = "invoice_code", nullable = false, unique = true, length = 50)
     private String invoiceCode;
 
-    @Column(name = "purchase_order_id", length = 100)
-    private String purchaseOrderId;
+    @Column(name = "purchase_order_id")
+    private UUID purchaseOrderId;
 
     @Column(name = "purchase_order_code", length = 100)
     private String purchaseOrderCode;
 
-    @Column(name = "goods_receipt_id", length = 100)
-    private String goodsReceiptId;
+    @Column(name = "goods_receipt_id")
+    private UUID goodsReceiptId;
 
     @Column(name = "goods_receipt_code", length = 100)
     private String goodsReceiptCode;
 
-    @Column(name = "supplier_id", nullable = false, length = 100)
-    private String supplierId;
+    @Column(name = "supplier_id", nullable = false)
+    private UUID supplierId;
 
     @Column(name = "supplier_name", nullable = false, length = 255)
     private String supplierName;
@@ -134,20 +135,20 @@ public class InvoiceJpaEntity extends BaseJpaEntity {
     public String getInvoiceCode() { return invoiceCode; }
     public void setInvoiceCode(String invoiceCode) { this.invoiceCode = invoiceCode; }
 
-    public String getPurchaseOrderId() { return purchaseOrderId; }
-    public void setPurchaseOrderId(String purchaseOrderId) { this.purchaseOrderId = purchaseOrderId; }
+    public UUID getPurchaseOrderId() { return purchaseOrderId; }
+    public void setPurchaseOrderId(UUID purchaseOrderId) { this.purchaseOrderId = purchaseOrderId; }
 
     public String getPurchaseOrderCode() { return purchaseOrderCode; }
     public void setPurchaseOrderCode(String purchaseOrderCode) { this.purchaseOrderCode = purchaseOrderCode; }
 
-    public String getGoodsReceiptId() { return goodsReceiptId; }
-    public void setGoodsReceiptId(String goodsReceiptId) { this.goodsReceiptId = goodsReceiptId; }
+    public UUID getGoodsReceiptId() { return goodsReceiptId; }
+    public void setGoodsReceiptId(UUID goodsReceiptId) { this.goodsReceiptId = goodsReceiptId; }
 
     public String getGoodsReceiptCode() { return goodsReceiptCode; }
     public void setGoodsReceiptCode(String goodsReceiptCode) { this.goodsReceiptCode = goodsReceiptCode; }
 
-    public String getSupplierId() { return supplierId; }
-    public void setSupplierId(String supplierId) { this.supplierId = supplierId; }
+    public UUID getSupplierId() { return supplierId; }
+    public void setSupplierId(UUID supplierId) { this.supplierId = supplierId; }
 
     public String getSupplierName() { return supplierName; }
     public void setSupplierName(String supplierName) { this.supplierName = supplierName; }

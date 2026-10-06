@@ -70,7 +70,8 @@ const HighlightText = ({ text, highlight }: { text: string | React.ReactNode; hi
   if (!text || typeof text !== "string") return <>{text}</>;
   if (!highlight || highlight.trim() === "") return <>{text}</>;
 
-  const parts = text.split(new RegExp(`(${highlight})`, "gi"));
+  const escaped = highlight.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const parts = text.split(new RegExp(`(${escaped})`, "gi"));
   return (
     <>
       {parts.map((part, i) =>

@@ -1,0 +1,69 @@
+# ===================================================================
+# Materia on EC2 - docker compose stack (staging and prod)
+# Copied to /opt/materia by the deploy workflow; .env next to it is
+# written by deploy.sh from Parameter Store (/<project>/<env>/app/*)
+# plus REGISTRY, PROJECT, ENVIRONMENT and IMAGE_TAG.
+#
+# Only the frontend publishes a port: its nginx serves the SPA and
+# proxies /api to the backend. Backend and PostgreSQL stay internal.
+# ===================================================================
+name: materia
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: always
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - /data/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    logging: *logging
+    networks: [internal]
+
+  backend:
+    image: ${REGISTRY}/${PROJECT}-${ENVIRONMENT}-backend:${IMAGE_TAG}
+    restart: always
+    env_file: .env
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health/readiness | grep -q UP"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+      start_period: 60s
+    logging: *logging
+    networks: [internal]
+
+  frontend:
+    image: ${REGISTRY}/${PROJECT}-${ENVIRONMENT}-frontend:${IMAGE_TAG}
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      backend:
+        condition: service_started
+    logging: *logging
+    networks: [internal]
+
+networks:
+  internal:
+    driver: bridge

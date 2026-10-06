@@ -235,7 +235,7 @@ class PurchaseOrderEntityRulesTest {
     void reasonFillingNotesExactly_isAccepted() {
         PurchaseOrder draft = anOrder().withLine(1, "1.00").build();
         draft.setNotes("n".repeat(900));
-        String label = " Annulee: ";
+        String label = " Cancelled: ";
         String reason = "r".repeat(PurchaseOrder.MAX_NOTES_LENGTH - 900 - label.length());
 
         draft.cancel("buyer-1", reason);

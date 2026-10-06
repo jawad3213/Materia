@@ -1,5 +1,6 @@
 package com.materia.backend.contexts.purchaseRequisition.infrastructure.adapters.out.persistence.mappers;
 
+import com.materia.backend.common.infrastructure.persistence.PersistenceIds;
 import com.materia.backend.common.domain.enums.CurrencyCode;
 import com.materia.backend.common.domain.valueObjects.Money;
 import com.materia.backend.contexts.purchaseRequisition.domain.entities.Requisition;
@@ -46,7 +47,7 @@ public class RequisitionPersistenceMapper {
         jpa.setRejectionReason(domain.getRejectionReason());
         jpa.setApprovalNotes(domain.getApprovalNotes());
         jpa.setCancellationReason(domain.getCancellationReason());
-        jpa.setPurchaseOrderId(domain.getPurchaseOrderId());
+        jpa.setPurchaseOrderId(PersistenceIds.toUuid(domain.getPurchaseOrderId()));
         jpa.setPurchaseOrderCode(domain.getPurchaseOrderCode());
         jpa.setCreatedAt(domain.getCreatedAt());
         jpa.setUpdatedAt(domain.getUpdatedAt());
@@ -88,7 +89,7 @@ public class RequisitionPersistenceMapper {
         domain.setRejectionReason(jpa.getRejectionReason());
         domain.setApprovalNotes(jpa.getApprovalNotes());
         domain.setCancellationReason(jpa.getCancellationReason());
-        domain.setPurchaseOrderId(jpa.getPurchaseOrderId());
+        domain.setPurchaseOrderId(PersistenceIds.toText(jpa.getPurchaseOrderId()));
         domain.setPurchaseOrderCode(jpa.getPurchaseOrderCode());
         domain.setLines(toDomainLines(jpa.getLines()));
         domain.setCreatedAt(jpa.getCreatedAt());
@@ -232,7 +233,7 @@ public class RequisitionPersistenceMapper {
         jpa.setRejectionReason(domain.getRejectionReason());
         jpa.setApprovalNotes(domain.getApprovalNotes());
         jpa.setCancellationReason(domain.getCancellationReason());
-        jpa.setPurchaseOrderId(domain.getPurchaseOrderId());
+        jpa.setPurchaseOrderId(PersistenceIds.toUuid(domain.getPurchaseOrderId()));
         jpa.setPurchaseOrderCode(domain.getPurchaseOrderCode());
         jpa.setUpdatedAt(domain.getUpdatedAt() != null ? domain.getUpdatedAt() : java.time.LocalDateTime.now());
         jpa.setUpdatedBy(domain.getUpdatedBy());

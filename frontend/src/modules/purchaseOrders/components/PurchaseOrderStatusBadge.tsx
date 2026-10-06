@@ -9,7 +9,6 @@ const ORDER_COLORS: Record<OrderStatus, BadgeColor> = {
   SUBMITTED: "warning",
   CONFIRMED: "info",
   READY_FOR_RECEIPT: "primary",
-  RECEIVED: "success",
   PARTIALLY_RECEIVED: "warning",
   COMPLETED: "success",
   CANCELLED: "error",

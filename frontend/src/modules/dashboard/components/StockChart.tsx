@@ -14,6 +14,7 @@ const STATUS: Record<StockAlert["status"], { label: string; color: "error" | "wa
 export default function StockChart({ alerts }: { alerts: StockAlert[] }) {
   return (
     <DetailCard
+      fill
       title="Stock Alerts"
       icon={StatIcons.warning}
       tone={alerts.length > 0 ? "warning" : "success"}

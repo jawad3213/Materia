@@ -1,5 +1,7 @@
 package com.materia.backend.contexts.invoice;
 
+import com.materia.backend.support.fixtures.ReferenceRows;
+import org.springframework.jdbc.core.JdbcTemplate;
 import com.materia.backend.common.domain.enums.CurrencyCode;
 import com.materia.backend.common.domain.valueObjects.Money;
 import com.materia.backend.contexts.auth.domain.entities.User;
@@ -43,6 +45,8 @@ import static org.junit.jupiter.api.Assertions.*;
 /** Invoicing against the real database: an invoice is matched to its order and receipts, then verified and paid. */
 class InvoiceFlowIT extends AbstractIntegrationTest {
 
+    @Autowired private JdbcTemplate jdbc;
+
     @Autowired private PurchaseOrderUseCase orders;
     @Autowired private GoodsReceiptUseCase receipts;
     @Autowired private InvoiceUseCase invoices;
@@ -66,7 +70,7 @@ class InvoiceFlowIT extends AbstractIntegrationTest {
         line.setQuantity(10);
         line.setUnitPrice(Money.of("5.00", CurrencyCode.MAD));
         CreatePurchaseOrderInput input = new CreatePurchaseOrderInput();
-        input.setSupplierId(UUID.randomUUID());
+        input.setSupplierId(ReferenceRows.newSupplier(jdbc));
         input.setSupplierName("Acme Supplies");
         input.setOrderedBy("buyer-1");
         input.setCurrencyCode("MAD");
@@ -205,7 +209,8 @@ class InvoiceFlowIT extends AbstractIntegrationTest {
         InvoiceLineOutput line = second.getLines().get(0);
         assertTrue(line.isHasQuantityDiscrepancy());
         assertEquals(2, line.getQuantityDiscrepancy(), "6 received, 4 already billed: 2 billable, 4 billed");
-        assertTrue(second.getDiscrepancySummary().contains("Prix unitaire"), second.getDiscrepancySummary());
+        assertTrue(line.isHasPriceDiscrepancy(), "5.50 against 5.00 is +10%, beyond the 2% tolerance");
+        assertTrue(second.getDiscrepancySummary().contains("Unit price"), second.getDiscrepancySummary());
     }
 
     @Test

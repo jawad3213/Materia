@@ -24,6 +24,7 @@ export default function CostChart({ trend, currency }: { trend: MonthlyTrend; cu
 
   return (
     <DetailCard
+      fill
       title="Procurement Spend"
       aside={
         <div className="w-56">

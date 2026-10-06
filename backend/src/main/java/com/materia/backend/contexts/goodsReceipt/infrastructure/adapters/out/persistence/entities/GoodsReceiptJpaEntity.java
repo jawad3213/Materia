@@ -1,5 +1,6 @@
 package com.materia.backend.contexts.goodsReceipt.infrastructure.adapters.out.persistence.entities;
 
+import java.util.UUID;
 import com.materia.backend.common.infrastructure.persistence.BaseJpaEntity;
 import com.materia.backend.contexts.goodsReceipt.domain.enums.ReceiptStatus;
 import jakarta.persistence.CascadeType;
@@ -32,8 +33,8 @@ public class GoodsReceiptJpaEntity extends BaseJpaEntity {
     @Column(name = "receipt_code", nullable = false, unique = true, length = 50)
     private String receiptCode;
 
-    @Column(name = "purchase_order_id", nullable = false, length = 100)
-    private String purchaseOrderId;
+    @Column(name = "purchase_order_id", nullable = false)
+    private UUID purchaseOrderId;
 
     @Column(name = "purchase_order_code", length = 100)
     private String purchaseOrderCode;
@@ -57,8 +58,8 @@ public class GoodsReceiptJpaEntity extends BaseJpaEntity {
     @Column(name = "notes", length = 1000)
     private String notes;
 
-    @Column(name = "supplier_id", length = 100)
-    private String supplierId;
+    @Column(name = "supplier_id")
+    private UUID supplierId;
 
     @Column(name = "supplier_name", length = 255)
     private String supplierName;
@@ -102,11 +103,11 @@ public class GoodsReceiptJpaEntity extends BaseJpaEntity {
         this.receiptCode = receiptCode;
     }
 
-    public String getPurchaseOrderId() {
+    public UUID getPurchaseOrderId() {
         return purchaseOrderId;
     }
 
-    public void setPurchaseOrderId(String purchaseOrderId) {
+    public void setPurchaseOrderId(UUID purchaseOrderId) {
         this.purchaseOrderId = purchaseOrderId;
     }
 
@@ -166,11 +167,11 @@ public class GoodsReceiptJpaEntity extends BaseJpaEntity {
         this.notes = notes;
     }
 
-    public String getSupplierId() {
+    public UUID getSupplierId() {
         return supplierId;
     }
 
-    public void setSupplierId(String supplierId) {
+    public void setSupplierId(UUID supplierId) {
         this.supplierId = supplierId;
     }
 

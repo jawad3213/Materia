@@ -1,5 +1,6 @@
 package com.materia.backend.contexts.masterData.infrastructure.adapters.out.persistence;
 
+import com.materia.backend.common.infrastructure.persistence.PersistenceIds;
 import com.materia.backend.contexts.masterData.domain.entities.Material;
 import com.materia.backend.contexts.masterData.domain.enums.MaterialStatus;
 import com.materia.backend.contexts.masterData.domain.ports.out.MaterialRepository;
@@ -118,13 +119,17 @@ public class MaterialPersistenceAdapter implements MaterialRepository {
 
     @Override
     public List<Material> findByCategoryId(String categoryId) {
-        return jpaRepository.findByCategoryId(categoryId).stream()
+        UUID id = PersistenceIds.toUuidOrNull(categoryId);
+        if (id == null) return List.of();
+        return jpaRepository.findByCategoryId(id).stream()
                 .map(mapper::toDomainEntity).collect(Collectors.toList());
     }
 
     @Override
     public List<Material> findBySupplierId(String supplierId) {
-        return jpaRepository.findBySupplierId(supplierId).stream()
+        UUID id = PersistenceIds.toUuidOrNull(supplierId);
+        if (id == null) return List.of();
+        return jpaRepository.findBySupplierId(id).stream()
                 .map(mapper::toDomainEntity).collect(Collectors.toList());
     }
 
@@ -145,12 +150,14 @@ public class MaterialPersistenceAdapter implements MaterialRepository {
 
     @Override
     public boolean existsByCategoryId(String categoryId) {
-        return jpaRepository.existsByCategoryId(categoryId);
+        UUID id = PersistenceIds.toUuidOrNull(categoryId);
+        return id != null && jpaRepository.existsByCategoryId(id);
     }
 
     @Override
     public boolean existsBySupplierId(String supplierId) {
-        return jpaRepository.existsBySupplierId(supplierId);
+        UUID id = PersistenceIds.toUuidOrNull(supplierId);
+        return id != null && jpaRepository.existsBySupplierId(id);
     }
 
     @Override
@@ -192,7 +199,9 @@ public class MaterialPersistenceAdapter implements MaterialRepository {
                     List<Predicate> predicates = new ArrayList<>();
                     
                     if (StringUtils.hasText(filter.getCategoryId())) {
-                        predicates.add(cb.equal(root.get("categoryId"), filter.getCategoryId()));
+                        UUID categoryId = PersistenceIds.toUuidOrNull(filter.getCategoryId());
+                        // An identifier that is not a UUID matches no category.
+                        predicates.add(categoryId != null ? cb.equal(root.get("categoryId"), categoryId) : cb.disjunction());
                     }
                     if (filter.getMaterialType() != null) {
                         predicates.add(cb.equal(root.get("materialType"), filter.getMaterialType()));

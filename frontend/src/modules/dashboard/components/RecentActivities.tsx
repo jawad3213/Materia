@@ -18,7 +18,7 @@ const humanize = (status?: string | null) => (status ? status.charAt(0) + status
 /** The latest documents created across procurement. */
 export default function RecentActivities({ activities }: { activities: DashboardActivity[] }) {
   return (
-    <DetailCard title="Recent Activity" icon={SectionIcons.calendar} tone="gray">
+    <DetailCard fill title="Recent Activity" icon={SectionIcons.calendar} tone="gray">
       {activities.length === 0 ? (
         <p className="py-10 text-center text-sm text-gray-500 dark:text-gray-400">Nothing has been recorded yet.</p>
       ) : (

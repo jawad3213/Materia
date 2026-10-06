@@ -9,8 +9,8 @@ public class ReturnToVendorResolvedEvent extends DomainEvent {
 
     private final String returnCode;
     private final ResolutionType resolutionType;
-    private final String title = "Retour résolu";
-    private final String description = "✅ Retour résolu";
+    private final String title = "Return resolved";
+    private final String description = "✅ Return resolved";
     private final String role = "Acheteur";
     private final String resolvedBy;
 

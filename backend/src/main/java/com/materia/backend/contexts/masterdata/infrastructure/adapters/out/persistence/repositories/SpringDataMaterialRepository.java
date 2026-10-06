@@ -21,15 +21,15 @@ public interface SpringDataMaterialRepository extends JpaRepository<MaterialJpaE
     Optional<MaterialJpaEntity> findByCode(String code);
 
 
-    List<MaterialJpaEntity> findByCategoryId(String categoryId);
+    List<MaterialJpaEntity> findByCategoryId(UUID categoryId);
 
-    boolean existsByCategoryId(String categoryId);
+    boolean existsByCategoryId(UUID categoryId);
 
-    long countByCategoryId(String categoryId);
+    long countByCategoryId(UUID categoryId);
 
-    List<MaterialJpaEntity> findBySupplierId(String supplierId);
+    List<MaterialJpaEntity> findBySupplierId(UUID supplierId);
 
-    boolean existsBySupplierId(String supplierId);
+    boolean existsBySupplierId(UUID supplierId);
 
     List<MaterialJpaEntity> findByStatus(MaterialStatus status);
 
@@ -46,6 +46,6 @@ public interface SpringDataMaterialRepository extends JpaRepository<MaterialJpaE
     List<MaterialJpaEntity> findOutOfStock();
 
     @Query("SELECT m.categoryId, COUNT(m) FROM MaterialJpaEntity m WHERE m.categoryId IN :categoryIds GROUP BY m.categoryId")
-    List<Object[]> countMaterialsByCategoryIds(@Param("categoryIds") List<String> categoryIds);
+    List<Object[]> countMaterialsByCategoryIds(@Param("categoryIds") List<UUID> categoryIds);
 
 }

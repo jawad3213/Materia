@@ -118,7 +118,7 @@ public enum Role {
                 return role;
             }
         }
-        throw new IllegalArgumentException("Rôle inconnu : " + code);
+        throw new IllegalArgumentException("Unknown role: " + code);
     }
     
     public static List<String> getCodes() {

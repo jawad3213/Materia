@@ -7,8 +7,8 @@ import java.util.UUID;
 public class ReturnToVendorCreatedEvent extends DomainEvent {
 
     private final String returnCode;
-    private final String title = "Retour créé";
-    private final String description = "📦 Nouveau retour fournisseur créé";
+    private final String title = "Return created";
+    private final String description = "📦 New supplier return created";
     private final String role = "Acheteur";
     private final String createdBy;
 

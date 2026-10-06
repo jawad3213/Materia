@@ -216,6 +216,43 @@ class InvoiceServiceMatchTest {
     }
 
     @Test
+    @DisplayName("verify: a unit price beyond the tolerance around the order price is refused, within it is accepted")
+    void verify_priceTolerance() {
+        Invoice overpriced = existing(InvoiceType.STANDARD, 4);
+        overpriced.getLines().get(0).setUnitPrice(Money.of("5.50", CurrencyCode.MAD));
+        overpriced.submit("buyer-1");
+        when(invoices.findById(overpriced.getId())).thenReturn(Optional.of(overpriced));
+
+        InvoiceRuleViolationException ex = assertThrows(InvoiceRuleViolationException.class,
+                () -> service.verify(overpriced.getId(), "admin-1"));
+        assertTrue(ex.getMessage().contains("+10%"), ex.getMessage());
+        assertTrue(overpriced.getLines().get(0).isHasPriceDiscrepancy());
+
+        Invoice close = existing(InvoiceType.STANDARD, 4);
+        close.getLines().get(0).setUnitPrice(Money.of("5.05", CurrencyCode.MAD));
+        close.submit("buyer-1");
+        when(invoices.findById(close.getId())).thenReturn(Optional.of(close));
+
+        InvoiceOutput out = service.verify(close.getId(), "admin-1");
+        assertEquals(com.materia.backend.contexts.invoice.domain.enums.InvoiceStatus.VERIFIED, out.getStatus());
+        assertEquals(0, new java.math.BigDecimal("1.00").compareTo(out.getLines().get(0).getPriceVariancePercent()));
+    }
+
+    @Test
+    @DisplayName("verify: the tolerance is configurable")
+    void verify_configurableTolerance() {
+        service.setPriceTolerancePercent(new java.math.BigDecimal("15"));
+        Invoice overpriced = existing(InvoiceType.STANDARD, 4);
+        overpriced.getLines().get(0).setUnitPrice(Money.of("5.50", CurrencyCode.MAD));
+        overpriced.submit("buyer-1");
+        when(invoices.findById(overpriced.getId())).thenReturn(Optional.of(overpriced));
+
+        InvoiceOutput out = service.verify(overpriced.getId(), "admin-1");
+
+        assertEquals(com.materia.backend.contexts.invoice.domain.enums.InvoiceStatus.VERIFIED, out.getStatus());
+    }
+
+    @Test
     @DisplayName("pay: the payer is named from their account; partial payments keep the invoice open until fully paid")
     void pay_namesPayerAndAccumulates() {
         Invoice verified = existing(InvoiceType.STANDARD, 2);

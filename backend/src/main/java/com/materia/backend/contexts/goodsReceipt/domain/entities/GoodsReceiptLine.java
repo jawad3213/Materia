@@ -209,26 +209,26 @@ public class GoodsReceiptLine {
         
         private void validateRequiredFields() {
             if (this.materialCode == null || this.materialCode.trim().isEmpty()) {
-                throw new GoodsReceiptInvalidLineException("Le code du materiau est obligatoire");
+                throw new GoodsReceiptInvalidLineException("The material code is required");
             }
             if (this.quantityReceived == null || this.quantityReceived < 0) {
                 throw new GoodsReceiptInvalidQuantityException(
-                    "La quantite recue doit etre positive ou nulle"
+                    "The received quantity must be zero or positive"
                 );
             }
             if (this.quantityRejected == null || this.quantityRejected < 0) {
                 throw new GoodsReceiptInvalidQuantityException(
-                    "La quantite rejetee doit etre positive ou nulle"
+                    "The rejected quantity must be zero or positive"
                 );
             }
             if (this.quantityRejected > this.quantityReceived) {
                 throw new GoodsReceiptInvalidQuantityException(
-                    "La quantite rejetee ne peut pas depasser la quantite recue"
+                    "The rejected quantity cannot exceed the received quantity"
                 );
             }
             if (this.quantityOrdered != null && this.quantityReceived > this.quantityOrdered) {
                 throw new GoodsReceiptInvalidQuantityException(
-                    "La quantite recue ne peut pas depasser la quantite commandee"
+                    "The received quantity cannot exceed the ordered quantity"
                 );
             }
         }

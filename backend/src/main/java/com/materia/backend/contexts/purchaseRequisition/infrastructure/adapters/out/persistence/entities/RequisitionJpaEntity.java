@@ -1,5 +1,6 @@
 package com.materia.backend.contexts.purchaseRequisition.infrastructure.adapters.out.persistence.entities;
 
+import java.util.UUID;
 import com.materia.backend.common.infrastructure.persistence.BaseJpaEntity;
 import com.materia.backend.contexts.purchaseRequisition.domain.enums.RequisitionStatus;
 import jakarta.persistence.CascadeType;
@@ -89,8 +90,8 @@ public class RequisitionJpaEntity extends BaseJpaEntity {
     @Column(name = "cancellation_reason", length = 1000)
     private String cancellationReason;
 
-    @Column(name = "purchase_order_id", length = 100)
-    private String purchaseOrderId;
+    @Column(name = "purchase_order_id")
+    private UUID purchaseOrderId;
 
     @Column(name = "purchase_order_code", length = 100)
     private String purchaseOrderCode;
@@ -251,11 +252,11 @@ public class RequisitionJpaEntity extends BaseJpaEntity {
         this.cancellationReason = cancellationReason;
     }
 
-    public String getPurchaseOrderId() {
+    public UUID getPurchaseOrderId() {
         return purchaseOrderId;
     }
 
-    public void setPurchaseOrderId(String purchaseOrderId) {
+    public void setPurchaseOrderId(UUID purchaseOrderId) {
         this.purchaseOrderId = purchaseOrderId;
     }
 

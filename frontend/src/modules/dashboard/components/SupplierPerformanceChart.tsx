@@ -21,7 +21,7 @@ function RatePill({ value }: { value?: number | null }) {
 /** The suppliers with the most committed spend, with the quality and punctuality of their deliveries. */
 export default function SupplierPerformanceChart({ suppliers, currency }: { suppliers: SupplierStats[]; currency: string }) {
   return (
-    <DetailCard title="Top Suppliers" icon={SectionIcons.info} tone="brand" padded={false}>
+    <DetailCard fill title="Top Suppliers" icon={SectionIcons.info} tone="brand" padded={false}>
       {suppliers.length === 0 ? (
         <div className="p-6">
           <EmptyChart message="No committed order with a supplier yet." />

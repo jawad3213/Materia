@@ -531,7 +531,7 @@ public class PurchaseOrder extends BaseEntity {
 
     public void assignReceiver(String userId, String userName, String assignedUserId, String assignedUserName) {
         if (status != OrderStatus.CONFIRMED) {
-            throw new PurchaseOrderInvalidStatusTransitionException("La commande doit etre confirmee avant l'assignation");
+            throw new PurchaseOrderInvalidStatusTransitionException("The order must be confirmed before it is assigned");
         }
         if (assignedUserId == null || assignedUserId.isBlank()) {
             throw new PurchaseOrderValidationException("A receiver must be specified");
@@ -556,7 +556,7 @@ public class PurchaseOrder extends BaseEntity {
         if (reason == null || reason.isBlank()) {
             throw new PurchaseOrderValidationException("A rejection reason is required");
         }
-        String updatedNotes = notesWithReason("Rejetee: ", reason);
+        String updatedNotes = notesWithReason("Rejected: ", reason);
         this.status = OrderStatus.REJECTED;
         this.notes = updatedNotes;
         this.setUpdatedAt(LocalDateTime.now());
@@ -567,7 +567,7 @@ public class PurchaseOrder extends BaseEntity {
         if (!status.isCancellable()) {
             throw new PurchaseOrderInvalidStatusTransitionException("This purchase order cannot be cancelled");
         }
-        String updatedNotes = notesWithReason("Annulee: ", reason);
+        String updatedNotes = notesWithReason("Cancelled: ", reason);
         this.status = OrderStatus.CANCELLED;
         this.notes = updatedNotes;
         this.setUpdatedAt(LocalDateTime.now());
@@ -636,7 +636,7 @@ public class PurchaseOrder extends BaseEntity {
      * order goes back to partially received and the assigned receiver can receive the replacement.
      */
     public void reopenForReplacement(String userId) {
-        if (status != OrderStatus.PARTIALLY_RECEIVED && status != OrderStatus.RECEIVED && status != OrderStatus.COMPLETED) {
+        if (status != OrderStatus.PARTIALLY_RECEIVED && status != OrderStatus.COMPLETED) {
             throw new PurchaseOrderInvalidStatusTransitionException(
                     "Only a received or closed order can be reopened for a replacement delivery");
         }
@@ -649,7 +649,7 @@ public class PurchaseOrder extends BaseEntity {
 
     /** Closes an order; a partially received order is closed short, accepting the remainder will not arrive. */
     public void complete(String userId) {
-        if (status != OrderStatus.PARTIALLY_RECEIVED && status != OrderStatus.RECEIVED) {
+        if (status != OrderStatus.PARTIALLY_RECEIVED) {
             throw new PurchaseOrderInvalidStatusTransitionException(
                     "Only a partially received order can be closed; full receipt completes the order automatically");
         }
@@ -766,7 +766,7 @@ public class PurchaseOrder extends BaseEntity {
     }
 
     public boolean isCompleted() {
-        return status == OrderStatus.COMPLETED || status == OrderStatus.RECEIVED;
+        return status == OrderStatus.COMPLETED;
     }
 
     public int getTotalQuantity() {

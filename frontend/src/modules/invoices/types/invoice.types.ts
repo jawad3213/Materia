@@ -43,6 +43,12 @@ export interface InvoiceLine {
   currencyCode?: string | null;
   hasQuantityDiscrepancy: boolean;
   discrepancyNotes?: string | null;
+  /** Unit price of the matched purchase-order line. */
+  orderUnitPrice?: number | null;
+  /** Invoiced price against the order price, in percent (positive when billed higher). */
+  priceVariancePercent?: number | null;
+  /** The variance is beyond the tolerance: the invoice cannot be verified. */
+  hasPriceDiscrepancy?: boolean;
   notes?: string | null;
 }
 

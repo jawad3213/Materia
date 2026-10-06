@@ -1,31 +1,27 @@
-# ===================================================================
-# AWS Security Module - variables.tf
-# ===================================================================
-
-variable "name_prefix" {
-  description = "Prefix for naming security groups (e.g. materia-staging)"
+variable "name" {
+  description = "Name prefix, e.g. materia-staging."
   type        = string
 }
 
 variable "vpc_id" {
-  description = "The ID of the VPC"
+  description = "VPC of the security group."
   type        = string
 }
 
-variable "app_port" {
-  description = "Port the Spring Boot container listens on (e.g. 8080)"
-  type        = number
-  default     = 8080
-}
-
-variable "alb_ingress_cidrs" {
-  description = "CIDR blocks allowed to access the Application Load Balancer"
+variable "allowed_http_cidrs" {
+  description = "IPv4 ranges allowed to reach the application on port 80 (and 443 when HTTPS is enabled)."
   type        = list(string)
   default     = ["0.0.0.0/0"]
 }
 
+variable "enable_https" {
+  description = "Also open port 443."
+  type        = bool
+  default     = false
+}
+
 variable "tags" {
-  description = "Map of tags to assign to resources"
+  description = "Extra tags."
   type        = map(string)
   default     = {}
 }

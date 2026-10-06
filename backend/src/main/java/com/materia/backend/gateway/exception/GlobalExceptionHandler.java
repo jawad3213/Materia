@@ -12,18 +12,18 @@ import com.materia.backend.contexts.auth.domain.exceptions.UserAlreadyExistsExce
 import com.materia.backend.contexts.auth.domain.exceptions.UserNotFoundException;
 import com.materia.backend.contexts.goodsReceipt.domain.exceptions.GoodsReceiptBusinessException;
 import com.materia.backend.contexts.invoice.domain.exceptions.InvoiceAlreadyExistsException;
-import com.materia.backend.contexts.payement.domain.exceptions.PaymentAlreadyCompletedException;
-import com.materia.backend.contexts.payement.domain.exceptions.PaymentAlreadyExistsException;
-import com.materia.backend.contexts.payement.domain.exceptions.PaymentAmountMismatchException;
-import com.materia.backend.contexts.payement.domain.exceptions.PaymentNoInvoicesException;
-import com.materia.backend.contexts.payement.domain.exceptions.PaymentNotCancellableException;
-import com.materia.backend.contexts.payement.domain.exceptions.PaymentNotCompletableException;
-import com.materia.backend.contexts.payement.domain.exceptions.PaymentNotFoundException;
-import com.materia.backend.contexts.payement.domain.exceptions.PaymentNotModifiableException;
-import com.materia.backend.contexts.payement.domain.exceptions.PaymentNotPreparableException;
-import com.materia.backend.contexts.payement.domain.exceptions.PaymentRuleViolationException;
-import com.materia.backend.contexts.payement.domain.exceptions.PaymentSupplierMismatchException;
-import com.materia.backend.contexts.payement.domain.exceptions.PaymentValidationException;
+import com.materia.backend.contexts.payment.domain.exceptions.PaymentAlreadyCompletedException;
+import com.materia.backend.contexts.payment.domain.exceptions.PaymentAlreadyExistsException;
+import com.materia.backend.contexts.payment.domain.exceptions.PaymentAmountMismatchException;
+import com.materia.backend.contexts.payment.domain.exceptions.PaymentNoInvoicesException;
+import com.materia.backend.contexts.payment.domain.exceptions.PaymentNotCancellableException;
+import com.materia.backend.contexts.payment.domain.exceptions.PaymentNotCompletableException;
+import com.materia.backend.contexts.payment.domain.exceptions.PaymentNotFoundException;
+import com.materia.backend.contexts.payment.domain.exceptions.PaymentNotModifiableException;
+import com.materia.backend.contexts.payment.domain.exceptions.PaymentNotPreparableException;
+import com.materia.backend.contexts.payment.domain.exceptions.PaymentRuleViolationException;
+import com.materia.backend.contexts.payment.domain.exceptions.PaymentSupplierMismatchException;
+import com.materia.backend.contexts.payment.domain.exceptions.PaymentValidationException;
 import com.materia.backend.contexts.invoice.domain.exceptions.InvoiceAlreadyPaidException;
 import com.materia.backend.contexts.invoice.domain.exceptions.InvoiceAlreadyVerifiedException;
 import com.materia.backend.contexts.invoice.domain.exceptions.InvoiceCancellationException;
@@ -57,6 +57,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.FieldError;
@@ -506,6 +507,22 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 request,
                 null
         );
+    }
+
+    /**
+     * A database constraint refused the change: most often a delete of a record other documents still reference
+     * (a supplier with orders, a material on order lines), or a duplicate unique value.
+     */
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ErrorResponse> handleDataIntegrityViolation(DataIntegrityViolationException ex, WebRequest request) {
+        String detail = ex.getMostSpecificCause().getMessage();
+        log.warn("Data integrity violation: {}", detail);
+        boolean referenced = detail != null && detail.contains("foreign key");
+        String message = referenced
+                ? "This record is referenced by other documents and cannot be changed or deleted"
+                : "The change conflicts with existing data (a value that must be unique is already used)";
+        return buildErrorResponse(HttpStatus.CONFLICT, "Data Conflict",
+                referenced ? "REFERENCED_RECORD" : "DATA_INTEGRITY_VIOLATION", message, request, null);
     }
 
     @ExceptionHandler(Exception.class)

@@ -7,8 +7,8 @@ import java.util.UUID;
 public class ReturnToVendorSubmittedEvent extends DomainEvent {
 
     private final String returnCode;
-    private final String title = "Retour soumis";
-    private final String description = "📤 Retour soumis - En attente de traitement";
+    private final String title = "Return submitted";
+    private final String description = "📤 Return submitted - awaiting processing";
     private final String role = "Acheteur";
     private final String submittedBy;
 

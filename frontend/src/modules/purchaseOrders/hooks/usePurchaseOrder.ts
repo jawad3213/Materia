@@ -50,9 +50,7 @@ export default function usePurchaseOrderPermissions() {
       canWrite && DELIVERY_TRACKING_STATUSES.includes(order.status),
     canReceive: (order: OrderLike) =>
       canRecordReceipts && isAssignedReceiver(order) && RECEIVABLE_STATUSES.includes(order.status),
-    // RECEIVED is a legacy status; the backend still lets such orders be closed.
-    canCloseShort: (order: OrderLike) =>
-      canWrite && (order.status === "PARTIALLY_RECEIVED" || order.status === "RECEIVED"),
+    canCloseShort: (order: OrderLike) => canWrite && order.status === "PARTIALLY_RECEIVED",
     canCancel: (order: OrderLike) =>
       canCancelOrders && CANCELLABLE_STATUSES.includes(order.status),
   };

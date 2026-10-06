@@ -147,6 +147,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const updateUser = (changes: Partial<User>) => {
+    setUser((current) => {
+      if (!current) return current;
+      const next = { ...current, ...changes };
+      authService.storeUser(next);
+      return next;
+    });
+  };
+
   const clearError = () => setError(null);
 
   const hasRole = (roles: UserRole | UserRole[]): boolean => {
@@ -190,6 +199,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     logout,
     changePassword,
     clearMustChangePassword,
+    updateUser,
     resetPassword,
     confirmPasswordReset,
     hasRole,

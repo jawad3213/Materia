@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import type { DashboardKpi, KpiTone } from "../types/dashboard.types";
-import { formatMoney } from "../utils/dashboardFormat";
 
 const TONES: Record<KpiTone, { icon: string; accent: string }> = {
   brand: { icon: "bg-brand-50 text-brand-600 dark:bg-brand-500/15 dark:text-brand-400", accent: "bg-brand-500" },
@@ -30,38 +29,87 @@ const ICONS: Record<string, ReactNode> = {
 
 const isCurrency = (unit: string) => /^[A-Z]{3}$/.test(unit);
 
-/** Headline figures; each card opens the page where the figure can be acted on. */
+/** Grid columns for n cards (Tailwind needs the class names written out). */
+const HEADLINE_COLS = ["", "sm:grid-cols-1", "sm:grid-cols-2", "sm:grid-cols-2 xl:grid-cols-3", "sm:grid-cols-2 xl:grid-cols-4"];
+const STRIP_COLS = ["", "sm:grid-cols-1", "sm:grid-cols-2", "sm:grid-cols-3", "sm:grid-cols-2 xl:grid-cols-4"];
+
+function KpiLink({ kpi, className, children }: { kpi: DashboardKpi; className: string; children: ReactNode }) {
+  return kpi.link ? (
+    <Link to={kpi.link} className={`group block ${className}`}>
+      {children}
+    </Link>
+  ) : (
+    <div className={className}>{children}</div>
+  );
+}
+
+/** An amount: large card with the icon, the figure and what it is made of. */
+function HeadlineCard({ kpi }: { kpi: DashboardKpi }) {
+  const tone = TONES[kpi.tone] ?? TONES.brand;
+  return (
+    <KpiLink kpi={kpi} className="h-full">
+      <div className="relative flex h-full flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white p-6 transition-shadow group-hover:shadow-md dark:border-gray-800 dark:bg-white/[0.03]">
+        <span className={`absolute inset-x-0 top-0 h-1 ${tone.accent}`} />
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-theme-sm font-medium text-gray-500 dark:text-gray-400">{kpi.label}</p>
+          <div className={`flex size-11 shrink-0 items-center justify-center rounded-xl ${tone.icon}`}>{ICONS[kpi.key] ?? ICONS.openOrders}</div>
+        </div>
+        <p className="mt-3 truncate text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
+          {new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(kpi.value)}
+          <span className="ml-1.5 text-base font-semibold text-gray-400 dark:text-gray-500">{kpi.unit}</span>
+        </p>
+        <div className="mt-auto flex items-center justify-between gap-3 pt-4">
+          {kpi.hint && <p className="text-theme-xs text-gray-500 dark:text-gray-400">{kpi.hint}</p>}
+          {kpi.link && <span className="shrink-0 text-theme-xs font-medium text-brand-500 group-hover:underline">View</span>}
+        </div>
+      </div>
+    </KpiLink>
+  );
+}
+
+/** A count that may need action: compact tile. */
+function StripTile({ kpi }: { kpi: DashboardKpi }) {
+  const tone = TONES[kpi.tone] ?? TONES.brand;
+  return (
+    <KpiLink kpi={kpi} className="h-full">
+      <div className="flex h-full items-center gap-4 rounded-2xl border border-gray-200 bg-white px-5 py-4 transition-shadow group-hover:shadow-md dark:border-gray-800 dark:bg-white/[0.03]">
+        <div className={`flex size-11 shrink-0 items-center justify-center rounded-xl ${tone.icon}`}>{ICONS[kpi.key] ?? ICONS.openOrders}</div>
+        <div className="min-w-0">
+          <p className="flex items-baseline gap-2">
+            <span className="text-2xl font-bold text-gray-900 dark:text-white">{new Intl.NumberFormat("en-US").format(kpi.value)}</span>
+            <span className="truncate text-theme-sm font-medium text-gray-700 dark:text-gray-300">{kpi.label}</span>
+          </p>
+          {kpi.hint && <p className="truncate text-theme-xs text-gray-500 dark:text-gray-400">{kpi.hint}</p>}
+        </div>
+      </div>
+    </KpiLink>
+  );
+}
+
+/**
+ * Headline figures: amounts first as large cards, then the counts that may need action as a strip.
+ * Each opens the page where the figure can be acted on.
+ */
 export default function KPICards({ kpis }: { kpis: DashboardKpi[] }) {
   if (kpis.length === 0) return null;
+  const amounts = kpis.filter((k) => isCurrency(k.unit));
+  const counts = kpis.filter((k) => !isCurrency(k.unit));
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-      {kpis.map((kpi) => {
-        const tone = TONES[kpi.tone] ?? TONES.brand;
-        const money = isCurrency(kpi.unit);
-        const body = (
-          <div className="relative h-full overflow-hidden rounded-2xl border border-gray-200 bg-white p-5 transition-shadow hover:shadow-md dark:border-gray-800 dark:bg-white/[0.03]">
-            <span className={`absolute inset-y-0 left-0 w-1 ${tone.accent}`} />
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-theme-sm font-medium text-gray-500 dark:text-gray-400">{kpi.label}</p>
-                <p className="mt-2 truncate text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
-                  {money ? formatMoney(kpi.value, kpi.unit) : new Intl.NumberFormat("en-US").format(kpi.value)}
-                </p>
-                {!money && <p className="text-theme-xs text-gray-400 dark:text-gray-500">{kpi.unit}</p>}
-              </div>
-              <div className={`flex size-12 shrink-0 items-center justify-center rounded-xl ${tone.icon}`}>{ICONS[kpi.key] ?? ICONS.openOrders}</div>
-            </div>
-            {kpi.hint && <p className="mt-3 border-t border-gray-100 pt-3 text-theme-xs text-gray-500 dark:border-gray-800 dark:text-gray-400">{kpi.hint}</p>}
-          </div>
-        );
-        return kpi.link ? (
-          <Link key={kpi.key} to={kpi.link} className="block">
-            {body}
-          </Link>
-        ) : (
-          <div key={kpi.key}>{body}</div>
-        );
-      })}
+    <div className="space-y-4">
+      {amounts.length > 0 && (
+        <div className={`grid grid-cols-1 gap-4 ${HEADLINE_COLS[Math.min(amounts.length, 4)]}`}>
+          {amounts.map((kpi) => (
+            <HeadlineCard key={kpi.key} kpi={kpi} />
+          ))}
+        </div>
+      )}
+      {counts.length > 0 && (
+        <div className={`grid grid-cols-1 gap-4 ${STRIP_COLS[Math.min(counts.length, 4)]}`}>
+          {counts.map((kpi) => (
+            <StripTile key={kpi.key} kpi={kpi} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

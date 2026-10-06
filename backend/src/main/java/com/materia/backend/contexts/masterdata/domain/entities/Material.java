@@ -331,10 +331,10 @@ public class Material extends BaseEntity {
 
     public void increaseStock(Integer quantity, String reason) {
         if (isObsolete()) {
-            throw new IllegalStateException("Impossible d'augmenter le stock d'un matériau obsolète");
+            throw new IllegalStateException("Cannot increase the stock of an obsolete material");
         }
         if (quantity == null || quantity <= 0) {
-            throw new IllegalArgumentException("La quantité doit être positive");
+            throw new IllegalArgumentException("The quantity must be positive");
         }
         int previousStock = this.currentStock != null ? this.currentStock : 0;
         this.currentStock = previousStock + quantity;
@@ -346,16 +346,16 @@ public class Material extends BaseEntity {
 
     public void decreaseStock(Integer quantity) {
         if (isObsolete()) {
-            throw new IllegalStateException("Impossible de diminuer le stock d'un matériau obsolète");
+            throw new IllegalStateException("Cannot decrease the stock of an obsolete material");
         }
         if (quantity == null || quantity <= 0) {
-            throw new IllegalArgumentException("La quantité doit être positive");
+            throw new IllegalArgumentException("The quantity must be positive");
         }
         int available = this.currentStock != null ? this.currentStock : 0;
         if (available < quantity) {
             throw new IllegalStateException(
-                    "Stock insuffisant. Disponible: " + available +
-                            ", Demandé: " + quantity
+                    "Insufficient stock. Available: " + available +
+                            ", Requested: " + quantity
             );
         }
         int previousStock = available;
@@ -547,7 +547,7 @@ public class Material extends BaseEntity {
      */
     public void addStockOnOrder(Integer quantity) {
         if (quantity == null || quantity <= 0) {
-            throw new IllegalArgumentException("La quantité doit être positive");
+            throw new IllegalArgumentException("The quantity must be positive");
         }
         this.stockOnOrder = (this.stockOnOrder == null ? 0 : this.stockOnOrder) + quantity;
         this.setUpdatedAt(LocalDateTime.now());
@@ -558,13 +558,13 @@ public class Material extends BaseEntity {
      */
     public void reduceStockOnOrder(Integer quantity) {
         if (quantity == null || quantity <= 0) {
-            throw new IllegalArgumentException("La quantité doit être positive");
+            throw new IllegalArgumentException("The quantity must be positive");
         }
         int currentOnOrder = this.stockOnOrder != null ? this.stockOnOrder : 0;
         if (currentOnOrder < quantity) {
             throw new IllegalStateException(
-                    "Stock en commande insuffisant. Disponible: " + currentOnOrder +
-                            ", Demandé: " + quantity
+                    "Insufficient stock on order. Available: " + currentOnOrder +
+                            ", Requested: " + quantity
             );
         }
         this.stockOnOrder = currentOnOrder - quantity;

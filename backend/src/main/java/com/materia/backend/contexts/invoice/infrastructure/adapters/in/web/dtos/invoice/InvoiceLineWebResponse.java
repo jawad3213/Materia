@@ -26,6 +26,9 @@ public class InvoiceLineWebResponse {
     
     private boolean hasQuantityDiscrepancy;
     private String discrepancyNotes;
+    private BigDecimal orderUnitPrice;
+    private BigDecimal priceVariancePercent;
+    private boolean hasPriceDiscrepancy;
     private String notes;
 
     // Getters and Setters
@@ -86,4 +89,13 @@ public class InvoiceLineWebResponse {
 
     public String getNotes() { return notes; }
     public void setNotes(String notes) { this.notes = notes; }
+
+    public BigDecimal getOrderUnitPrice() { return orderUnitPrice; }
+    public void setOrderUnitPrice(BigDecimal orderUnitPrice) { this.orderUnitPrice = orderUnitPrice; }
+
+    public BigDecimal getPriceVariancePercent() { return priceVariancePercent; }
+    public void setPriceVariancePercent(BigDecimal priceVariancePercent) { this.priceVariancePercent = priceVariancePercent; }
+
+    public boolean isHasPriceDiscrepancy() { return hasPriceDiscrepancy; }
+    public void setHasPriceDiscrepancy(boolean hasPriceDiscrepancy) { this.hasPriceDiscrepancy = hasPriceDiscrepancy; }
 }

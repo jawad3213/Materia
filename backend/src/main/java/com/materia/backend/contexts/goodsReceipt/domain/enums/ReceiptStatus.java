@@ -28,14 +28,14 @@ public enum ReceiptStatus {
     
     public static ReceiptStatus fromCode(String code) {
         if (code == null || code.isEmpty()) {
-            throw new IllegalArgumentException("Le code est obligatoire");
+            throw new IllegalArgumentException("The code is required");
         }
         for (ReceiptStatus status : values()) {
             if (status.code.equals(code)) {
                 return status;
             }
         }
-        throw new IllegalArgumentException("Statut inconnu : " + code);
+        throw new IllegalArgumentException("Unknown status: " + code);
     }
     
     public static boolean isValidCode(String code) {

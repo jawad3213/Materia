@@ -1,5 +1,7 @@
 package com.materia.backend.contexts.purchaseOrder;
 
+import com.materia.backend.support.fixtures.ReferenceRows;
+import org.springframework.jdbc.core.JdbcTemplate;
 import com.materia.backend.common.domain.enums.CurrencyCode;
 import com.materia.backend.common.domain.valueObjects.Money;
 import com.materia.backend.contexts.auth.domain.entities.User;
@@ -42,6 +44,8 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /** The requisition → purchase order → goods receipt chain against the real database. */
 class ProcurementChainIT extends AbstractIntegrationTest {
+
+    @Autowired private JdbcTemplate jdbc;
 
     @Autowired private RequisitionService requisitionService;
     @Autowired private RequisitionRepository requisitions;
@@ -164,7 +168,7 @@ class ProcurementChainIT extends AbstractIntegrationTest {
     @DisplayName("on order: an order adds its quantity, a receipt removes what arrived, closing short releases the rest")
     void onOrder_followsTheOrder() {
         Material m = material();
-        PurchaseOrderOutput order = orders.create(order(UUID.randomUUID(), null, line(m, 10, null)));
+        PurchaseOrderOutput order = orders.create(order(ReferenceRows.newSupplier(jdbc), null, line(m, 10, null)));
         assertEquals(10, onOrder(reload(m)));
 
         UpdatePurchaseOrderInput edit = new UpdatePurchaseOrderInput();
@@ -187,9 +191,9 @@ class ProcurementChainIT extends AbstractIntegrationTest {
     @DisplayName("on order: cancelling, rejecting or deleting an order releases its quantity")
     void onOrder_releasedWhenWithdrawn() {
         Material m = material();
-        PurchaseOrderOutput cancelled = orders.create(order(UUID.randomUUID(), null, line(m, 4, null)));
-        PurchaseOrderOutput rejected = orders.create(order(UUID.randomUUID(), null, line(m, 3, null)));
-        PurchaseOrderOutput deleted = orders.create(order(UUID.randomUUID(), null, line(m, 2, null)));
+        PurchaseOrderOutput cancelled = orders.create(order(ReferenceRows.newSupplier(jdbc), null, line(m, 4, null)));
+        PurchaseOrderOutput rejected = orders.create(order(ReferenceRows.newSupplier(jdbc), null, line(m, 3, null)));
+        PurchaseOrderOutput deleted = orders.create(order(ReferenceRows.newSupplier(jdbc), null, line(m, 2, null)));
         assertEquals(9, onOrder(reload(m)));
 
         // Each action is its own request (and transaction) in the application.
@@ -218,7 +222,7 @@ class ProcurementChainIT extends AbstractIntegrationTest {
         Requisition requisition = approvedRequisition(a, 10, b, 5);
         UUID lineA = requisition.getLines().get(0).getId();
         UUID lineB = requisition.getLines().get(1).getId();
-        UUID supplier = UUID.randomUUID();
+        UUID supplier = ReferenceRows.newSupplier(jdbc);
 
         assertThrows(PurchaseOrderRequisitionMismatchException.class,
                 () -> orders.create(order(supplier, requisition.getId(), line(a, 11, lineA), line(b, 5, lineB))), "too many");
@@ -246,9 +250,9 @@ class ProcurementChainIT extends AbstractIntegrationTest {
         Material a = material();
         Material b = material();
         Requisition requisition = approvedRequisition(a, 1, b, 1);
-        UUID supplierA = UUID.randomUUID();
+        UUID supplierA = ReferenceRows.newSupplier(jdbc);
         requisition.getLines().get(0).setSupplierId(supplierA);
-        requisition.getLines().get(1).setSupplierId(UUID.randomUUID());
+        requisition.getLines().get(1).setSupplierId(ReferenceRows.newSupplier(jdbc));
         requisitions.save(requisition);
         flushAndClear();
         Requisition reloaded = requisitions.findById(requisition.getId()).orElseThrow();
@@ -276,7 +280,7 @@ class ProcurementChainIT extends AbstractIntegrationTest {
         Material m = material();
         Requisition requisition = approvedRequisition(m, 10);
         UUID requested = requisition.getLines().get(0).getId();
-        PurchaseOrderOutput order = orders.create(order(UUID.randomUUID(), requisition.getId(), line(m, 10, requested)));
+        PurchaseOrderOutput order = orders.create(order(ReferenceRows.newSupplier(jdbc), requisition.getId(), line(m, 10, requested)));
         String receiver = readyForReceipt(order.getId());
 
         receive(orders.getById(order.getId()), receiver, 7, 1);

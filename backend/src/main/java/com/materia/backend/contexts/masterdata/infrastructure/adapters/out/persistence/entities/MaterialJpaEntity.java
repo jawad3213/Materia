@@ -1,4 +1,5 @@
 package com.materia.backend.contexts.masterData.infrastructure.adapters.out.persistence.entities;
+import java.util.UUID;
 import com.materia.backend.common.domain.valueObjects.Money;
 
 import com.materia.backend.common.infrastructure.persistence.BaseJpaEntity;
@@ -47,13 +48,13 @@ public class MaterialJpaEntity extends BaseJpaEntity {
 
     // ---- CLASSIFICATION ----
     @Column(name = "category_id")
-    private String categoryId;
+    private UUID categoryId;
 
     @Column(name = "category_name", length = 100)
     private String categoryName;
 
     @Column(name = "supplier_id")
-    private String supplierId;
+    private UUID supplierId;
 
     @Column(name = "supplier_name", length = 255)
     private String supplierName;
@@ -174,14 +175,14 @@ public class MaterialJpaEntity extends BaseJpaEntity {
     public String getAlternativeName() { return alternativeName; }
     public void setAlternativeName(String alternativeName) { this.alternativeName = alternativeName; }
 
-    public String getCategoryId() { return categoryId; }
-    public void setCategoryId(String categoryId) { this.categoryId = categoryId; }
+    public UUID getCategoryId() { return categoryId; }
+    public void setCategoryId(UUID categoryId) { this.categoryId = categoryId; }
 
     public String getCategoryName() { return categoryName; }
     public void setCategoryName(String categoryName) { this.categoryName = categoryName; }
 
-    public String getSupplierId() { return supplierId; }
-    public void setSupplierId(String supplierId) { this.supplierId = supplierId; }
+    public UUID getSupplierId() { return supplierId; }
+    public void setSupplierId(UUID supplierId) { this.supplierId = supplierId; }
 
     public String getSupplierName() { return supplierName; }
     public void setSupplierName(String supplierName) { this.supplierName = supplierName; }

@@ -27,10 +27,10 @@ public class ReceiptCode {
 
     public static ReceiptCode fromPrefixYearAndNumber(String prefix, int year, int number) {
         if (prefix == null || prefix.trim().isEmpty()) {
-            throw new IllegalArgumentException("Le préfixe est obligatoire");
+            throw new IllegalArgumentException("The prefix is required");
         }
         if (number < 0 || number > 9999) {
-            throw new IllegalArgumentException("Le numéro doit être entre 0 et 9999");
+            throw new IllegalArgumentException("The number must be between 0 and 9999");
         }
         String id = prefix.trim().toUpperCase() + "-" + year + "-" + String.format("%04d", number);
         return new ReceiptCode(id);
@@ -62,15 +62,15 @@ public class ReceiptCode {
     
     private void validate(String value) {
         if (value == null) {
-            throw new IllegalArgumentException("Le code de réception est obligatoire");
+            throw new IllegalArgumentException("The receipt code is required");
         }
         String trimmed = value.trim();
         if (trimmed.isEmpty()) {
-            throw new IllegalArgumentException("Le code de réception ne peut pas être vide");
+            throw new IllegalArgumentException("The receipt code cannot be empty");
         }
         if (!PATTERN.matcher(trimmed).matches()) {
             throw new IllegalArgumentException(
-                "Format invalide pour le code de réception: '" + value + 
+                "Invalid receipt code format: '" + value + 
                 "'. Format attendu: GR-YYYY-0001 (ex: GR-2026-0001) ou legacy GR-0001"
             );
         }

@@ -22,7 +22,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class InfrastructureSmokeTest extends AbstractIntegrationTest {
 
     /** The 7 original migrations, the drift fix, and the 3 table migrations. */
-    private static final int EXPECTED_MIGRATIONS = 12;
+    private static final int EXPECTED_MIGRATIONS = 17;
 
     @Autowired
     private Flyway flyway;

@@ -17,7 +17,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class PurchaseOrderReopenForReplacementTest {
 
     private static final Set<OrderStatus> REOPENABLE =
-            EnumSet.of(OrderStatus.PARTIALLY_RECEIVED, OrderStatus.RECEIVED, OrderStatus.COMPLETED);
+            EnumSet.of(OrderStatus.PARTIALLY_RECEIVED, OrderStatus.COMPLETED);
 
     @ParameterizedTest(name = "{0}")
     @EnumSource(OrderStatus.class)

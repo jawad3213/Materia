@@ -20,7 +20,7 @@ public class ReorderQuantity {
     
     public ReorderQuantity(int quantity, Money estimatedCost, String reason, boolean isUrgent) {
         if (quantity <= 0) {
-            throw new IllegalArgumentException("La quantité de réapprovisionnement doit être positive");
+            throw new IllegalArgumentException("The reorder quantity must be positive");
         }
         this.quantity = quantity;
         this.estimatedCost = estimatedCost;

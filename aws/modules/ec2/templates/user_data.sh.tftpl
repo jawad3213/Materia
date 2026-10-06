@@ -1,0 +1,59 @@
+#!/bin/bash
+# ===================================================================
+# Materia host bootstrap (Amazon Linux 2023), runs once at first boot.
+# Installs Docker + Compose, adds swap, mounts the data volume at /data.
+# The application itself is deployed later through SSM Run Command.
+# ===================================================================
+set -euo pipefail
+exec > >(tee -a /var/log/materia-bootstrap.log) 2>&1
+echo "Bootstrap started: $(date -Is)"
+
+# --- Docker and the Compose plugin ---------------------------------
+dnf install -y docker
+systemctl enable --now docker
+mkdir -p /usr/libexec/docker/cli-plugins
+curl -fsSL "https://github.com/docker/compose/releases/download/v${compose_version}/docker-compose-linux-${architecture}" \
+  -o /usr/libexec/docker/cli-plugins/docker-compose
+chmod +x /usr/libexec/docker/cli-plugins/docker-compose
+docker compose version
+
+# --- Swap (the JVM, PostgreSQL and nginx share one host) -----------
+if [ "${swap_size_mb}" -gt 0 ] && [ ! -f /swapfile ]; then
+  dd if=/dev/zero of=/swapfile bs=1M count=${swap_size_mb}
+  chmod 600 /swapfile
+  mkswap /swapfile
+  swapon /swapfile
+  echo "/swapfile none swap sw 0 0" >> /etc/fstab
+fi
+
+# --- Data volume -> /data -------------------------------------------
+# On Nitro instances the volume shows up as /dev/nvmeXn1 with the volume id
+# (without the dash) as its serial number. The attachment may lag the boot.
+SERIAL="$(echo "${data_volume_id}" | tr -d '-')"
+DEVICE=""
+for _ in $(seq 1 60); do
+  DEVICE="$(lsblk -dpno NAME,SERIAL | awk -v s="$SERIAL" '$2 == s { print $1 }')"
+  [ -z "$DEVICE" ] && [ -b /dev/xvdf ] && DEVICE=/dev/xvdf
+  [ -n "$DEVICE" ] && break
+  sleep 5
+done
+if [ -z "$DEVICE" ]; then
+  echo "Data volume ${data_volume_id} never appeared" >&2
+  exit 1
+fi
+
+if ! blkid "$DEVICE" >/dev/null 2>&1; then
+  mkfs.xfs "$DEVICE"
+fi
+mkdir -p /data
+UUID="$(blkid -s UUID -o value "$DEVICE")"
+grep -q "$UUID" /etc/fstab || echo "UUID=$UUID /data xfs defaults,nofail 0 2" >> /etc/fstab
+mount -a
+mkdir -p /data/postgres
+
+# --- Application directory ------------------------------------------
+mkdir -p "${app_dir}"
+chmod 700 "${app_dir}"
+
+touch "${app_dir}/.bootstrapped"
+echo "Bootstrap finished: $(date -Is)"

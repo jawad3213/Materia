@@ -258,7 +258,7 @@ materia/
 │   │   │   ├── purchaseOrder/           # 📦 Bons de Commande Fournisseurs
 │   │   │   ├── goodsReceipt/            # 📥 Réceptions & Contrôles Magasin
 │   │   │   ├── invoice/                 # 🧾 Facturation Fournisseurs & Rapprochement
-│   │   │   ├── payement/                # 💳 Règlements & Gestion des Flux
+│   │   │   ├── payment/                 # 💳 Règlements & Gestion des Flux
 │   │   │   ├── returnToVendor/          # ↩️  Retours Marchandises & Litiges
 │   │   │   ├── analytics-service/       # 📊 Statistiques & Tableaux de Bord (planifié)
 │   │   │   └── notification-service/    # 🔔 Alertes & Notifications (planifié)

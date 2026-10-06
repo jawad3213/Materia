@@ -1,5 +1,7 @@
 package com.materia.backend.contexts.returnToVendor;
 
+import com.materia.backend.support.fixtures.ReferenceRows;
+import org.springframework.jdbc.core.JdbcTemplate;
 import com.materia.backend.common.domain.enums.CurrencyCode;
 import com.materia.backend.common.domain.valueObjects.Money;
 import com.materia.backend.contexts.auth.domain.entities.User;
@@ -43,6 +45,8 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 class ReturnToVendorFlowIT extends AbstractIntegrationTest {
 
+    @Autowired private JdbcTemplate jdbc;
+
     @Autowired private PurchaseOrderUseCase orders;
     @Autowired private GoodsReceiptUseCase receipts;
     @Autowired private ReturnToVendorUseCase returns;
@@ -73,7 +77,7 @@ class ReturnToVendorFlowIT extends AbstractIntegrationTest {
         line.setQuantity(10);
         line.setUnitPrice(Money.of("5.00", CurrencyCode.MAD));
         CreatePurchaseOrderInput order = new CreatePurchaseOrderInput();
-        order.setSupplierId(UUID.randomUUID());
+        order.setSupplierId(ReferenceRows.newSupplier(jdbc));
         order.setSupplierName("Acme Supplies");
         order.setOrderedBy("buyer-1");
         order.setCurrencyCode("MAD");

@@ -1,5 +1,6 @@
 package com.materia.backend.contexts.masterData.infrastructure.adapters.out.persistence.mappers;
 
+import com.materia.backend.common.infrastructure.persistence.PersistenceIds;
 import com.materia.backend.contexts.masterData.domain.entities.Material;
 import com.materia.backend.contexts.masterData.domain.entities.StockMovement;
 import com.materia.backend.common.domain.enums.CurrencyCode;
@@ -34,9 +35,9 @@ public class MaterialPersistenceMapper {
         jpa.setSearchKeywords(domain.getSearchKeywords());
         jpa.setAlternativeName(domain.getAlternativeName());
 
-        jpa.setCategoryId(domain.getCategoryId());
+        jpa.setCategoryId(PersistenceIds.toUuid(domain.getCategoryId()));
         jpa.setCategoryName(domain.getCategoryName());
-        jpa.setSupplierId(domain.getSupplierId());
+        jpa.setSupplierId(PersistenceIds.toUuid(domain.getSupplierId()));
         jpa.setSupplierName(domain.getSupplierName());
         jpa.setMaterialType(domain.getMaterialType());
         jpa.setStatus(domain.getStatus());
@@ -100,9 +101,9 @@ public class MaterialPersistenceMapper {
         domain.setSearchKeywords(jpa.getSearchKeywords());
         domain.setAlternativeName(jpa.getAlternativeName());
 
-        domain.setCategoryId(jpa.getCategoryId());
+        domain.setCategoryId(PersistenceIds.toText(jpa.getCategoryId()));
         domain.setCategoryName(jpa.getCategoryName());
-        domain.setSupplierId(jpa.getSupplierId());
+        domain.setSupplierId(PersistenceIds.toText(jpa.getSupplierId()));
         domain.setSupplierName(jpa.getSupplierName());
         domain.setMaterialType(jpa.getMaterialType());
         domain.setStatus(jpa.getStatus());

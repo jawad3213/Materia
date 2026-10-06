@@ -13,9 +13,9 @@ import java.util.UUID;
 public interface SpringDataReturnToVendorRepository extends JpaRepository<ReturnToVendorJpaEntity, UUID> {
     Optional<ReturnToVendorJpaEntity> findByReturnCode(String returnCode);
     boolean existsByReturnCode(String returnCode);
-    List<ReturnToVendorJpaEntity> findByGoodsReceiptId(String goodsReceiptId);
-    List<ReturnToVendorJpaEntity> findByPurchaseOrderId(String purchaseOrderId);
-    List<ReturnToVendorJpaEntity> findBySupplierId(String supplierId);
+    List<ReturnToVendorJpaEntity> findByGoodsReceiptId(UUID goodsReceiptId);
+    List<ReturnToVendorJpaEntity> findByPurchaseOrderId(UUID purchaseOrderId);
+    List<ReturnToVendorJpaEntity> findBySupplierId(UUID supplierId);
     List<ReturnToVendorJpaEntity> findByStatus(String status);
     List<ReturnToVendorJpaEntity> findByResolutionType(String resolutionType);
     List<ReturnToVendorJpaEntity> findByReturnDateBetween(LocalDate startDate, LocalDate endDate);

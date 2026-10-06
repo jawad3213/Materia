@@ -70,7 +70,7 @@ public class ReturnToVendorService implements ReturnToVendorUseCase {
 
     private static final Set<ReceiptStatus> RETURNABLE_RECEIPTS = EnumSet.of(ReceiptStatus.COMPLETED, ReceiptStatus.PARTIAL);
     private static final Set<OrderStatus> REOPENABLE_ORDERS =
-            EnumSet.of(OrderStatus.PARTIALLY_RECEIVED, OrderStatus.RECEIVED, OrderStatus.COMPLETED);
+            EnumSet.of(OrderStatus.PARTIALLY_RECEIVED, OrderStatus.COMPLETED);
 
     private final ReturnToVendorRepository returnRepository;
     private final ReturnToVendorMapper mapper;

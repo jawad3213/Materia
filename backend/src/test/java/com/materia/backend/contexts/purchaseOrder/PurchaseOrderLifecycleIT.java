@@ -1,5 +1,7 @@
 package com.materia.backend.contexts.purchaseOrder;
 
+import com.materia.backend.support.fixtures.ReferenceRows;
+import org.springframework.jdbc.core.JdbcTemplate;
 import com.materia.backend.common.domain.enums.CurrencyCode;
 import com.materia.backend.common.domain.valueObjects.Money;
 import com.materia.backend.contexts.auth.domain.entities.User;
@@ -31,6 +33,8 @@ import static org.junit.jupiter.api.Assertions.*;
 /** [T024, T025] The purchase order lifecycle against the real migrated schema (US1). */
 class PurchaseOrderLifecycleIT extends AbstractIntegrationTest {
 
+    @Autowired private JdbcTemplate jdbc;
+
     @Autowired private PurchaseOrderUseCase orders;
     @Autowired private PurchaseOrderRepository repository;
     @Autowired private UserRepository users;
@@ -59,7 +63,7 @@ class PurchaseOrderLifecycleIT extends AbstractIntegrationTest {
 
     private PurchaseOrderOutput createDraft(PurchaseOrderLineInput... lines) {
         CreatePurchaseOrderInput input = new CreatePurchaseOrderInput();
-        input.setSupplierId(UUID.randomUUID());
+        input.setSupplierId(ReferenceRows.newSupplier(jdbc));
         input.setSupplierName("Acme Supplies");
         input.setOrderedBy("buyer-1");
         input.setCurrencyCode("MAD");

@@ -1,5 +1,6 @@
 package com.materia.backend.contexts.goodsReceipt;
 
+import com.materia.backend.support.fixtures.ReferenceRows;
 import com.materia.backend.common.domain.enums.CurrencyCode;
 import com.materia.backend.common.domain.valueObjects.Money;
 import com.materia.backend.contexts.auth.domain.entities.User;
@@ -79,7 +80,7 @@ class GoodsReceiptReceivingIT extends AbstractIntegrationTest {
             lines.add(line);
         }
         CreatePurchaseOrderInput input = new CreatePurchaseOrderInput();
-        input.setSupplierId(UUID.randomUUID());
+        input.setSupplierId(ReferenceRows.newSupplier(jdbc));
         input.setSupplierName("Acme Supplies");
         input.setOrderedBy("buyer-1");
         input.setCurrencyCode("MAD");

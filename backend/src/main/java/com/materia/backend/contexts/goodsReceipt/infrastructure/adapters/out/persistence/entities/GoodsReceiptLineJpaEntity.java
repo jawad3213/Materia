@@ -32,8 +32,8 @@ public class GoodsReceiptLineJpaEntity extends BaseJpaEntity {
     @Column(name = "line_number")
     private Integer lineNumber;
 
-    @Column(name = "purchase_order_line_id", length = 100)
-    private String purchaseOrderLineId;
+    @Column(name = "purchase_order_line_id")
+    private UUID purchaseOrderLineId;
 
     @Column(name = "material_code", nullable = false, length = 50)
     private String materialCode;
@@ -87,8 +87,8 @@ public class GoodsReceiptLineJpaEntity extends BaseJpaEntity {
     @Column(name = "currency_code", length = 10)
     private String currencyCode;
 
-    @Column(name = "supplier_id", length = 100)
-    private String supplierId;
+    @Column(name = "supplier_id")
+    private UUID supplierId;
 
     @Column(name = "supplier_name", length = 255)
     private String supplierName;
@@ -121,11 +121,11 @@ public class GoodsReceiptLineJpaEntity extends BaseJpaEntity {
         this.lineNumber = lineNumber;
     }
 
-    public String getPurchaseOrderLineId() {
+    public UUID getPurchaseOrderLineId() {
         return purchaseOrderLineId;
     }
 
-    public void setPurchaseOrderLineId(String purchaseOrderLineId) {
+    public void setPurchaseOrderLineId(UUID purchaseOrderLineId) {
         this.purchaseOrderLineId = purchaseOrderLineId;
     }
 
@@ -265,11 +265,11 @@ public class GoodsReceiptLineJpaEntity extends BaseJpaEntity {
         this.currencyCode = currencyCode;
     }
 
-    public String getSupplierId() {
+    public UUID getSupplierId() {
         return supplierId;
     }
 
-    public void setSupplierId(String supplierId) {
+    public void setSupplierId(UUID supplierId) {
         this.supplierId = supplierId;
     }
 

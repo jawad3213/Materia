@@ -51,7 +51,7 @@ public class RequisitionService implements RequisitionUseCase {
 
     /** Requester recorded on requisitions raised by the automatic replenishment (no user involved). */
     public static final String SYSTEM_REQUESTER_ID = "SYSTEM";
-    public static final String SYSTEM_REQUESTER_NAME = "Réapprovisionnement automatique";
+    public static final String SYSTEM_REQUESTER_NAME = "Automatic reorder";
 
     public RequisitionService(RequisitionRepository requisitionRepository,
                               MaterialRepository materialRepository,

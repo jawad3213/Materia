@@ -50,11 +50,11 @@ public class MaterialStockDomainService {
         // Si stock en dessous du safety stock → URGENT
         if (currentStock <= safetyStock) {
             quantity = Math.max(eoq, (reorderPoint - currentStock) + safetyStock);
-            reason = "Stock critique (en dessous du stock de sécurité)";
+            reason = "Critical stock (below safety stock)";
             isUrgent = true;
         } else {
             quantity = eoq;
-            reason = "Point de réapprovisionnement atteint";
+            reason = "Reorder point reached";
             isUrgent = false;
         }
         

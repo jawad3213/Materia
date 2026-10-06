@@ -112,11 +112,9 @@ class PurchaseOrderCurrencyAndTotalsCoverageTest {
     }
 
     @Test
-    @DisplayName("completed: received and completed orders count as completed; a confirmed order does not")
+    @DisplayName("completed: a completed order counts as completed; a confirmed order does not")
     void isCompleted() {
         PurchaseOrder order = anOrder().withLine(2, "5.00").build();
-        order.setStatus(OrderStatus.RECEIVED);
-        assertTrue(order.isCompleted());
         order.setStatus(OrderStatus.COMPLETED);
         assertTrue(order.isCompleted());
         order.setStatus(OrderStatus.CONFIRMED);

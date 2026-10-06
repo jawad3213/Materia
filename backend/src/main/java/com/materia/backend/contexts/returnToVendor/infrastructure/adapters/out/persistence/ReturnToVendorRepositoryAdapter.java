@@ -1,5 +1,6 @@
 package com.materia.backend.contexts.returnToVendor.infrastructure.adapters.out.persistence;
 
+import com.materia.backend.common.infrastructure.persistence.PersistenceIds;
 import com.materia.backend.contexts.returnToVendor.domain.entities.ReturnToVendor;
 import com.materia.backend.contexts.returnToVendor.domain.enums.ResolutionType;
 import com.materia.backend.contexts.returnToVendor.domain.enums.ReturnStatus;
@@ -101,21 +102,27 @@ public class ReturnToVendorRepositoryAdapter implements ReturnToVendorRepository
 
     @Override
     public List<ReturnToVendor> findByGoodsReceiptId(String goodsReceiptId) {
-        return springDataRepository.findByGoodsReceiptId(goodsReceiptId).stream()
+        UUID id = PersistenceIds.toUuidOrNull(goodsReceiptId);
+        if (id == null) return List.of();
+        return springDataRepository.findByGoodsReceiptId(id).stream()
                 .map(mapper::toDomain)
                 .collect(Collectors.toList());
     }
 
     @Override
     public List<ReturnToVendor> findByPurchaseOrderId(String purchaseOrderId) {
-        return springDataRepository.findByPurchaseOrderId(purchaseOrderId).stream()
+        UUID id = PersistenceIds.toUuidOrNull(purchaseOrderId);
+        if (id == null) return List.of();
+        return springDataRepository.findByPurchaseOrderId(id).stream()
                 .map(mapper::toDomain)
                 .collect(Collectors.toList());
     }
 
     @Override
     public List<ReturnToVendor> findBySupplierId(String supplierId) {
-        return springDataRepository.findBySupplierId(supplierId).stream()
+        UUID id = PersistenceIds.toUuidOrNull(supplierId);
+        if (id == null) return List.of();
+        return springDataRepository.findBySupplierId(id).stream()
                 .map(mapper::toDomain)
                 .collect(Collectors.toList());
     }

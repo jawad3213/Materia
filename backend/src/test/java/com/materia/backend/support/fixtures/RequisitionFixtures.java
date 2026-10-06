@@ -48,7 +48,7 @@ public final class RequisitionFixtures {
 
     public static RequisitionLine aLine(int quantity, String unitPrice, CurrencyCode currency) {
         RequisitionLine line = new RequisitionLine("MAT-" + UUID.randomUUID().toString().substring(0, 6), quantity);
-        line.setMaterialId(UUID.randomUUID());
+        line.setMaterialId(ReferenceRows.MATERIAL_ID);
         line.setMaterialName("Test material");
         line.setUnitOfMeasure("PCE");
         line.updateUnitPrice(Money.of(unitPrice, currency));

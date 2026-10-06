@@ -157,6 +157,9 @@ public class InvoiceMapper implements BaseMapper<Invoice, CreateInvoiceInput, Up
         output.setCurrencyCode(line.getCurrencyCode());
         output.setHasQuantityDiscrepancy(line.isHasQuantityDiscrepancy());
         output.setDiscrepancyNotes(line.getDiscrepancyNotes());
+        output.setOrderUnitPrice(line.getOrderUnitPrice());
+        output.setPriceVariancePercent(line.getPriceVariancePercent());
+        output.setHasPriceDiscrepancy(line.isHasPriceDiscrepancy());
         output.setNotes(line.getNotes());
         return output;
     }

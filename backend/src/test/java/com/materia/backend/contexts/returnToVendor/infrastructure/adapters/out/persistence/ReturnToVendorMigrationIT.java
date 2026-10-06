@@ -1,5 +1,6 @@
 package com.materia.backend.contexts.returnToVendor.infrastructure.adapters.out.persistence;
 
+import com.materia.backend.support.ReferenceColumnTypes;
 import com.materia.backend.support.AbstractIntegrationTest;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -141,6 +142,13 @@ class ReturnToVendorMigrationIT extends AbstractIntegrationTest {
     @DisplayName("structure: the migrated columns match the schema the entities are validated against")
     void structure_matchesValidatedSchema() throws IOException {
         applyMigration();
+        ReferenceColumnTypes.convertToUuid(jdbc, schema,
+                "return_to_vendor.goods_receipt_id",
+                "return_to_vendor.purchase_order_id",
+                "return_to_vendor.supplier_id",
+                "return_to_vendor_lines.goods_receipt_line_id",
+                "return_to_vendor_lines.purchase_order_line_id",
+                "return_to_vendor_lines.material_id");
 
         for (String table : List.of("return_to_vendor", "return_to_vendor_lines")) {
             assertEquals(columns("public", table), columns(schema, table),

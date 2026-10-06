@@ -49,59 +49,6 @@ export default function MaterialCardViewPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
-            {/* INJECTED MOCK MATERIALS FOR TESTING UI (3 CARDS SIDE-BY-SIDE) */}
-            <MaterialCard
-              key="mock-test-1"
-              material={{
-                id: "mock-id-1",
-                code: "MAT-9999",
-                name: "Ultra-Premium Steel Alloy",
-                alternativeName: "Titanium-Infused Steel V2",
-                shortDescription: "High-grade steel alloy infused with titanium.",
-                description: "This is a detailed description of the Ultra-Premium Steel Alloy. It is primarily used in aerospace engineering and high-stress environments. The titanium infusion provides a 40% increase in tensile strength compared to standard alloys. Note: Requires special handling and storage conditions to prevent oxidation before processing.",
-                searchKeywords: "steel, titanium, aerospace",
-                materialType: "RAW_MATERIAL",
-                status: "ACTIVE",
-                categoryId: "cat-metals",
-                categoryName: "Industrial Metals",
-                supplierId: "sup-123"
-              }}
-              highlightKeyword="steel"
-            />
-            <MaterialCard
-              key="mock-test-2"
-              material={{
-                id: "mock-id-2",
-                code: "MAT-9998",
-                name: "Industrial Copper Wiring",
-                alternativeName: "Heavy Duty Cu-Wire",
-                shortDescription: "Standard 12AWG copper wire for industrial applications.",
-                description: "Premium grade copper wiring designed specifically for high-voltage industrial setups. Excellent conductivity and thermal resistance. Coated in fire-retardant PVC insulation. Suitable for both indoor and outdoor manufacturing environments where robust electrical infrastructure is essential.",
-                searchKeywords: "copper, wire, electrical, 12awg",
-                materialType: "SEMI_FINISHED",
-                status: "PENDING",
-                categoryId: "cat-elec",
-                categoryName: "Electrical Supplies",
-                supplierId: "sup-124"
-              }}
-            />
-            <MaterialCard
-              key="mock-test-3"
-              material={{
-                id: "mock-id-3",
-                code: "MAT-9997",
-                name: "Chemical Solvent X-70",
-                alternativeName: "Industrial Degreaser",
-                shortDescription: "Powerful solvent for cleaning heavy machinery.",
-                description: "Industrial strength degreaser and solvent. Highly effective at removing heavy carbon deposits, oil, and grease from manufacturing equipment. Must be used in well-ventilated areas. Operators are required to wear full PPE including respiratory protection. Highly flammable.",
-                searchKeywords: "solvent, cleaning, chemical, degreaser",
-                materialType: "CONSUMABLE",
-                status: "DISCONTINUED",
-                categoryId: "cat-chem",
-                categoryName: "Chemicals",
-                supplierId: "sup-125"
-              }}
-            />
             {materials.map((material) => (
               <MaterialCard key={material.id} material={material} />
             ))}

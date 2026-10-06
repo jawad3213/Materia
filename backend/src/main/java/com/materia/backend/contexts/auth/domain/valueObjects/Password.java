@@ -40,22 +40,22 @@ public class Password {
     
     private void validate(String value) {
         if (value == null || value.isEmpty()) {
-            throw new IllegalArgumentException("Le mot de passe est obligatoire");
+            throw new IllegalArgumentException("Password is required");
         }
         if (value.length() < MIN_LENGTH) {
-            throw new IllegalArgumentException("Le mot de passe doit contenir au moins " + MIN_LENGTH + " caractères");
+            throw new IllegalArgumentException("Password must contain at least " + MIN_LENGTH + " characters");
         }
         if (!UPPERCASE.matcher(value).find()) {
-            throw new IllegalArgumentException("Le mot de passe doit contenir au moins une majuscule");
+            throw new IllegalArgumentException("Password must contain at least one uppercase letter");
         }
         if (!LOWERCASE.matcher(value).find()) {
-            throw new IllegalArgumentException("Le mot de passe doit contenir au moins une minuscule");
+            throw new IllegalArgumentException("Password must contain at least one lowercase letter");
         }
         if (!DIGIT.matcher(value).find()) {
-            throw new IllegalArgumentException("Le mot de passe doit contenir au moins un chiffre");
+            throw new IllegalArgumentException("Password must contain at least one digit");
         }
         if (!SPECIAL.matcher(value).find()) {
-            throw new IllegalArgumentException("Le mot de passe doit contenir au moins un caractère spécial");
+            throw new IllegalArgumentException("Password must contain at least one special character");
         }
     }
     
