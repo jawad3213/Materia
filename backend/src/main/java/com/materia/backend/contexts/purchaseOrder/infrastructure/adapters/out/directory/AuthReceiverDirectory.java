@@ -1,30 +1,29 @@
 package com.materia.backend.contexts.purchaseOrder.infrastructure.adapters.out.directory;
 
-import com.materia.backend.contexts.auth.domain.entities.User;
-import com.materia.backend.contexts.auth.domain.enums.Role;
-import com.materia.backend.contexts.auth.domain.enums.UserStatus;
-import com.materia.backend.contexts.auth.domain.ports.out.UserRepository;
+import com.materia.backend.contexts.auth.application.dtos.UserSummary;
+import com.materia.backend.contexts.auth.domain.ports.in.UserDirectoryUseCase;
 import com.materia.backend.contexts.purchaseOrder.domain.ports.out.ReceiverDirectory;
 import org.springframework.stereotype.Component;
 
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
 /** Resolves assignable receivers from the user accounts held by the auth context. */
 @Component
 public class AuthReceiverDirectory implements ReceiverDirectory {
 
-    private final UserRepository userRepository;
+    private static final String RECEIVER_ROLE = "RECEIVER";
 
-    public AuthReceiverDirectory(UserRepository userRepository) {
-        this.userRepository = userRepository;
+    private final UserDirectoryUseCase users;
+
+    public AuthReceiverDirectory(UserDirectoryUseCase users) {
+        this.users = users;
     }
 
     @Override
     public List<Receiver> findAssignableReceivers() {
-        return userRepository.findByRole(Role.RECEIVER).stream()
+        return users.findUsersWithRole(RECEIVER_ROLE).stream()
                 .filter(AuthReceiverDirectory::isAssignable)
                 .map(AuthReceiverDirectory::toReceiver)
                 .sorted(Comparator.comparing(Receiver::name, String.CASE_INSENSITIVE_ORDER))
@@ -33,27 +32,18 @@ public class AuthReceiverDirectory implements ReceiverDirectory {
 
     @Override
     public Optional<Receiver> findAssignableReceiver(String userId) {
-        if (userId == null || userId.isBlank()) {
-            return Optional.empty();
-        }
-        try {
-            return userRepository.findById(UUID.fromString(userId.trim()))
-                    .filter(user -> user.getRole() == Role.RECEIVER)
-                    .filter(AuthReceiverDirectory::isAssignable)
-                    .map(AuthReceiverDirectory::toReceiver);
-        } catch (IllegalArgumentException invalidId) {
-            return Optional.empty();
-        }
+        return users.findUser(userId)
+                .filter(user -> RECEIVER_ROLE.equals(user.roleCode()))
+                .filter(AuthReceiverDirectory::isAssignable)
+                .map(AuthReceiverDirectory::toReceiver);
     }
 
-    private static boolean isAssignable(User user) {
-        return user.isEnabled() && user.getStatus() == UserStatus.ACTIVE;
+    /** Only an enabled account with the ACTIVE status can be assigned; a missing status does not qualify. */
+    private static boolean isAssignable(UserSummary user) {
+        return user.enabled() && "ACTIVE".equals(user.statusCode());
     }
 
-    private static Receiver toReceiver(User user) {
-        String name = user.getFullName() != null && !user.getFullName().isBlank()
-                ? user.getFullName()
-                : user.getEmail();
-        return new Receiver(user.getId().toString(), name, user.getEmail());
+    private static Receiver toReceiver(UserSummary user) {
+        return new Receiver(user.id().toString(), user.displayName(), user.email());
     }
 }

@@ -2,6 +2,7 @@ package com.materia.backend.contexts.purchaseOrder.infrastructure.adapters.out.d
 
 import com.materia.backend.contexts.auth.domain.entities.User;
 import com.materia.backend.contexts.auth.domain.enums.Role;
+import com.materia.backend.contexts.auth.application.services.UserDirectoryService;
 import com.materia.backend.contexts.auth.domain.ports.out.UserRepository;
 import com.materia.backend.contexts.purchaseOrder.domain.ports.out.ReceiverDirectory;
 import org.junit.jupiter.api.BeforeEach;
@@ -34,7 +35,7 @@ class AuthReceiverDirectoryTest {
 
     @BeforeEach
     void setUp() {
-        directory = new AuthReceiverDirectory(users);
+        directory = new AuthReceiverDirectory(new UserDirectoryService(users));
     }
 
     @Test

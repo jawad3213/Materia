@@ -1,22 +1,17 @@
 package com.materia.backend.contexts.employee.infrastructure.adapters.out.auth;
 
-import com.materia.backend.contexts.auth.domain.entities.User;
-import com.materia.backend.contexts.auth.domain.enums.Role;
-import com.materia.backend.contexts.auth.domain.enums.UserStatus;
-import com.materia.backend.contexts.auth.domain.ports.out.EmailSender;
-import com.materia.backend.contexts.auth.domain.ports.out.RefreshTokenRepository;
-import com.materia.backend.contexts.auth.domain.ports.out.UserRepository;
-import com.materia.backend.contexts.auth.domain.valueObjects.Password;
+import com.materia.backend.contexts.auth.application.dtos.UserSummary;
+import com.materia.backend.contexts.auth.domain.ports.in.AccountProvisioningUseCase;
+import com.materia.backend.contexts.auth.domain.ports.in.UserDirectoryUseCase;
 import com.materia.backend.contexts.employee.domain.exceptions.InvalidRoleCodeException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -28,17 +23,13 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class AuthCredentialAdapterTest {
 
-    @Mock
-    private UserRepository userRepository;
+    private static final List<String> ROLE_CODES = List.of("ADMIN", "PURCHASER", "RECEIVER");
 
     @Mock
-    private RefreshTokenRepository refreshTokenRepository;
+    private AccountProvisioningUseCase accountProvisioning;
 
     @Mock
-    private PasswordEncoder passwordEncoder;
-
-    @Mock
-    private EmailSender emailSender;
+    private UserDirectoryUseCase userDirectory;
 
     private AuthCredentialAdapter adapter;
 
@@ -46,130 +37,65 @@ class AuthCredentialAdapterTest {
 
     @BeforeEach
     void setUp() {
-        adapter = new AuthCredentialAdapter(userRepository, refreshTokenRepository, passwordEncoder, emailSender);
-    }
-
-    private void stubSuccessfulSave() {
-        when(userRepository.findByEmail(anyString())).thenReturn(Optional.empty());
-        when(passwordEncoder.encode(anyString())).thenReturn("hashed_pwd");
-        when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
-            User user = invocation.getArgument(0);
-            user.setId(testUserId);
-            return user;
-        });
+        adapter = new AuthCredentialAdapter(accountProvisioning, userDirectory);
     }
 
     @Test
     @DisplayName("Should reject an unknown role code instead of downgrading it")
     void shouldRejectUnknownRoleCode() {
-        when(userRepository.findByEmail(anyString())).thenReturn(Optional.empty());
+        when(accountProvisioning.roleCodes()).thenReturn(ROLE_CODES);
 
         InvalidRoleCodeException exception = assertThrows(InvalidRoleCodeException.class,
                 () -> adapter.provisionUserAccount("john@example.com", "John", "Doe", "ADMNI", "Str0ng!Pass"));
 
         assertEquals("EMPLOYEE_INVALID_ROLE_CODE", exception.getErrorCode());
         assertTrue(exception.getMessage().contains("ADMIN"));
-        verify(userRepository, never()).save(any(User.class));
-        verifyNoInteractions(emailSender);
+        verify(accountProvisioning, never()).provisionAccount(anyString(), any(), any(), any(), any());
     }
 
     @Test
-    @DisplayName("Should provision the requested role when the code is valid")
-    void shouldProvisionRequestedRole() {
-        stubSuccessfulSave();
+    @DisplayName("Should provision the account through the auth context when the role code is valid")
+    void shouldProvisionThroughAuth() {
+        when(accountProvisioning.roleCodes()).thenReturn(ROLE_CODES);
+        when(accountProvisioning.provisionAccount("john@example.com", "John", "Doe", "admin", "Str0ng!Pass"))
+                .thenReturn(testUserId);
 
-        UUID userId = adapter.provisionUserAccount("john@example.com", "John", "Doe", "admin", "Str0ng!Pass");
-
-        assertEquals(testUserId, userId);
-        ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
-        verify(userRepository).save(captor.capture());
-        assertEquals(Role.ADMIN, captor.getValue().getRole());
-        assertEquals(UserStatus.ACTIVE, captor.getValue().getStatus());
+        assertEquals(testUserId, adapter.provisionUserAccount("john@example.com", "John", "Doe", "admin", "Str0ng!Pass"));
     }
 
     @Test
-    @DisplayName("Should fall back to the default role when no code is provided")
-    void shouldFallBackToDefaultRoleWhenCodeIsBlank() {
-        stubSuccessfulSave();
+    @DisplayName("Should leave a blank role code to the default role of the auth context")
+    void shouldPassBlankRoleCodeThrough() {
+        adapter.provisionUserAccount("john@example.com", "John", "Doe", "  ", null);
 
-        adapter.provisionUserAccount("john@example.com", "John", "Doe", "  ", "Str0ng!Pass");
-
-        ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
-        verify(userRepository).save(captor.capture());
-        assertEquals(Role.PURCHASER, captor.getValue().getRole());
-    }
-
-    @Test
-    @DisplayName("Should reject a caller supplied password that violates the password policy")
-    void shouldRejectWeakInitialPassword() {
-        when(userRepository.findByEmail(anyString())).thenReturn(Optional.empty());
-
-        assertThrows(IllegalArgumentException.class,
-                () -> adapter.provisionUserAccount("john@example.com", "John", "Doe", "PURCHASER", "abc"));
-
-        verify(userRepository, never()).save(any(User.class));
-        verifyNoInteractions(emailSender);
-    }
-
-    @Test
-    @DisplayName("Should email a policy compliant temporary password when none is supplied")
-    void shouldEmailGeneratedTemporaryPassword() {
-        stubSuccessfulSave();
-
-        adapter.provisionUserAccount("john@example.com", "John", "Doe", "PURCHASER", null);
-
-        ArgumentCaptor<String> passwordCaptor = ArgumentCaptor.forClass(String.class);
-        verify(emailSender).sendTemporaryPasswordEmail(eq("john@example.com"), passwordCaptor.capture());
-        // The generated password must satisfy the same policy as a user chosen one.
-        assertDoesNotThrow(() -> Password.fromRaw(passwordCaptor.getValue()));
-        verify(passwordEncoder).encode(passwordCaptor.getValue());
-    }
-
-    @Test
-    @DisplayName("Should email the supplied password to the new user, so they receive their credential regardless of who chose it")
-    void shouldEmailSuppliedPasswordToRecipient() {
-        // Intended behaviour: the credential email is sent whether the password was
-        // generated or supplied by the caller. The plaintext exposure this implies is a
-        // recorded, accepted risk — see FINDING-001 in specs/001-backend-module-tests/research.md.
-        stubSuccessfulSave();
-
-        adapter.provisionUserAccount("john@example.com", "John", "Doe", "PURCHASER", "Str0ng!Pass");
-
-        verify(emailSender).sendTemporaryPasswordEmail(eq("john@example.com"), eq("Str0ng!Pass"));
+        verify(accountProvisioning).provisionAccount("john@example.com", "John", "Doe", "  ", null);
+        verify(accountProvisioning, never()).roleCodes();
     }
 
     @Test
     @DisplayName("Should report an account as inactive once it has been revoked")
     void shouldReportRevokedAccountAsInactive() {
-        User user = User.builder()
-                .id(testUserId)
-                .email("john@example.com")
-                .role(Role.PURCHASER)
-                .status(UserStatus.INACTIVE)
-                .enabled(false)
-                .build();
-        when(userRepository.findById(testUserId)).thenReturn(Optional.of(user));
+        when(userDirectory.findUser(testUserId.toString())).thenReturn(Optional.of(
+                new UserSummary(testUserId, "john@example.com", "John Doe", "PURCHASER", false, "INACTIVE")));
 
         assertFalse(adapter.isUserActive(testUserId));
+        assertEquals("PURCHASER", adapter.getUserRoleCode(testUserId));
     }
 
     @Test
-    @DisplayName("Should disable the account and revoke every refresh token on revocation")
+    @DisplayName("Should revoke access through the auth context")
     void shouldRevokeUserAccess() {
-        User user = User.builder()
-                .id(testUserId)
-                .email("john@example.com")
-                .role(Role.PURCHASER)
-                .status(UserStatus.ACTIVE)
-                .enabled(true)
-                .build();
-        when(userRepository.findById(testUserId)).thenReturn(Optional.of(user));
-
         adapter.revokeUserAccess(testUserId);
 
-        assertEquals(UserStatus.INACTIVE, user.getStatus());
-        assertFalse(user.isEnabled());
-        verify(userRepository).save(user);
-        verify(refreshTokenRepository).revokeAllForUserId(testUserId);
+        verify(accountProvisioning).revokeAccess(testUserId);
+    }
+
+    @Test
+    @DisplayName("Should find nobody for a missing id or e-mail")
+    void shouldFindNobodyWithoutIdentity() {
+        assertFalse(adapter.isUserActive(null));
+        assertNull(adapter.getUserRoleCode(null));
+        assertNull(adapter.getUserRoleCodeByEmail("nobody@example.com"));
+        verify(userDirectory, never()).findUser(any());
     }
 }
