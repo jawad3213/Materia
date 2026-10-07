@@ -20,6 +20,7 @@ import com.materia.backend.contexts.payment.domain.exceptions.PaymentRuleViolati
 import com.materia.backend.contexts.payment.domain.exceptions.PaymentValidationException;
 import com.materia.backend.contexts.payment.domain.ports.out.PaymentPort;
 import com.materia.backend.contexts.payment.domain.valueObjects.PaymentCode;
+import com.materia.backend.contexts.payment.infrastructure.adapters.out.invoice.InvoiceLedgerAdapter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -54,7 +55,7 @@ class PaymentServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new PaymentService(payments, new PaymentMapper(), codes, invoices);
+        service = new PaymentService(payments, new PaymentMapper(), codes, new InvoiceLedgerAdapter(invoices));
         when(payments.save(any(Payment.class))).thenAnswer(inv -> inv.getArgument(0));
         when(payments.findBySupplierId(anyString())).thenReturn(List.of());
         when(codes.generateCode()).thenReturn(PaymentCode.of("PAY-2026-0007"));

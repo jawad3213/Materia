@@ -11,15 +11,12 @@ import com.materia.backend.contexts.payment.domain.enums.PaymentStatus;
 import com.materia.backend.contexts.payment.domain.exceptions.PaymentAmountMismatchException;
 import com.materia.backend.contexts.payment.domain.exceptions.PaymentRuleViolationException;
 import com.materia.backend.contexts.payment.domain.exceptions.PaymentSupplierMismatchException;
-import com.materia.backend.contexts.invoice.application.dtos.InvoiceOutput;
-import com.materia.backend.contexts.invoice.domain.enums.InvoiceStatus;
-import com.materia.backend.contexts.invoice.domain.enums.InvoiceType;
-import com.materia.backend.contexts.invoice.domain.exceptions.InvoiceNotFoundException;
-import com.materia.backend.contexts.invoice.domain.ports.in.InvoiceUseCase;
 import com.materia.backend.contexts.payment.domain.exceptions.PaymentNotFoundException;
 import com.materia.backend.contexts.payment.domain.exceptions.PaymentNotModifiableException;
 import com.materia.backend.contexts.payment.domain.exceptions.PaymentValidationException;
 import com.materia.backend.contexts.payment.domain.ports.in.PaymentUseCase;
+import com.materia.backend.contexts.payment.domain.ports.out.PayableInvoices;
+import com.materia.backend.contexts.payment.domain.ports.out.PayableInvoices.PayableInvoice;
 import com.materia.backend.contexts.payment.domain.ports.out.PaymentPort;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.retry.annotation.Backoff;
@@ -43,15 +40,15 @@ public class PaymentService extends AbstractCrudApplicationService<
     private final PaymentPort paymentPort;
     private final PaymentMapper paymentMapper;
     private final PaymentCodeGeneratorService codeGeneratorService;
-    private final InvoiceUseCase invoiceUseCase;
+    private final PayableInvoices payableInvoices;
 
     public PaymentService(PaymentPort paymentPort, PaymentMapper paymentMapper, PaymentCodeGeneratorService codeGeneratorService,
-                          InvoiceUseCase invoiceUseCase) {
+                          PayableInvoices payableInvoices) {
         super(paymentPort, paymentMapper);
         this.paymentPort = paymentPort;
         this.paymentMapper = paymentMapper;
         this.codeGeneratorService = codeGeneratorService;
-        this.invoiceUseCase = invoiceUseCase;
+        this.payableInvoices = payableInvoices;
     }
 
     @Override
@@ -155,7 +152,7 @@ public class PaymentService extends AbstractCrudApplicationService<
         // Each invoice records its share through its own rules (verified, within the balance, same currency).
         // Everything runs in this transaction, so one refused invoice leaves every invoice and the payment unchanged.
         for (PaymentLine line : payment.getLines()) {
-            invoiceUseCase.pay(UUID.fromString(line.getInvoiceId()), userId, line.getAmount().getAmount().doubleValue());
+            payableInvoices.recordPayment(line.getInvoiceId(), userId, line.getAmount().getAmount());
         }
         return toResponse(saveEntity(payment));
     }
@@ -181,44 +178,39 @@ public class PaymentService extends AbstractCrudApplicationService<
             if (!seen.add(line.getInvoiceId())) {
                 throw new PaymentValidationException("La facture " + line.getInvoiceId() + " figure deux fois dans le paiement");
             }
-            InvoiceOutput invoice = loadInvoice(line.getInvoiceId());
-            if (invoice.getStatus() != InvoiceStatus.VERIFIED) {
+            PayableInvoice invoice = loadInvoice(line.getInvoiceId());
+            if (!invoice.verified()) {
                 throw new PaymentRuleViolationException(
-                        "La facture " + invoice.getInvoiceCode() + " n'est pas vérifiée (statut " + invoice.getStatus() + ")");
+                        "La facture " + invoice.code() + " n'est pas vérifiée (statut " + invoice.status() + ")");
             }
-            if (invoice.getInvoiceType() == InvoiceType.CREDIT_NOTE) {
-                throw new PaymentRuleViolationException("L'avoir " + invoice.getInvoiceCode() + " ne se paie pas");
+            if (invoice.creditNote()) {
+                throw new PaymentRuleViolationException("L'avoir " + invoice.code() + " ne se paie pas");
             }
-            if (!invoice.getSupplierId().equals(payment.getSupplierId())) {
+            if (!invoice.supplierId().equals(payment.getSupplierId())) {
                 throw new PaymentSupplierMismatchException(
-                        "La facture " + invoice.getInvoiceCode() + " appartient à un autre fournisseur");
+                        "La facture " + invoice.code() + " appartient à un autre fournisseur");
             }
-            if (!invoice.getCurrencyCode().equalsIgnoreCase(payment.getCurrencyCode())) {
-                throw new PaymentRuleViolationException("La facture " + invoice.getInvoiceCode()
-                        + " est en " + invoice.getCurrencyCode() + ", le paiement en " + payment.getCurrencyCode());
+            if (!invoice.currencyCode().equalsIgnoreCase(payment.getCurrencyCode())) {
+                throw new PaymentRuleViolationException("La facture " + invoice.code()
+                        + " est en " + invoice.currencyCode() + ", le paiement en " + payment.getCurrencyCode());
             }
-            BigDecimal total = invoice.getTotalAmountWithTax() != null ? invoice.getTotalAmountWithTax().getAmount() : BigDecimal.ZERO;
-            BigDecimal paid = invoice.getPaidAmount() != null ? invoice.getPaidAmount().getAmount() : BigDecimal.ZERO;
-            BigDecimal available = total.subtract(paid).subtract(reserved.getOrDefault(line.getInvoiceId(), BigDecimal.ZERO));
+            BigDecimal available = invoice.total().subtract(invoice.paid()).subtract(reserved.getOrDefault(line.getInvoiceId(), BigDecimal.ZERO));
             if (line.getAmount().getAmount().compareTo(available) > 0) {
-                throw new PaymentAmountMismatchException("Le montant pour la facture " + invoice.getInvoiceCode() + " ("
+                throw new PaymentAmountMismatchException("Le montant pour la facture " + invoice.code() + " ("
                         + line.getAmount().getAmount().stripTrailingZeros().toPlainString() + ") dépasse ce qui reste à payer ("
                         + available.max(BigDecimal.ZERO).stripTrailingZeros().toPlainString() + ")");
             }
-            line.setInvoiceCode(invoice.getInvoiceCode());
-            line.setSupplierId(invoice.getSupplierId());
-            line.setSupplierName(invoice.getSupplierName());
-            if (supplierName == null) supplierName = invoice.getSupplierName();
+            line.setInvoiceCode(invoice.code());
+            line.setSupplierId(invoice.supplierId());
+            line.setSupplierName(invoice.supplierName());
+            if (supplierName == null) supplierName = invoice.supplierName();
         }
         if (supplierName != null) payment.setSupplierName(supplierName);
     }
 
-    private InvoiceOutput loadInvoice(String invoiceId) {
-        try {
-            return invoiceUseCase.getById(UUID.fromString(invoiceId));
-        } catch (IllegalArgumentException | InvoiceNotFoundException e) {
-            throw new PaymentValidationException("Facture introuvable : " + invoiceId);
-        }
+    private PayableInvoice loadInvoice(String invoiceId) {
+        return payableInvoices.find(invoiceId)
+                .orElseThrow(() -> new PaymentValidationException("Facture introuvable : " + invoiceId));
     }
 
     /** Amount per invoice already set aside by the supplier's other draft or prepared payments. */
