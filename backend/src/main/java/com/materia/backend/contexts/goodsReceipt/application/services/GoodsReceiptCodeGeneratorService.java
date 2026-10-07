@@ -1,7 +1,7 @@
 package com.materia.backend.contexts.goodsReceipt.application.services;
 
 import com.materia.backend.contexts.goodsReceipt.domain.valueObjects.ReceiptCode;
-import com.materia.backend.contexts.masterData.domain.ports.out.CodeSequenceRepository;
+import com.materia.backend.common.domain.ports.out.CodeSequenceRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

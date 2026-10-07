@@ -1,8 +1,6 @@
-package com.materia.backend.contexts.masterData.infrastructure.adapters.out.persistence;
+package com.materia.backend.common.infrastructure.persistence.codeSequence;
 
-import com.materia.backend.contexts.masterData.domain.ports.out.CodeSequenceRepository;
-import com.materia.backend.contexts.masterData.infrastructure.adapters.out.persistence.entities.CodeSequenceJpaEntity;
-import com.materia.backend.contexts.masterData.infrastructure.adapters.out.persistence.repositories.SpringDataCodeSequenceRepository;
+import com.materia.backend.common.domain.ports.out.CodeSequenceRepository;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;

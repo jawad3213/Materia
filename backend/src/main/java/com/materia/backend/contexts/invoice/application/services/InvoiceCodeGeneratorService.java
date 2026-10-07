@@ -1,6 +1,6 @@
 package com.materia.backend.contexts.invoice.application.services;
 
-import com.materia.backend.contexts.masterData.domain.ports.out.CodeSequenceRepository;
+import com.materia.backend.common.domain.ports.out.CodeSequenceRepository;
 import com.materia.backend.contexts.invoice.domain.valueObjects.InvoiceCode;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

@@ -1,6 +1,6 @@
 package com.materia.backend.contexts.payment.application.services;
 
-import com.materia.backend.contexts.masterData.domain.ports.out.CodeSequenceRepository;
+import com.materia.backend.common.domain.ports.out.CodeSequenceRepository;
 import com.materia.backend.contexts.payment.domain.valueObjects.PaymentCode;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

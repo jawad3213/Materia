@@ -1,4 +1,4 @@
-package com.materia.backend.contexts.masterData.infrastructure.adapters.out.persistence.entities;
+package com.materia.backend.common.infrastructure.persistence.codeSequence;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

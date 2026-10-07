@@ -1,7 +1,7 @@
 package com.materia.backend.contexts.employee.application.services;
 
 import com.materia.backend.contexts.employee.domain.valueObjects.EmployeeCode;
-import com.materia.backend.contexts.masterData.domain.ports.out.CodeSequenceRepository;
+import com.materia.backend.common.domain.ports.out.CodeSequenceRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.RepeatedTest;

@@ -10,7 +10,7 @@ import com.materia.backend.contexts.masterData.application.services.CategoryCode
 import com.materia.backend.contexts.masterData.application.services.MaterialCodeGeneratorService;
 import com.materia.backend.contexts.masterData.application.services.SupplierCodeGeneratorService;
 import com.materia.backend.contexts.masterData.domain.enums.MaterialType;
-import com.materia.backend.contexts.masterData.domain.ports.out.CodeSequenceRepository;
+import com.materia.backend.common.domain.ports.out.CodeSequenceRepository;
 import com.materia.backend.contexts.masterData.domain.valueObjects.MaterialCode;
 import com.materia.backend.contexts.payment.application.services.PaymentCodeGeneratorService;
 import com.materia.backend.contexts.payment.domain.valueObjects.PaymentCode;

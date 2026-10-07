@@ -1,6 +1,5 @@
-package com.materia.backend.contexts.masterData.infrastructure.adapters.out.persistence.repositories;
+package com.materia.backend.common.infrastructure.persistence.codeSequence;
 
-import com.materia.backend.contexts.masterData.infrastructure.adapters.out.persistence.entities.CodeSequenceJpaEntity;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
