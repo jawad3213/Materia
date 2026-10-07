@@ -1,6 +1,8 @@
 package com.materia.backend.contexts.purchaseOrder.application.services;
 
 import com.materia.backend.contexts.goodsReceipt.domain.ports.in.GoodsReceiptUseCase;
+import com.materia.backend.contexts.purchaseOrder.infrastructure.adapters.out.goodsReceipt.GoodsReceiptRecordsAdapter;
+import com.materia.backend.contexts.purchaseOrder.infrastructure.adapters.out.requisition.RequisitionSourceAdapter;
 import com.materia.backend.contexts.purchaseOrder.application.mappers.PurchaseOrderMapper;
 import com.materia.backend.contexts.purchaseOrder.domain.entities.PurchaseOrder;
 import com.materia.backend.contexts.purchaseOrder.domain.enums.OrderStatus;
@@ -44,7 +46,7 @@ class PurchaseOrderServiceEventsTest {
     @BeforeEach
     void setUp() {
         service = new PurchaseOrderService(repository, new PurchaseOrderMapper(), codeGenerator,
-                goodsReceiptUseCase, requisitionUseCase, events, receiverDirectory);
+                new GoodsReceiptRecordsAdapter(goodsReceiptUseCase), new RequisitionSourceAdapter(requisitionUseCase), events, receiverDirectory);
         when(repository.save(any(PurchaseOrder.class))).thenAnswer(inv -> inv.getArgument(0));
     }
 

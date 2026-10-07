@@ -3,6 +3,8 @@ package com.materia.backend.contexts.purchaseOrder.application.services;
 import com.materia.backend.common.domain.enums.CurrencyCode;
 import com.materia.backend.common.domain.valueObjects.Money;
 import com.materia.backend.contexts.goodsReceipt.domain.ports.in.GoodsReceiptUseCase;
+import com.materia.backend.contexts.purchaseOrder.infrastructure.adapters.out.goodsReceipt.GoodsReceiptRecordsAdapter;
+import com.materia.backend.contexts.purchaseOrder.infrastructure.adapters.out.requisition.RequisitionSourceAdapter;
 import com.materia.backend.contexts.purchaseOrder.application.dtos.UpdatePurchaseOrderInput;
 import com.materia.backend.contexts.purchaseOrder.application.mappers.PurchaseOrderMapper;
 import com.materia.backend.contexts.purchaseOrder.domain.entities.PurchaseOrder;
@@ -51,7 +53,7 @@ class PurchaseOrderServiceLineNormalizationTest {
     @BeforeEach
     void setUp() {
         service = new PurchaseOrderService(repository, new PurchaseOrderMapper(), codeGenerator,
-                goodsReceiptUseCase, requisitionUseCase, eventPublisher, receiverDirectory);
+                new GoodsReceiptRecordsAdapter(goodsReceiptUseCase), new RequisitionSourceAdapter(requisitionUseCase), eventPublisher, receiverDirectory);
         when(repository.save(any(PurchaseOrder.class))).thenAnswer(inv -> inv.getArgument(0));
     }
 

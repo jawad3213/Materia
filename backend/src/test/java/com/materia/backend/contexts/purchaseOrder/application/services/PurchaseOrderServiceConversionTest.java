@@ -3,6 +3,8 @@ package com.materia.backend.contexts.purchaseOrder.application.services;
 import com.materia.backend.common.domain.enums.CurrencyCode;
 import com.materia.backend.common.domain.valueObjects.Money;
 import com.materia.backend.contexts.goodsReceipt.domain.ports.in.GoodsReceiptUseCase;
+import com.materia.backend.contexts.purchaseOrder.infrastructure.adapters.out.goodsReceipt.GoodsReceiptRecordsAdapter;
+import com.materia.backend.contexts.purchaseOrder.infrastructure.adapters.out.requisition.RequisitionSourceAdapter;
 import com.materia.backend.contexts.purchaseOrder.application.dtos.CreatePurchaseOrderInput;
 import com.materia.backend.contexts.purchaseOrder.application.dtos.PurchaseOrderLineInput;
 import com.materia.backend.contexts.purchaseOrder.application.dtos.PurchaseOrderOutput;
@@ -60,7 +62,7 @@ class PurchaseOrderServiceConversionTest {
     @BeforeEach
     void setUp() {
         service = new PurchaseOrderService(repository, new PurchaseOrderMapper(), codeGenerator,
-                goodsReceiptUseCase, requisitionUseCase, eventPublisher, receiverDirectory);
+                new GoodsReceiptRecordsAdapter(goodsReceiptUseCase), new RequisitionSourceAdapter(requisitionUseCase), eventPublisher, receiverDirectory);
         when(repository.save(any(PurchaseOrder.class))).thenAnswer(inv -> inv.getArgument(0));
         when(codeGenerator.generateCode()).thenReturn(OrderCode.of("PO-2026-0200"));
     }
