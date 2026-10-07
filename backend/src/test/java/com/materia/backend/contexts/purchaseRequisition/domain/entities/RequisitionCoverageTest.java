@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import static com.materia.backend.support.fixtures.CrossContextWiring.*;
 import static com.materia.backend.support.fixtures.MaterialFixtures.aMaterial;
 import static com.materia.backend.support.fixtures.RequisitionFixtures.aLine;
 import static com.materia.backend.support.fixtures.RequisitionFixtures.aRequisition;
@@ -325,7 +326,7 @@ class RequisitionCoverageTest {
         Material m = aMaterial().price("4.00").build();
         m.setId(UUID.randomUUID());
 
-        RequisitionLine line = new RequisitionLine(m, 3, LocalDate.now().plusDays(2));
+        RequisitionLine line = new RequisitionLine(snapshotOf(m), 3, LocalDate.now().plusDays(2));
 
         assertEquals(m.getCode().getValue(), line.getMaterialCode());
         assertEquals(m.getId(), line.getMaterialId());
@@ -345,7 +346,7 @@ class RequisitionCoverageTest {
         m.setStandardPrice(null);
         m.setUnitOfMeasure((String) null);
 
-        RequisitionLine line = new RequisitionLine(m, 1, null);
+        RequisitionLine line = new RequisitionLine(snapshotOf(m), 1, null);
 
         assertNull(line.getUnitOfMeasure());
         assertNull(line.getCurrencyCode());
@@ -358,8 +359,8 @@ class RequisitionCoverageTest {
     void line_refusals() {
         Material m = aMaterial().build();
         assertThrows(IllegalArgumentException.class, () -> new RequisitionLine(null, 1, null));
-        assertThrows(IllegalArgumentException.class, () -> new RequisitionLine(m, 0, null));
-        assertThrows(IllegalArgumentException.class, () -> new RequisitionLine(m, null, null));
+        assertThrows(IllegalArgumentException.class, () -> new RequisitionLine(snapshotOf(m), 0, null));
+        assertThrows(IllegalArgumentException.class, () -> new RequisitionLine(snapshotOf(m), null, null));
         RequisitionLine line = aLine(2, "1.00");
         assertThrows(IllegalArgumentException.class, () -> line.populateFromMaterial(null));
         assertThrows(IllegalArgumentException.class, () -> line.updateQuantity(0));

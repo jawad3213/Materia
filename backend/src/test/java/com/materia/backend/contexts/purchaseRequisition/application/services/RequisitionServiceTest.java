@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import static com.materia.backend.support.fixtures.CrossContextWiring.*;
 import static com.materia.backend.contexts.purchaseRequisition.domain.enums.RequisitionStatus.*;
 import static com.materia.backend.support.fixtures.RequisitionFixtures.aRequisition;
 import static org.junit.jupiter.api.Assertions.*;
@@ -43,7 +44,7 @@ class RequisitionServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new RequisitionService(requisitions, materials, new RequisitionMapper(), codeGenerator, exchangeRates);
+        service = new RequisitionService(requisitions, materialCatalogOver(materials), new RequisitionMapper(), codeGenerator, exchangeRates);
         lenient().when(requisitions.save(any())).thenAnswer(i -> i.getArgument(0));
     }
 

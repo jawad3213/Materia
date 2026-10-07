@@ -5,7 +5,7 @@ import com.materia.backend.contexts.masterData.domain.enums.MaterialStatus;
 import com.materia.backend.contexts.masterData.domain.enums.StockStatus;
 import com.materia.backend.contexts.masterData.domain.events.MaterialBelowReorderPointEvent;
 import com.materia.backend.contexts.masterData.domain.events.MaterialReorderedEvent;
-import com.materia.backend.contexts.purchaseRequisition.application.services.RequisitionService;
+import com.materia.backend.contexts.masterData.domain.ports.out.RequisitionRequests;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -33,7 +33,7 @@ class ReorderServiceCoverageTest {
 
     @Mock private com.materia.backend.contexts.masterData.domain.ports.out.MaterialRepository materials;
     @Mock private NotificationService notifications;
-    @Mock private RequisitionService requisitions;
+    @Mock private RequisitionRequests requisitions;
     @Mock private ApplicationEventPublisher events;
 
     private final MaterialStockDomainService stock = new MaterialStockDomainService();

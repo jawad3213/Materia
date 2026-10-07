@@ -37,6 +37,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import static com.materia.backend.support.fixtures.CrossContextWiring.*;
 import static com.materia.backend.support.fixtures.MaterialFixtures.aMaterial;
 import static com.materia.backend.support.fixtures.RequisitionFixtures.aRequisition;
 import static org.junit.jupiter.api.Assertions.*;
@@ -57,7 +58,7 @@ class RequisitionServiceCoverageTest {
 
     @BeforeEach
     void setUp() {
-        service = new RequisitionService(requisitions, materials, new RequisitionMapper(), codeGenerator, exchangeRates);
+        service = new RequisitionService(requisitions, materialCatalogOver(materials), new RequisitionMapper(), codeGenerator, exchangeRates);
         when(requisitions.save(any())).thenAnswer(i -> i.getArgument(0));
         when(codeGenerator.generateCode()).thenAnswer(i -> RequisitionCode.createDefault());
         when(requisitions.findFirstByRequesterName(anyString())).thenReturn(Optional.empty());
@@ -306,7 +307,7 @@ class RequisitionServiceCoverageTest {
     void reorder_urgent() {
         Material m = orderable("4.00", CurrencyCode.EUR);
 
-        String code = service.createRequisitionFromReorder(m, 5, "Below safety stock", true);
+        String code = service.createRequisitionFromReorder(snapshotOf(m), 5, "Below safety stock", true);
 
         Requisition r = saved();
         assertEquals(r.getRequisitionCode().getValue(), code);
@@ -324,7 +325,7 @@ class RequisitionServiceCoverageTest {
         m.setStandardPrice(null);
         when(codeGenerator.generateCode()).thenReturn(null);
 
-        String ref = service.createRequisitionFromReorder(m, 5, " ", false);
+        String ref = service.createRequisitionFromReorder(snapshotOf(m), 5, " ", false);
 
         Requisition r = saved();
         assertEquals(r.getId().toString(), ref);
@@ -333,7 +334,7 @@ class RequisitionServiceCoverageTest {
         assertEquals("Automated stock reorder", r.getJustification());
         assertEquals("MAD", r.getCurrencyCode());
 
-        service.createRequisitionFromReorder(m, 1, null, false);
+        service.createRequisitionFromReorder(snapshotOf(m), 1, null, false);
         assertEquals("Automated stock reorder", saved().getJustification());
     }
 

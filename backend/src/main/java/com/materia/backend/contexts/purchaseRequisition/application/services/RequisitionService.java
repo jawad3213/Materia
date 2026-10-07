@@ -6,9 +6,8 @@ import com.materia.backend.common.application.exceptions.ValidationException;
 import com.materia.backend.common.domain.enums.CurrencyCode;
 import com.materia.backend.common.domain.services.ExchangeRateService;
 import com.materia.backend.common.domain.valueObjects.Money;
-import com.materia.backend.contexts.masterData.domain.entities.Material;
-import com.materia.backend.contexts.masterData.domain.ports.out.MaterialRepository;
 import com.materia.backend.contexts.purchaseRequisition.application.dtos.CreateRequisitionInput;
+import com.materia.backend.contexts.purchaseRequisition.application.dtos.ReplenishmentLineInput;
 import com.materia.backend.contexts.purchaseRequisition.application.dtos.RequisitionOutput;
 import com.materia.backend.contexts.purchaseRequisition.application.dtos.RequisitionSearchCriteria;
 import com.materia.backend.contexts.purchaseRequisition.application.dtos.UpdateRequisitionInput;
@@ -21,9 +20,12 @@ import com.materia.backend.contexts.purchaseRequisition.domain.exceptions.Requis
 import com.materia.backend.contexts.purchaseRequisition.domain.exceptions.RequisitionNotModifiableException;
 import com.materia.backend.contexts.purchaseRequisition.domain.exceptions.RequisitionNotFoundException;
 import com.materia.backend.contexts.purchaseRequisition.domain.enums.RequisitionStatus;
+import com.materia.backend.contexts.purchaseRequisition.domain.ports.in.ReplenishmentUseCase;
 import com.materia.backend.contexts.purchaseRequisition.domain.ports.in.RequisitionUseCase;
+import com.materia.backend.contexts.purchaseRequisition.domain.ports.out.MaterialCatalog;
 import com.materia.backend.contexts.purchaseRequisition.domain.ports.out.RequesterDirectory;
 import com.materia.backend.contexts.purchaseRequisition.domain.ports.out.RequisitionRepository;
+import com.materia.backend.contexts.purchaseRequisition.domain.valueObjects.MaterialSnapshot;
 import com.materia.backend.contexts.purchaseRequisition.domain.valueObjects.RequisitionSearchFilter;
 import org.springframework.stereotype.Service;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -40,10 +42,10 @@ import java.util.UUID;
  * Application service for purchase requisitions.
  */
 @Service
-public class RequisitionService implements RequisitionUseCase {
+public class RequisitionService implements RequisitionUseCase, ReplenishmentUseCase {
 
     private final RequisitionRepository requisitionRepository;
-    private final MaterialRepository materialRepository;
+    private final MaterialCatalog materialCatalog;
     private final RequisitionMapper mapper;
     private final RequisitionCodeGeneratorService codeGenerator;
     private final ExchangeRateService exchangeRateService;
@@ -54,22 +56,22 @@ public class RequisitionService implements RequisitionUseCase {
     public static final String SYSTEM_REQUESTER_NAME = "Réapprovisionnement automatique";
 
     public RequisitionService(RequisitionRepository requisitionRepository,
-                              MaterialRepository materialRepository,
+                              MaterialCatalog materialCatalog,
                               RequisitionMapper mapper,
                               RequisitionCodeGeneratorService codeGenerator,
                               ExchangeRateService exchangeRateService) {
-        this(requisitionRepository, materialRepository, mapper, codeGenerator, exchangeRateService, null);
+        this(requisitionRepository, materialCatalog, mapper, codeGenerator, exchangeRateService, null);
     }
 
     @org.springframework.beans.factory.annotation.Autowired
     public RequisitionService(RequisitionRepository requisitionRepository,
-                              MaterialRepository materialRepository,
+                              MaterialCatalog materialCatalog,
                               RequisitionMapper mapper,
                               RequisitionCodeGeneratorService codeGenerator,
                               ExchangeRateService exchangeRateService,
                               RequesterDirectory requesterDirectory) {
         this.requisitionRepository = requisitionRepository;
-        this.materialRepository = materialRepository;
+        this.materialCatalog = materialCatalog;
         this.mapper = mapper;
         this.codeGenerator = codeGenerator;
         this.exchangeRateService = exchangeRateService;
@@ -305,12 +307,12 @@ public class RequisitionService implements RequisitionUseCase {
                         Map.of("lines[" + i + "]", "Line cannot be null"));
             }
 
-            Material material = resolveMaterial(line, i);
+            MaterialSnapshot material = resolveMaterial(line, i);
             UUID existingId = line.getId();
             line.populateFromMaterial(material);
 
-            if (targetCurrency != null && material.getStandardPrice() != null) {
-                Money price = material.getStandardPrice();
+            if (targetCurrency != null && material.standardPrice() != null) {
+                Money price = material.standardPrice();
                 if (!price.getCurrency().equals(targetCurrency)) {
                     Money convertedPrice = exchangeRateService.convert(price, targetCurrency);
                     line.setUnitPrice(convertedPrice);
@@ -338,20 +340,20 @@ public class RequisitionService implements RequisitionUseCase {
         }
     }
 
-    private Material resolveMaterial(RequisitionLine line, int index) {
-        Material material;
+    private MaterialSnapshot resolveMaterial(RequisitionLine line, int index) {
+        MaterialSnapshot material;
         if (line.getMaterialId() != null) {
-            material = materialRepository.findById(line.getMaterialId())
+            material = materialCatalog.findById(line.getMaterialId())
                     .orElseThrow(() -> new RequisitionMaterialNotFoundException("Material not found for line " + (index + 1)));
         } else if (line.getMaterialCode() != null && !line.getMaterialCode().trim().isEmpty()) {
-            material = materialRepository.findByCode(line.getMaterialCode().trim())
+            material = materialCatalog.findByCode(line.getMaterialCode().trim())
                     .orElseThrow(() -> new RequisitionMaterialNotFoundException("Material not found for code: " + line.getMaterialCode()));
         } else {
             throw new ValidationException("Material is required for each requisition line",
                     Map.of("lines[" + index + "].material", "Material id or code is required"));
         }
 
-        if (!material.isOrderable()) {
+        if (!material.orderable()) {
             throw new RequisitionMaterialNotOrderableException(index);
         }
 
@@ -364,7 +366,7 @@ public class RequisitionService implements RequisitionUseCase {
 
     /** A requisition raised by the automatic replenishment: the requester is the system. */
     @Transactional
-    public String createRequisitionFromReorder(Material material, int quantity, String reason, boolean isUrgent) {
+    public String createRequisitionFromReorder(MaterialSnapshot material, int quantity, String reason, boolean isUrgent) {
         return createRequisitionFromReorder(material, quantity, reason, isUrgent, null);
     }
 
@@ -373,16 +375,16 @@ public class RequisitionService implements RequisitionUseCase {
      * their account; without one, the system is. The database requires a requester on every requisition.
      */
     @Transactional
-    public String createRequisitionFromReorder(Material material, int quantity, String reason, boolean isUrgent,
+    public String createRequisitionFromReorder(MaterialSnapshot material, int quantity, String reason, boolean isUrgent,
                                                String requesterId) {
         Requisition requisition = new Requisition();
         applyRequester(requisition, requesterId);
-        requisition.setTitle((isUrgent ? "[URGENT] " : "") + "Reorder for " + material.getName());
+        requisition.setTitle((isUrgent ? "[URGENT] " : "") + "Reorder for " + material.name());
         requisition.setDescription("Auto-generated reorder requisition: " + reason);
         requisition.setJustification(reason != null && !reason.isBlank() ? reason : "Automated stock reorder");
         requisition.setRequiredDate(java.time.LocalDate.now().plusDays(isUrgent ? 2 : 7));
-        requisition.setCurrencyCode(material.getStandardPrice() != null && material.getStandardPrice().getCurrency() != null 
-                ? material.getStandardPrice().getCurrency().getCode() : "MAD");
+        requisition.setCurrencyCode(material.standardPrice() != null && material.standardPrice().getCurrency() != null 
+                ? material.standardPrice().getCurrency().getCode() : "MAD");
         requisition.setRequisitionCode(generateNextCode());
         requisition.setStatus(com.materia.backend.contexts.purchaseRequisition.domain.enums.RequisitionStatus.DRAFT);
         
@@ -392,6 +394,24 @@ public class RequisitionService implements RequisitionUseCase {
         
         Requisition saved = requisitionRepository.save(requisition);
         return saved.getRequisitionCode() != null ? saved.getRequisitionCode().getValue() : saved.getId().toString();
+    }
+
+    @Override
+    @Transactional
+    public String raiseReplenishment(UUID materialId, int quantity, String reason, boolean urgent, String requesterId) {
+        MaterialSnapshot material = materialCatalog.findById(materialId)
+                .orElseThrow(() -> new RequisitionMaterialNotFoundException("Material not found: " + materialId));
+        return createRequisitionFromReorder(material, quantity, reason, urgent, requesterId);
+    }
+
+    @Override
+    @Transactional
+    public String raiseGroupedReplenishment(String supplierId, List<ReplenishmentLineInput> lines) {
+        List<RequisitionLine> requisitionLines = new java.util.ArrayList<>();
+        for (ReplenishmentLineInput line : lines) {
+            requisitionLines.add(new RequisitionLine(line.materialCode(), line.quantity()));
+        }
+        return createGroupedRequisition(supplierId, requisitionLines);
     }
 
     @Transactional
@@ -439,6 +459,7 @@ public class RequisitionService implements RequisitionUseCase {
      * Whether a requisition still in progress (draft, submitted or approved) already asks for this material,
      * so the automatic replenishment does not raise a second one. Once converted, the order counts as stock on order.
      */
+    @Override
     @Transactional(readOnly = true)
     public boolean hasOpenRequisitionFor(UUID materialId, String materialCode) {
         for (RequisitionStatus status : List.of(RequisitionStatus.DRAFT, RequisitionStatus.SUBMITTED, RequisitionStatus.APPROVED)) {

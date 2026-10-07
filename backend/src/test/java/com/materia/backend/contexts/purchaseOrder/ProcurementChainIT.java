@@ -34,6 +34,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import static com.materia.backend.support.fixtures.CrossContextWiring.*;
 import static com.materia.backend.support.fixtures.MaterialFixtures.aMaterial;
 import static com.materia.backend.support.fixtures.RequisitionFixtures.aRequisition;
 import static com.materia.backend.support.fixtures.UserFixtures.aPurchaser;
@@ -74,7 +75,7 @@ class ProcurementChainIT extends AbstractIntegrationTest {
     private Requisition approvedRequisition(Object... materialAndQuantity) {
         var builder = aRequisition().requestedBy("requester-1").inStatus(RequisitionStatus.APPROVED);
         for (int i = 0; i < materialAndQuantity.length; i += 2) {
-            builder.withLine(new RequisitionLine((Material) materialAndQuantity[i], (Integer) materialAndQuantity[i + 1],
+            builder.withLine(new RequisitionLine(snapshotOf((Material) materialAndQuantity[i]), (Integer) materialAndQuantity[i + 1],
                     LocalDate.now().plusDays(10)));
         }
         Requisition saved = requisitions.save(builder.build());
@@ -144,7 +145,7 @@ class ProcurementChainIT extends AbstractIntegrationTest {
         Material manual = material();
         User buyer = users.save(aPurchaser().firstName("Bea").lastName("Buyer").build());
 
-        String autoCode = requisitionService.createRequisitionFromReorder(auto, 10, "Below safety stock", true);
+        String autoCode = requisitionService.createRequisitionFromReorder(snapshotOf(auto), 10, "Below safety stock", true);
         reorder.triggerManualReorder(manual.getId(), 7, "Customer rush", buyer.getId().toString());
         flushAndClear();
 
@@ -301,7 +302,7 @@ class ProcurementChainIT extends AbstractIntegrationTest {
 
         requisition.getLines().get(0).updateQuantity(9);
         requisition.removeLine(1);
-        requisition.addLine(new RequisitionLine(c, 4, LocalDate.now().plusDays(5)));
+        requisition.addLine(new RequisitionLine(snapshotOf(c), 4, LocalDate.now().plusDays(5)));
         requisitions.save(requisition);
         flushAndClear();
 

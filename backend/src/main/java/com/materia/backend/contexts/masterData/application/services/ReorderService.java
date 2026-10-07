@@ -6,9 +6,9 @@ import com.materia.backend.contexts.masterData.domain.enums.StockStatus;
 import com.materia.backend.contexts.masterData.domain.events.MaterialBelowReorderPointEvent;
 import com.materia.backend.contexts.masterData.domain.events.MaterialReorderedEvent;
 import com.materia.backend.contexts.masterData.domain.ports.out.MaterialRepository;
+import com.materia.backend.contexts.masterData.domain.ports.out.RequisitionRequests;
+import com.materia.backend.contexts.masterData.domain.ports.out.RequisitionRequests.ReorderLine;
 import com.materia.backend.contexts.masterData.domain.valueObjects.ReorderQuantity;
-import com.materia.backend.contexts.purchaseRequisition.application.services.RequisitionService;
-import com.materia.backend.contexts.purchaseRequisition.domain.entities.RequisitionLine;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -32,7 +32,7 @@ public class ReorderService {
     private final MaterialRepository materialRepository;
     private final MaterialStockDomainService stockDomainService;
     private final NotificationService notificationService;
-    private final RequisitionService requisitionService;
+    private final RequisitionRequests requisitionService;
     private final ApplicationEventPublisher eventPublisher;
     
     // ============================================================
@@ -271,11 +271,11 @@ public class ReorderService {
         // Créer une demande groupée pour un fournisseur
         log.info("📦 Création d'une demande groupée pour le fournisseur {}", supplierId);
         
-        List<RequisitionLine> lines = new ArrayList<>();
+        List<ReorderLine> lines = new ArrayList<>();
         for (Material material : materials) {
             ReorderQuantity reorderQuantity = stockDomainService.getRecommendedReorderQuantity(material);
             if (reorderQuantity != null) {
-                lines.add(new RequisitionLine(
+                lines.add(new ReorderLine(
                         material.getCode() != null ? material.getCode().getValue() : null,
                         reorderQuantity.getQuantity()
                 ));

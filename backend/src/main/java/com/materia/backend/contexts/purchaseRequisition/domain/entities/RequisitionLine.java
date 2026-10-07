@@ -1,6 +1,6 @@
 package com.materia.backend.contexts.purchaseRequisition.domain.entities;
 
-import com.materia.backend.contexts.masterData.domain.entities.Material;
+import com.materia.backend.contexts.purchaseRequisition.domain.valueObjects.MaterialSnapshot;
 import com.materia.backend.common.domain.valueObjects.Money;
 
 import java.time.LocalDate;
@@ -44,7 +44,7 @@ public class RequisitionLine {
         this.quantityRejected = 0;
     }
 
-    public RequisitionLine(Material material, Integer quantity, LocalDate requiredDate) {
+    public RequisitionLine(MaterialSnapshot material, Integer quantity, LocalDate requiredDate) {
         this();
         if (material == null) {
             throw new IllegalArgumentException("Material is required");
@@ -257,26 +257,24 @@ public class RequisitionLine {
         this.expiryDate = expiryDate;
     }
 
-    public void populateFromMaterial(Material material) {
+    public void populateFromMaterial(MaterialSnapshot material) {
         if (material == null) {
             throw new IllegalArgumentException("Material is required");
         }
-        this.materialId = material.getId();
-        this.materialCode = material.getCode().getValue();
-        this.materialName = material.getName();
-        this.materialDescription = material.getDescription();
-        this.unitOfMeasure = material.getUnitOfMeasure() != null
-                ? material.getUnitOfMeasure().getCode()
-                : null;
-        this.standardPrice = material.getStandardPrice();
-        this.unitPrice = material.getStandardPrice();
+        this.materialId = material.id();
+        this.materialCode = material.code();
+        this.materialName = material.name();
+        this.materialDescription = material.description();
+        this.unitOfMeasure = material.unitOfMeasureCode();
+        this.standardPrice = material.standardPrice();
+        this.unitPrice = material.standardPrice();
         this.currencyCode = resolveCurrencyCode(material);
         this.currencyCodeLine = this.currencyCode;
     }
 
-    private String resolveCurrencyCode(Material material) {
-        return material.getStandardPrice() != null
-                ? material.getStandardPrice().getCurrencyCode()
+    private String resolveCurrencyCode(MaterialSnapshot material) {
+        return material.standardPrice() != null
+                ? material.standardPrice().getCurrencyCode()
                 : null;
     }
 

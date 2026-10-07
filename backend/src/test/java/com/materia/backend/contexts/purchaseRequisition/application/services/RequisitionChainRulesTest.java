@@ -3,11 +3,13 @@ package com.materia.backend.contexts.purchaseRequisition.application.services;
 import com.materia.backend.common.domain.services.ExchangeRateService;
 import com.materia.backend.contexts.masterData.domain.entities.Material;
 import com.materia.backend.contexts.masterData.domain.ports.out.MaterialRepository;
+import com.materia.backend.contexts.purchaseRequisition.application.dtos.ReplenishmentLineInput;
 import com.materia.backend.contexts.purchaseRequisition.application.mappers.RequisitionMapper;
 import com.materia.backend.contexts.purchaseRequisition.domain.entities.Requisition;
 import com.materia.backend.contexts.purchaseRequisition.domain.entities.RequisitionLine;
 import com.materia.backend.contexts.purchaseRequisition.domain.enums.RequisitionStatus;
 import com.materia.backend.contexts.purchaseRequisition.domain.exceptions.RequisitionBusinessException;
+import com.materia.backend.contexts.purchaseRequisition.domain.exceptions.RequisitionMaterialNotFoundException;
 import com.materia.backend.contexts.purchaseRequisition.domain.ports.out.RequesterDirectory;
 import com.materia.backend.contexts.purchaseRequisition.domain.ports.out.RequisitionRepository;
 import com.materia.backend.contexts.purchaseRequisition.domain.valueObjects.RequisitionCode;
@@ -26,6 +28,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import static com.materia.backend.support.fixtures.CrossContextWiring.*;
 import static com.materia.backend.support.fixtures.MaterialFixtures.aMaterial;
 import static com.materia.backend.support.fixtures.RequisitionFixtures.aRequisition;
 import static org.junit.jupiter.api.Assertions.*;
@@ -47,7 +50,7 @@ class RequisitionChainRulesTest {
 
     @BeforeEach
     void setUp() {
-        service = new RequisitionService(requisitions, materials, new RequisitionMapper(), codes, rates, directory);
+        service = new RequisitionService(requisitions, materialCatalogOver(materials), new RequisitionMapper(), codes, rates, directory);
         when(requisitions.save(any(Requisition.class))).thenAnswer(inv -> inv.getArgument(0));
         when(codes.generateCode()).thenReturn(RequisitionCode.createDefault());
         when(directory.displayName("user-1")).thenReturn("Uma User");
@@ -65,26 +68,72 @@ class RequisitionChainRulesTest {
     void reorderRequester() {
         Material m = aMaterial().stock(1).price("2.00").build();
 
-        service.createRequisitionFromReorder(m, 5, "auto", true);
+        service.createRequisitionFromReorder(snapshotOf(m), 5, "auto", true);
         assertEquals(RequisitionService.SYSTEM_REQUESTER_ID, saved().getRequesterId());
         assertEquals(RequisitionService.SYSTEM_REQUESTER_NAME, saved().getRequesterName());
 
-        service.createRequisitionFromReorder(m, 5, "manual", false, "user-1");
+        service.createRequisitionFromReorder(snapshotOf(m), 5, "manual", false, "user-1");
         assertEquals("user-1", saved().getRequesterId());
         assertEquals("Uma User", saved().getRequesterName());
         assertEquals("user-1", saved().getCreatedBy());
 
-        service.createRequisitionFromReorder(m, 5, "blank user", false, " ");
+        service.createRequisitionFromReorder(snapshotOf(m), 5, "blank user", false, " ");
         assertEquals(RequisitionService.SYSTEM_REQUESTER_ID, saved().getRequesterId());
     }
 
     @Test
     @DisplayName("reorder: without a directory the requester's id stands in for their name")
     void reorderRequester_withoutDirectory() {
-        RequisitionService bare = new RequisitionService(requisitions, materials, new RequisitionMapper(), codes, rates);
-        bare.createRequisitionFromReorder(aMaterial().stock(1).build(), 5, "manual", false, "user-2");
+        RequisitionService bare = new RequisitionService(requisitions, materialCatalogOver(materials), new RequisitionMapper(), codes, rates);
+        bare.createRequisitionFromReorder(snapshotOf(aMaterial().stock(1).build()), 5, "manual", false, "user-2");
 
         assertEquals("user-2", saved().getRequesterName());
+    }
+
+    @Test
+    @DisplayName("replenishment: the master data context raises a requisition by material id, read through the material catalog")
+    void replenishment_byMaterialId() {
+        Material m = aMaterial().stock(1).price("2.00").build();
+        m.setId(UUID.randomUUID());
+        when(materials.findById(m.getId())).thenReturn(Optional.of(m));
+
+        service.raiseReplenishment(m.getId(), 5, "auto", true, null);
+
+        Requisition requisition = saved();
+        assertEquals(m.getId(), requisition.getLines().get(0).getMaterialId());
+        assertEquals(m.getCode().getValue(), requisition.getLines().get(0).getMaterialCode());
+        assertEquals(5, requisition.getLines().get(0).getQuantity());
+        assertEquals(RequisitionService.SYSTEM_REQUESTER_ID, requisition.getRequesterId());
+    }
+
+    @Test
+    @DisplayName("replenishment: an unknown material raises nothing")
+    void replenishment_unknownMaterial() {
+        UUID unknown = UUID.randomUUID();
+        when(materials.findById(unknown)).thenReturn(Optional.empty());
+
+        assertThrows(RequisitionMaterialNotFoundException.class,
+                () -> service.raiseReplenishment(unknown, 5, "auto", false, null));
+        verify(requisitions, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("replenishment: a grouped replenishment becomes one requisition with a line per material")
+    void replenishment_grouped() {
+        Material a = aMaterial().stock(1).price("2.00").build();
+        Material b = aMaterial().stock(1).price("3.00").build();
+        a.setId(UUID.randomUUID());
+        when(materials.findByCode(a.getCode().getValue())).thenReturn(Optional.of(a));
+        when(materials.findByCode(b.getCode().getValue())).thenReturn(Optional.of(b));
+
+        service.raiseGroupedReplenishment("sup-1", List.of(
+                new ReplenishmentLineInput(a.getCode().getValue(), 3),
+                new ReplenishmentLineInput(b.getCode().getValue(), 4)));
+
+        Requisition requisition = saved();
+        assertEquals(2, requisition.getLines().size());
+        assertEquals(a.getId(), requisition.getLines().get(0).getMaterialId());
+        assertEquals(4, requisition.getLines().get(1).getQuantity());
     }
 
     @Test

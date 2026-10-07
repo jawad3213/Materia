@@ -8,7 +8,7 @@ import com.materia.backend.contexts.masterData.domain.events.MaterialBelowReorde
 import com.materia.backend.contexts.masterData.domain.exceptions.MaterialNotFoundException;
 import com.materia.backend.contexts.masterData.domain.ports.out.MaterialRepository;
 import com.materia.backend.contexts.masterData.domain.valueObjects.ReorderQuantity;
-import com.materia.backend.contexts.purchaseRequisition.application.services.RequisitionService;
+import com.materia.backend.contexts.masterData.domain.ports.out.RequisitionRequests;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
@@ -39,7 +39,7 @@ class ReorderServicesTest {
 
     @Mock private MaterialRepository materials;
     @Mock private NotificationService notifications;
-    @Mock private RequisitionService requisitions;
+    @Mock private RequisitionRequests requisitions;
     @Mock private ApplicationEventPublisher events;
 
     private final MaterialStockDomainService stock = new MaterialStockDomainService();
