@@ -34,7 +34,7 @@ class ReturnToVendorMigrationIT extends AbstractIntegrationTest {
     private static final Path MIGRATION =
             Path.of("src/main/resources/db/migration/V20261004_03__create_return_to_vendor_tables.sql");
     private static final Path PREVIOUS_STRUCTURE =
-            Path.of("src/test/resources/db/test-migration/V20260925_04__create_out_of_scope_tables.sql");
+            Path.of("src/test/resources/db/reference/hibernate_schema_before_migrations.sql");
 
     @Autowired private JdbcTemplate jdbc;
 

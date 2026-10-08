@@ -27,8 +27,7 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * [T063–T065] The production purchase order migration installs safely everywhere (US8, FR-016, FR-017).
  *
- * <p>The suite builds its schema from {@code db/test-migration}, so nothing else ever runs the
- * production script. Each test applies it to a fresh, throwaway schema on the shared PostgreSQL
+ * <p>Each test applies the production script to a fresh, throwaway schema on the shared PostgreSQL
  * container: empty, pre-populated with the previous (Hibernate-generated) structure, and twice in a row.
  * The script names {@code public} explicitly, so it is retargeted at the throwaway schema first.
  */
@@ -38,7 +37,7 @@ class PurchaseOrderMigrationIT extends AbstractIntegrationTest {
     private static final Path MIGRATION =
             Path.of("src/main/resources/db/migration/V20261003_01__create_purchase_order_tables.sql");
     private static final Path PREVIOUS_STRUCTURE =
-            Path.of("src/test/resources/db/test-migration/V20260925_04__create_out_of_scope_tables.sql");
+            Path.of("src/test/resources/db/reference/hibernate_schema_before_migrations.sql");
 
     @Autowired private JdbcTemplate jdbc;
 

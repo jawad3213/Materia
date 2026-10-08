@@ -103,17 +103,37 @@ resource "random_bytes" "jwt_refresh" {
   length = 64
 }
 
+# First administrator, created by the backend while the users table is empty (AdminAccountBootstrap) and
+# asked for a new password at the first sign-in. The special characters are the policy's that survive a
+# docker compose .env file unquoted.
+resource "random_password" "bootstrap_admin" {
+  length           = 24
+  min_upper        = 2
+  min_lower        = 2
+  min_numeric      = 2
+  min_special      = 2
+  override_special = "!@%^*.,?"
+}
+
+locals {
+  bootstrap_admin = var.bootstrap_admin_email != "" ? {
+    config  = { APP_BOOTSTRAP_ADMIN_EMAIL = var.bootstrap_admin_email }
+    secrets = { APP_BOOTSTRAP_ADMIN_PASSWORD = random_password.bootstrap_admin.result }
+  } : { config = {}, secrets = {} }
+}
+
 module "app_parameters" {
   source = "../../modules/ssm_parameters"
 
   path       = "/${var.project}/${var.environment}/app"
-  parameters = merge(local.default_app_config, var.app_config)
+  parameters = merge(local.default_app_config, local.bootstrap_admin.config, var.app_config)
   secure_parameters = merge(
     {
       POSTGRES_PASSWORD  = random_password.postgres.result
       JWT_ACCESS_SECRET  = random_bytes.jwt_access.base64
       JWT_REFRESH_SECRET = random_bytes.jwt_refresh.base64
     },
+    local.bootstrap_admin.secrets,
     var.extra_secrets,
   )
   tags = local.tags

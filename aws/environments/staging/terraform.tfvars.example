@@ -30,6 +30,7 @@ spring_profile        = "staging"
 app_url               = "" # empty = http://<elastic ip>; set once a domain points here
 refresh_cookie_secure = false
 contact_email         = "support@example.com"
+bootstrap_admin_email = "admin@example.com" # first administrator; read its password with the bootstrap_admin_password_command output
 
 app_config = {
   # SPRING_MAIL_HOST     = "smtp.example.com"

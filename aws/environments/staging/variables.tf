@@ -155,6 +155,12 @@ variable "app_config" {
   default     = {}
 }
 
+variable "bootstrap_admin_email" {
+  description = "E-mail of the first administrator, created on the first start (its password is generated into Parameter Store). Empty: no administrator is created."
+  type        = string
+  default     = ""
+}
+
 variable "extra_secrets" {
   description = "Extra secrets (environment variable => value), e.g. SPRING_MAIL_PASSWORD, EXCHANGE_API_KEY. Stored as SecureString."
   type        = map(string)

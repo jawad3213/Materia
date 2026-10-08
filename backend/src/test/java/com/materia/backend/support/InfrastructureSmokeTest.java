@@ -15,14 +15,15 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * Proves the integration infrastructure works before any story builds on it (T031).
  *
- * <p>If this class passes, the container started, every test migration applied, and
- * {@code ddl-auto=validate} accepted the result for all 22 mapped entities. Validation
- * runs during context startup, so reaching any test method here is itself that proof.
+ * <p>If this class passes, the container started, every production migration applied to an empty
+ * database, and {@code ddl-auto=validate} accepted the result for every mapped entity. Validation
+ * runs during context startup, so reaching any test method here is itself that proof: a fresh
+ * install builds a schema the application accepts.
  */
 class InfrastructureSmokeTest extends AbstractIntegrationTest {
 
-    /** The 7 original migrations, the drift fix, and the 3 table migrations. */
-    private static final int EXPECTED_MIGRATIONS = 13;
+    /** Every script in db/migration: the baseline, the module migrations and the later fixes. */
+    private static final int EXPECTED_MIGRATIONS = 16;
 
     @Autowired
     private Flyway flyway;
@@ -75,13 +76,13 @@ class InfrastructureSmokeTest extends AbstractIntegrationTest {
     }
 
     @Test
-    @DisplayName("schema: seed accounts exist, so fixtures must use unique emails to avoid them")
-    void seedAccountsExist() {
+    @DisplayName("schema: no migration seeds an account (the first administrator comes from AdminAccountBootstrap)")
+    void noAccountIsSeeded() {
         Integer seeded = jdbc.queryForObject(
                 "select count(*) from public.users where email in "
                         + "('admin@materia.com','purchaser@materia.com','receiver@materia.com')",
                 Integer.class);
 
-        assertEquals(3, seeded);
+        assertEquals(0, seeded);
     }
 }

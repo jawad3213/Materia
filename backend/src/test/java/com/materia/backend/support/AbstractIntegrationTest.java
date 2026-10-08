@@ -26,11 +26,10 @@ import org.testcontainers.containers.PostgreSQLContainer;
  * then {@code ddl-auto=validate} checks every entity against the result. Any drift between
  * an entity and its migration fails context startup, and so fails every integration test.
  *
- * <p>The image matches production's major version: PostgreSQL 16 in both RDS (16.1) and the
- * local docker-compose setup.
+ * <p>The image matches production's major version: PostgreSQL 16, as in the EC2 docker-compose stack.
  *
- * <p>The seed migration creates admin@, purchaser@ and receiver@materia.com. Use unique
- * addresses from the fixture builders to avoid colliding with them.
+ * <p>The schema comes from the production migrations (db/migration), which seed no account. Use unique
+ * addresses from the fixture builders all the same, so tests never collide with each other.
  */
 @SpringBootTest
 @Transactional

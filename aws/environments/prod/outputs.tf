@@ -42,6 +42,14 @@ output "ssm_session_command" {
   value       = "aws ssm start-session --region ${var.aws_region} --target ${module.ec2.instance_id}"
 }
 
+output "bootstrap_admin_password_command" {
+  description = "Read the generated password of the first administrator (it must be changed at the first sign-in)."
+  value = var.bootstrap_admin_email == "" ? "No bootstrap administrator: set bootstrap_admin_email." : join(" ", [
+    "aws ssm get-parameter --region ${var.aws_region} --with-decryption",
+    "--name ${module.app_parameters.path}/APP_BOOTSTRAP_ADMIN_PASSWORD --query Parameter.Value --output text",
+  ])
+}
+
 output "github_environment_variables" {
   description = "Variables to define in the GitHub environment used by the deploy workflow."
   value = {
