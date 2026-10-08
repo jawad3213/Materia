@@ -2,6 +2,7 @@ package com.materia.backend.architecture;
 
 import com.tngtech.archunit.core.domain.Dependency;
 import com.tngtech.archunit.core.domain.JavaClass;
+import com.tngtech.archunit.core.domain.JavaMethod;
 import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
@@ -10,12 +11,15 @@ import com.tngtech.archunit.lang.ArchRule;
 import com.tngtech.archunit.lang.ConditionEvents;
 import com.tngtech.archunit.lang.SimpleConditionEvent;
 
+import org.springframework.context.event.EventListener;
+
 import java.util.List;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
+import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.methods;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
 /**
@@ -27,6 +31,9 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
  *   <li>Code outside a context (its adapters in the other contexts, the gateway) only uses the context's public
  *   API: its inbound ports, application DTOs, and the enums, events and exceptions those expose.</li>
  *   <li>The shared kernel ({@code common}) knows no context.</li>
+ *   <li>A context reacts to another context's events after the change committed
+ *   ({@code @TransactionalEventListener}), never inside the other context's transaction ({@code @EventListener}),
+ *   as it will once the event arrives from another service.</li>
  * </ul>
  */
 @AnalyzeClasses(packages = "com.materia.backend", importOptions = ImportOption.DoNotIncludeTests.class)
@@ -79,6 +86,24 @@ class ModuleBoundariesTest {
     static final ArchRule sharedKernelKnowsNoContext =
             noClasses().that().resideInAPackage("com.materia.backend.common..")
                     .should().dependOnClassesThat().resideInAPackage("com.materia.backend.contexts..");
+
+    @ArchTest
+    static final ArchRule plainListenersOnlyHearTheirOwnContext =
+            methods().that().areAnnotatedWith(EventListener.class)
+                    .should(new ArchCondition<JavaMethod>("listen only to events of their own context") {
+                        @Override
+                        public void check(JavaMethod method, ConditionEvents events) {
+                            Optional<String> own = contextOf(method.getOwner().getPackageName());
+                            for (JavaClass parameter : method.getRawParameterTypes()) {
+                                Optional<String> source = contextOf(parameter.getPackageName());
+                                if (source.isPresent() && !source.equals(own)) {
+                                    events.add(SimpleConditionEvent.violated(method, method.getFullName()
+                                            + " handles an event of " + source.get()
+                                            + " in its transaction: use @TransactionalEventListener"));
+                                }
+                            }
+                        }
+                    });
 
     private static Optional<String> contextOf(String packageName) {
         Matcher matcher = CONTEXT_PACKAGE.matcher(packageName);
