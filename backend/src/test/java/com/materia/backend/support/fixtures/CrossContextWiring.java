@@ -1,18 +1,28 @@
 package com.materia.backend.support.fixtures;
 
+import com.materia.backend.contexts.goodsReceipt.application.services.GoodsReceiptLookupService;
+import com.materia.backend.contexts.goodsReceipt.domain.ports.out.GoodsReceiptRepository;
 import com.materia.backend.contexts.goodsReceipt.domain.ports.out.OrderedGoods;
 import com.materia.backend.contexts.goodsReceipt.domain.ports.out.ReceivedStock;
 import com.materia.backend.contexts.goodsReceipt.infrastructure.adapters.out.purchaseOrder.PurchaseOrderGoodsAdapter;
 import com.materia.backend.contexts.goodsReceipt.infrastructure.adapters.out.stock.MaterialReceivedStock;
+import com.materia.backend.contexts.invoice.domain.ports.out.InvoicedOrders;
+import com.materia.backend.contexts.invoice.infrastructure.adapters.out.procurement.ProcurementInvoicedOrders;
 import com.materia.backend.contexts.masterData.application.services.MaterialInventoryService;
 import com.materia.backend.contexts.masterData.domain.entities.Material;
 import com.materia.backend.contexts.masterData.domain.ports.out.MaterialRepository;
+import com.materia.backend.contexts.purchaseOrder.application.services.PurchaseOrderLookupService;
 import com.materia.backend.contexts.purchaseOrder.application.services.PurchaseOrderReceivingService;
+import com.materia.backend.contexts.purchaseOrder.domain.events.PurchaseOrderConfirmedEvent;
+import com.materia.backend.contexts.purchaseOrder.domain.events.PurchaseOrderDeliveredEvent;
+import com.materia.backend.contexts.purchaseOrder.domain.events.PurchaseOrderSubmittedEvent;
 import com.materia.backend.contexts.purchaseOrder.domain.ports.out.PurchaseOrderEventPublisher;
 import com.materia.backend.contexts.purchaseOrder.domain.ports.out.PurchaseOrderRepository;
 import com.materia.backend.contexts.purchaseRequisition.domain.ports.out.MaterialCatalog;
 import com.materia.backend.contexts.purchaseRequisition.domain.valueObjects.MaterialSnapshot;
 import com.materia.backend.contexts.purchaseRequisition.infrastructure.adapters.out.material.MasterDataMaterialCatalog;
+import com.materia.backend.contexts.returnToVendor.domain.ports.out.ReturnSources;
+import com.materia.backend.contexts.returnToVendor.infrastructure.adapters.out.procurement.ProcurementReturnSources;
 
 /**
  * Wires a context's outbound port to the real adapter and the real public use case of the context it calls, over
@@ -36,11 +46,30 @@ public final class CrossContextWiring {
 
     /** The goods receipt context's view of the purchase orders held by {@code orders}. */
     public static OrderedGoods orderedGoodsOver(PurchaseOrderRepository orders, PurchaseOrderEventPublisher orderEvents) {
-        return new PurchaseOrderGoodsAdapter(new PurchaseOrderReceivingService(orders, orderEvents));
+        return new PurchaseOrderGoodsAdapter(new PurchaseOrderLookupService(orders),
+                new PurchaseOrderReceivingService(orders, orderEvents));
     }
 
     /** The goods receipt context's view of the stock of the materials held by {@code materials}. */
     public static ReceivedStock receivedStockOver(MaterialRepository materials) {
         return new MaterialReceivedStock(new MaterialInventoryService(materials));
     }
+
+    /** The invoice context's view of the orders in {@code orders} and the receipts in {@code receipts}. */
+    public static InvoicedOrders invoicedOrdersOver(PurchaseOrderRepository orders, GoodsReceiptRepository receipts) {
+        return new ProcurementInvoicedOrders(new PurchaseOrderLookupService(orders), new GoodsReceiptLookupService(receipts));
+    }
+
+    /** The return-to-vendor context's view of receipts, orders and material stock. */
+    public static ReturnSources returnSourcesOver(GoodsReceiptRepository receipts, PurchaseOrderRepository orders,
+                                                  MaterialRepository materials) {
+        return new ProcurementReturnSources(new GoodsReceiptLookupService(receipts), new PurchaseOrderLookupService(orders),
+                new PurchaseOrderReceivingService(orders, NO_ORDER_EVENTS), new MaterialInventoryService(materials));
+    }
+
+    private static final PurchaseOrderEventPublisher NO_ORDER_EVENTS = new PurchaseOrderEventPublisher() {
+        @Override public void publish(PurchaseOrderSubmittedEvent event) { }
+        @Override public void publish(PurchaseOrderConfirmedEvent event) { }
+        @Override public void publish(PurchaseOrderDeliveredEvent event) { }
+    };
 }

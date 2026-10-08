@@ -45,6 +45,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import static com.materia.backend.support.fixtures.CrossContextWiring.*;
 import static com.materia.backend.support.fixtures.GoodsReceiptFixtures.aReceipt;
 import static com.materia.backend.support.fixtures.MaterialFixtures.aMaterial;
 import static com.materia.backend.support.fixtures.PurchaseOrderFixtures.anOrder;
@@ -77,7 +78,7 @@ class ReturnToVendorServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new ReturnToVendorService(returns, new ReturnToVendorMapper(), codeGenerator, events, receipts, orders, materials);
+        service = new ReturnToVendorService(returns, new ReturnToVendorMapper(), codeGenerator, events, returnSourcesOver(receipts, orders, materials));
 
         // 10 bolts at 5.00 received, 4 rejected as scratched; 4 nuts at 2.00 all accepted.
         order = anOrder().withLine(10, "5.00").withLine(4, "2.00").inStatus(OrderStatus.COMPLETED).build();

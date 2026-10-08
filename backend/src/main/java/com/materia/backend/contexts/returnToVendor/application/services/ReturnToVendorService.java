@@ -1,14 +1,5 @@
 package com.materia.backend.contexts.returnToVendor.application.services;
 
-import com.materia.backend.contexts.goodsReceipt.domain.entities.GoodsReceipt;
-import com.materia.backend.contexts.goodsReceipt.domain.entities.GoodsReceiptLine;
-import com.materia.backend.contexts.goodsReceipt.domain.enums.ReceiptStatus;
-import com.materia.backend.contexts.goodsReceipt.domain.ports.out.GoodsReceiptRepository;
-import com.materia.backend.contexts.masterData.domain.entities.Material;
-import com.materia.backend.contexts.masterData.domain.ports.out.MaterialRepository;
-import com.materia.backend.contexts.purchaseOrder.domain.entities.PurchaseOrder;
-import com.materia.backend.contexts.purchaseOrder.domain.enums.OrderStatus;
-import com.materia.backend.contexts.purchaseOrder.domain.ports.out.PurchaseOrderRepository;
 import com.materia.backend.contexts.returnToVendor.application.dtos.CreateReturnToVendorInput;
 import com.materia.backend.contexts.returnToVendor.application.dtos.ReturnToVendorLineInput;
 import com.materia.backend.contexts.returnToVendor.application.dtos.ReturnToVendorOutput;
@@ -30,6 +21,10 @@ import com.materia.backend.contexts.returnToVendor.domain.exceptions.ReturnToVen
 import com.materia.backend.contexts.returnToVendor.domain.exceptions.ReturnToVendorNotModifiableException;
 import com.materia.backend.contexts.returnToVendor.domain.exceptions.ReturnToVendorValidationException;
 import com.materia.backend.contexts.returnToVendor.domain.ports.in.ReturnToVendorUseCase;
+import com.materia.backend.contexts.returnToVendor.domain.ports.out.ReturnSources;
+import com.materia.backend.contexts.returnToVendor.domain.ports.out.ReturnSources.OrderToReplace;
+import com.materia.backend.contexts.returnToVendor.domain.ports.out.ReturnSources.ReceiptToReturn;
+import com.materia.backend.contexts.returnToVendor.domain.ports.out.ReturnSources.ReceivedLine;
 import com.materia.backend.contexts.returnToVendor.domain.ports.out.ReturnToVendorRepository;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -40,7 +35,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
-import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -68,32 +62,22 @@ public class ReturnToVendorService implements ReturnToVendorUseCase {
 
     static final String DEFAULT_LINE_REASON = "Rejected at goods receipt";
 
-    private static final Set<ReceiptStatus> RETURNABLE_RECEIPTS = EnumSet.of(ReceiptStatus.COMPLETED, ReceiptStatus.PARTIAL);
-    private static final Set<OrderStatus> REOPENABLE_ORDERS =
-            EnumSet.of(OrderStatus.PARTIALLY_RECEIVED, OrderStatus.RECEIVED, OrderStatus.COMPLETED);
-
     private final ReturnToVendorRepository returnRepository;
     private final ReturnToVendorMapper mapper;
     private final ReturnToVendorCodeGeneratorService codeGenerator;
     private final ApplicationEventPublisher eventPublisher;
-    private final GoodsReceiptRepository goodsReceiptRepository;
-    private final PurchaseOrderRepository purchaseOrderRepository;
-    private final MaterialRepository materialRepository;
+    private final ReturnSources returnSources;
 
     public ReturnToVendorService(ReturnToVendorRepository returnRepository,
                                  ReturnToVendorMapper mapper,
                                  ReturnToVendorCodeGeneratorService codeGenerator,
                                  ApplicationEventPublisher eventPublisher,
-                                 GoodsReceiptRepository goodsReceiptRepository,
-                                 PurchaseOrderRepository purchaseOrderRepository,
-                                 MaterialRepository materialRepository) {
+                                 ReturnSources returnSources) {
         this.returnRepository = returnRepository;
         this.mapper = mapper;
         this.codeGenerator = codeGenerator;
         this.eventPublisher = eventPublisher;
-        this.goodsReceiptRepository = goodsReceiptRepository;
-        this.purchaseOrderRepository = purchaseOrderRepository;
-        this.materialRepository = materialRepository;
+        this.returnSources = returnSources;
     }
 
     // ============================================================
@@ -105,19 +89,19 @@ public class ReturnToVendorService implements ReturnToVendorUseCase {
     @Transactional
     public ReturnToVendorOutput create(CreateReturnToVendorInput request) {
         String userId = requireUser(request.getUserId());
-        GoodsReceipt receipt = getReturnableReceipt(request.getGoodsReceiptId());
-        Optional<PurchaseOrder> order = findPurchaseOrder(receipt.getPurchaseOrderId());
+        ReceiptToReturn receipt = getReturnableReceipt(request.getGoodsReceiptId());
+        Optional<OrderToReplace> order = findPurchaseOrder(receipt.purchaseOrderId());
 
         ReturnToVendor returnToVendor = ReturnToVendor.builder()
                 .returnCode(codeGenerator.generateCode())
-                .goodsReceiptId(receipt.getId().toString())
-                .goodsReceiptCode(receipt.getReceiptCode() != null ? receipt.getReceiptCode().getValue() : null)
-                .purchaseOrderId(receipt.getPurchaseOrderId())
-                .purchaseOrderCode(receipt.getPurchaseOrderCode())
-                .supplierId(receipt.getSupplierId())
-                .supplierName(receipt.getSupplierName())
-                .supplierCode(order.map(PurchaseOrder::getSupplierCode).orElse(null))
-                .currencyCode(order.map(PurchaseOrder::getCurrencyCode).orElseGet(() -> currencyOf(receipt)))
+                .goodsReceiptId(receipt.id().toString())
+                .goodsReceiptCode(receipt.receiptCode())
+                .purchaseOrderId(receipt.purchaseOrderId())
+                .purchaseOrderCode(receipt.purchaseOrderCode())
+                .supplierId(receipt.supplierId())
+                .supplierName(receipt.supplierName())
+                .supplierCode(order.map(OrderToReplace::supplierCode).orElse(null))
+                .currencyCode(order.map(OrderToReplace::currencyCode).orElseGet(() -> currencyOf(receipt)))
                 .returnDate(request.getReturnDate())
                 .returnReason(trimToNull(request.getReturnReason()))
                 .rejectionSummary(trimToNull(request.getRejectionSummary()))
@@ -138,7 +122,7 @@ public class ReturnToVendorService implements ReturnToVendorUseCase {
         String userId = requireUser(request.getUserId());
         ReturnToVendor returnToVendor = getReturn(id);
         ensureModifiable(returnToVendor);
-        GoodsReceipt receipt = getReturnableReceipt(returnToVendor.getGoodsReceiptId());
+        ReceiptToReturn receipt = getReturnableReceipt(returnToVendor.getGoodsReceiptId());
 
         if (request.getReturnReason() != null) {
             if (request.getReturnReason().isBlank()) {
@@ -262,60 +246,60 @@ public class ReturnToVendorService implements ReturnToVendorUseCase {
      * appear once, and not exceed what is still returnable: rejected minus what the receipt's other
      * non-cancelled returns hold.
      */
-    private List<ReturnToVendorLine> buildLines(GoodsReceipt receipt, List<ReturnToVendorLineInput> inputs,
+    private List<ReturnToVendorLine> buildLines(ReceiptToReturn receipt, List<ReturnToVendorLineInput> inputs,
                                                 UUID excludedReturnId, String userId) {
         if (inputs == null || inputs.isEmpty()) {
             throw new ReturnToVendorLineRequiredException("A return must contain at least one line");
         }
 
-        Map<String, GoodsReceiptLine> receiptLines = receipt.getLines().stream()
-                .filter(line -> line.getId() != null)
-                .collect(Collectors.toMap(line -> line.getId().toString(), Function.identity()));
-        Map<String, Integer> held = heldByOtherReturns(receipt.getId().toString(), excludedReturnId);
+        Map<String, ReceivedLine> receiptLines = receipt.lines().stream()
+                .filter(line -> line.id() != null)
+                .collect(Collectors.toMap(line -> line.id().toString(), Function.identity()));
+        Map<String, Integer> held = heldByOtherReturns(receipt.id().toString(), excludedReturnId);
         Set<String> seen = new HashSet<>();
         List<ReturnToVendorLine> lines = new ArrayList<>();
 
         for (ReturnToVendorLineInput input : inputs) {
             String receiptLineId = input != null ? input.getGoodsReceiptLineId() : null;
-            GoodsReceiptLine receiptLine = receiptLineId != null ? receiptLines.get(receiptLineId) : null;
+            ReceivedLine receiptLine = receiptLineId != null ? receiptLines.get(receiptLineId) : null;
             if (receiptLine == null) {
                 throw new ReturnToVendorInvalidLineException("Each return line must be a line of goods receipt "
                         + codeOf(receipt));
             }
             if (!seen.add(receiptLineId)) {
-                throw new ReturnToVendorInvalidLineException("Material " + receiptLine.getMaterialCode()
+                throw new ReturnToVendorInvalidLineException("Material " + receiptLine.materialCode()
                         + " appears more than once in the return");
             }
 
-            int rejected = receiptLine.getQuantityRejected() != null ? receiptLine.getQuantityRejected() : 0;
+            int rejected = receiptLine.quantityRejected() != null ? receiptLine.quantityRejected() : 0;
             if (rejected <= 0) {
                 throw new ReturnToVendorInvalidLineException("Nothing was rejected for material "
-                        + receiptLine.getMaterialCode() + " on goods receipt " + codeOf(receipt));
+                        + receiptLine.materialCode() + " on goods receipt " + codeOf(receipt));
             }
             int available = Math.max(0, rejected - held.getOrDefault(receiptLineId, 0));
             Integer quantity = input.getQuantityToReturn();
             if (quantity == null || quantity <= 0) {
                 throw new ReturnToVendorInvalidQuantityException("The quantity to return must be positive for material "
-                        + receiptLine.getMaterialCode());
+                        + receiptLine.materialCode());
             }
             if (quantity > available) {
                 throw new ReturnToVendorInvalidQuantityException("Only " + available + " " + unitOf(receiptLine)
-                        + " of material " + receiptLine.getMaterialCode() + " can still be returned");
+                        + " of material " + receiptLine.materialCode() + " can still be returned");
             }
 
             lines.add(ReturnToVendorLine.builder()
                     .lineNumber(lines.size() + 1)
                     .goodsReceiptLineId(receiptLineId)
-                    .purchaseOrderLineId(receiptLine.getPurchaseOrderLineId())
-                    .materialId(receiptLine.getMaterialId() != null ? receiptLine.getMaterialId().toString() : null)
-                    .materialCode(receiptLine.getMaterialCode())
-                    .materialName(receiptLine.getMaterialName() != null ? receiptLine.getMaterialName() : receiptLine.getMaterialCode())
-                    .unitOfMeasure(receiptLine.getUnitOfMeasure())
+                    .purchaseOrderLineId(receiptLine.purchaseOrderLineId())
+                    .materialId(receiptLine.materialId() != null ? receiptLine.materialId().toString() : null)
+                    .materialCode(receiptLine.materialCode())
+                    .materialName(receiptLine.materialName() != null ? receiptLine.materialName() : receiptLine.materialCode())
+                    .unitOfMeasure(receiptLine.unitOfMeasure())
                     .rejectedQuantity(rejected)
                     .quantityToReturn(quantity)
-                    .unitPrice(receiptLine.getUnitPrice() != null ? receiptLine.getUnitPrice().getAmount() : null)
-                    .rejectionReason(firstNonBlank(input.getRejectionReason(), receiptLine.getRejectionReason(), DEFAULT_LINE_REASON))
-                    .qualityNotes(firstNonBlank(input.getQualityNotes(), receiptLine.getQualityNotes(), null))
+                    .unitPrice(receiptLine.unitPrice() != null ? receiptLine.unitPrice().getAmount() : null)
+                    .rejectionReason(firstNonBlank(input.getRejectionReason(), receiptLine.rejectionReason(), DEFAULT_LINE_REASON))
+                    .qualityNotes(firstNonBlank(input.getQualityNotes(), receiptLine.qualityNotes(), null))
                     .defectDescription(trimToNull(input.getDefectDescription()))
                     .notes(trimToNull(input.getNotes()))
                     .createdBy(userId)
@@ -340,51 +324,41 @@ public class ReturnToVendorService implements ReturnToVendorUseCase {
      * returned quantity goes back on order for each material.
      */
     private void expectReplacement(ReturnToVendor returnToVendor, String userId) {
-        PurchaseOrder order = findPurchaseOrder(returnToVendor.getPurchaseOrderId())
+        OrderToReplace order = findPurchaseOrder(returnToVendor.getPurchaseOrderId())
                 .orElseThrow(() -> new ReturnToVendorBusinessException(
                         "The purchase order of this return no longer exists, so no replacement can be received",
                         "RETURN_TO_VENDOR_RULE_VIOLATION"));
-        if (!REOPENABLE_ORDERS.contains(order.getStatus())) {
+        // Only an order that received goods (partially received, received or closed) can expect them again.
+        if (!order.goodsReceived()) {
             throw new ReturnToVendorBusinessException("Purchase order " + returnToVendor.getPurchaseOrderCode()
-                    + " is " + order.getStatus() + " and cannot receive a replacement", "RETURN_TO_VENDOR_RULE_VIOLATION");
+                    + " is " + order.status() + " and cannot receive a replacement", "RETURN_TO_VENDOR_RULE_VIOLATION");
         }
-        order.reopenForReplacement(userId);
-        purchaseOrderRepository.save(order);
+        returnSources.reopenOrderForReplacement(order.id(), userId);
 
         for (ReturnToVendorLine line : returnToVendor.getLines()) {
-            findMaterial(line).ifPresent(material -> {
-                material.addStockOnOrder(line.getQuantityToReturn());
-                material.setUpdatedBy(userId);
-                materialRepository.save(material);
-            });
+            if (line.getQuantityToReturn() == null) continue;
+            returnSources.putBackOnOrder(parseUuid(line.getMaterialId()).orElse(null), line.getMaterialCode(),
+                    line.getQuantityToReturn(), userId);
         }
-    }
-
-    private Optional<Material> findMaterial(ReturnToVendorLine line) {
-        Optional<Material> byId = parseUuid(line.getMaterialId()).flatMap(materialRepository::findById);
-        if (byId.isPresent()) {
-            return byId;
-        }
-        return line.getMaterialCode() != null ? materialRepository.findByCode(line.getMaterialCode()) : Optional.empty();
     }
 
     // ============================================================
     // HELPERS
     // ============================================================
 
-    private GoodsReceipt getReturnableReceipt(String goodsReceiptId) {
-        GoodsReceipt receipt = parseUuid(goodsReceiptId)
-                .flatMap(goodsReceiptRepository::findById)
+    private ReceiptToReturn getReturnableReceipt(String goodsReceiptId) {
+        ReceiptToReturn receipt = parseUuid(goodsReceiptId)
+                .flatMap(returnSources::findReceipt)
                 .orElseThrow(() -> new ReturnToVendorValidationException("Goods receipt not found: " + goodsReceiptId));
-        if (!RETURNABLE_RECEIPTS.contains(receipt.getStatus())) {
+        if (!receipt.validated()) {
             throw new ReturnToVendorBusinessException("Only a completed goods receipt can have its rejected goods returned",
                     "RETURN_TO_VENDOR_RULE_VIOLATION");
         }
         return receipt;
     }
 
-    private Optional<PurchaseOrder> findPurchaseOrder(String purchaseOrderId) {
-        return parseUuid(purchaseOrderId).flatMap(purchaseOrderRepository::findById);
+    private Optional<OrderToReplace> findPurchaseOrder(String purchaseOrderId) {
+        return parseUuid(purchaseOrderId).flatMap(returnSources::findOrder);
     }
 
     private ReturnToVendor getReturn(UUID id) {
@@ -404,9 +378,9 @@ public class ReturnToVendorService implements ReturnToVendorUseCase {
         return userId;
     }
 
-    private static String currencyOf(GoodsReceipt receipt) {
-        return receipt.getLines().stream()
-                .map(GoodsReceiptLine::getUnitPrice)
+    private static String currencyOf(ReceiptToReturn receipt) {
+        return receipt.lines().stream()
+                .map(ReceivedLine::unitPrice)
                 .filter(price -> price != null)
                 .map(price -> price.getCurrencyCode())
                 .findFirst()
@@ -417,12 +391,12 @@ public class ReturnToVendorService implements ReturnToVendorUseCase {
         return returnToVendor.getReturnCode() != null ? returnToVendor.getReturnCode().getValue() : null;
     }
 
-    private static String codeOf(GoodsReceipt receipt) {
-        return receipt.getReceiptCode() != null ? receipt.getReceiptCode().getValue() : String.valueOf(receipt.getId());
+    private static String codeOf(ReceiptToReturn receipt) {
+        return receipt.receiptCode() != null ? receipt.receiptCode() : String.valueOf(receipt.id());
     }
 
-    private static String unitOf(GoodsReceiptLine line) {
-        return line.getUnitOfMeasure() != null ? line.getUnitOfMeasure() : "unit(s)";
+    private static String unitOf(ReceivedLine line) {
+        return line.unitOfMeasure() != null ? line.unitOfMeasure() : "unit(s)";
     }
 
     private static Optional<UUID> parseUuid(String value) {

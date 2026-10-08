@@ -14,17 +14,13 @@ import com.materia.backend.contexts.invoice.domain.exceptions.InvoiceNotModifiab
 import com.materia.backend.contexts.invoice.domain.exceptions.InvoiceRuleViolationException;
 import com.materia.backend.contexts.invoice.domain.exceptions.InvoiceSupplierMismatchException;
 import com.materia.backend.contexts.invoice.domain.enums.InvoiceType;
-import com.materia.backend.contexts.goodsReceipt.domain.entities.GoodsReceipt;
-import com.materia.backend.contexts.goodsReceipt.domain.entities.GoodsReceiptLine;
-import com.materia.backend.contexts.goodsReceipt.domain.enums.ReceiptStatus;
-import com.materia.backend.contexts.goodsReceipt.domain.ports.out.GoodsReceiptRepository;
-import com.materia.backend.contexts.purchaseOrder.domain.entities.PurchaseOrder;
-import com.materia.backend.contexts.purchaseOrder.domain.entities.PurchaseOrderLine;
-import com.materia.backend.contexts.purchaseOrder.domain.enums.OrderStatus;
-import com.materia.backend.contexts.purchaseOrder.domain.ports.out.PurchaseOrderRepository;
 import com.materia.backend.contexts.invoice.domain.exceptions.InvoiceValidationException;
 import com.materia.backend.contexts.invoice.domain.ports.in.InvoiceUseCase;
 import com.materia.backend.contexts.invoice.domain.ports.out.InvoiceRepository;
+import com.materia.backend.contexts.invoice.domain.ports.out.InvoicedOrders;
+import com.materia.backend.contexts.invoice.domain.ports.out.InvoicedOrders.OrderToInvoice;
+import com.materia.backend.contexts.invoice.domain.ports.out.InvoicedOrders.OrderedLine;
+import com.materia.backend.contexts.invoice.domain.ports.out.InvoicedOrders.ReceivedLine;
 import com.materia.backend.contexts.invoice.domain.ports.out.UserDirectory;
 import com.materia.backend.common.domain.enums.CurrencyCode;
 import com.materia.backend.common.domain.valueObjects.Money;
@@ -35,11 +31,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -48,32 +42,22 @@ import java.util.stream.Collectors;
 public class InvoiceService extends AbstractCrudApplicationService<
         Invoice, CreateInvoiceInput, UpdateInvoiceInput, InvoiceOutput> implements InvoiceUseCase {
 
-    /** Orders that have received goods; nothing can be invoiced before a receipt. */
-    private static final Set<OrderStatus> INVOICEABLE_ORDER_STATUSES =
-            EnumSet.of(OrderStatus.PARTIALLY_RECEIVED, OrderStatus.RECEIVED, OrderStatus.COMPLETED);
-
-    private static final Set<ReceiptStatus> VALIDATED_RECEIPT_STATUSES =
-            EnumSet.of(ReceiptStatus.COMPLETED, ReceiptStatus.PARTIAL);
-
     private final InvoiceRepository invoiceRepository;
     private final InvoiceMapper invoiceMapper;
     private final InvoiceCodeGeneratorService codeGenerator;
-    private final PurchaseOrderRepository purchaseOrderRepository;
-    private final GoodsReceiptRepository goodsReceiptRepository;
+    private final InvoicedOrders invoicedOrders;
     private final UserDirectory userDirectory;
 
     public InvoiceService(InvoiceRepository invoiceRepository,
                           InvoiceMapper invoiceMapper,
                           InvoiceCodeGeneratorService codeGenerator,
-                          PurchaseOrderRepository purchaseOrderRepository,
-                          GoodsReceiptRepository goodsReceiptRepository,
+                          InvoicedOrders invoicedOrders,
                           UserDirectory userDirectory) {
         super(invoiceRepository, invoiceMapper);
         this.invoiceRepository = invoiceRepository;
         this.invoiceMapper = invoiceMapper;
         this.codeGenerator = codeGenerator;
-        this.purchaseOrderRepository = purchaseOrderRepository;
-        this.goodsReceiptRepository = goodsReceiptRepository;
+        this.invoicedOrders = invoicedOrders;
         this.userDirectory = userDirectory;
     }
 
@@ -227,71 +211,69 @@ public class InvoiceService extends AbstractCrudApplicationService<
      * taken from the order, which is authoritative.
      */
     private void matchAgainstOrder(Invoice invoice) {
-        PurchaseOrder order = loadOrder(invoice.getPurchaseOrderId());
-        if (!INVOICEABLE_ORDER_STATUSES.contains(order.getStatus())) {
+        OrderToInvoice order = loadOrder(invoice.getPurchaseOrderId());
+        // Nothing can be invoiced before a receipt.
+        if (!order.goodsReceived()) {
             throw new InvoiceRuleViolationException(
-                    "Purchase order " + order.getOrderCode().getValue() + " has not received any goods and cannot be invoiced");
+                    "Purchase order " + order.orderCode() + " has not received any goods and cannot be invoiced");
         }
-        if (!order.getSupplierId().toString().equals(invoice.getSupplierId())) {
-            throw new InvoiceSupplierMismatchException(invoice.getSupplierId(), order.getSupplierId().toString());
+        if (!order.supplierId().toString().equals(invoice.getSupplierId())) {
+            throw new InvoiceSupplierMismatchException(invoice.getSupplierId(), order.supplierId().toString());
         }
-        if (invoice.getCurrencyCode() == null || !invoice.getCurrencyCode().equalsIgnoreCase(order.getCurrencyCode())) {
+        if (invoice.getCurrencyCode() == null || !invoice.getCurrencyCode().equalsIgnoreCase(order.currencyCode())) {
             throw new InvoiceRuleViolationException(
-                    "The invoice currency must be the purchase order currency (" + order.getCurrencyCode() + ")");
+                    "The invoice currency must be the purchase order currency (" + order.currencyCode() + ")");
         }
-        invoice.setPurchaseOrderCode(order.getOrderCode().getValue());
-        invoice.setSupplierName(order.getSupplierName());
+        invoice.setPurchaseOrderCode(order.orderCode());
+        invoice.setSupplierName(order.supplierName());
 
-        String orderId = order.getId().toString();
-        Map<String, PurchaseOrderLine> orderLines = order.getLines().stream()
-                .collect(Collectors.toMap(l -> l.getId().toString(), Function.identity()));
+        String orderId = order.id().toString();
+        Map<String, OrderedLine> orderLines = order.lines().stream()
+                .collect(Collectors.toMap(l -> l.id().toString(), Function.identity()));
         Map<String, Integer> received = acceptedQuantities(orderId);
         Map<String, Integer> invoiced = invoicedQuantities(orderId, invoice.getId());
         boolean creditNote = invoice.getInvoiceType() == InvoiceType.CREDIT_NOTE;
 
         for (InvoiceLine line : invoice.getLines()) {
-            PurchaseOrderLine orderLine = orderLines.get(line.getPurchaseOrderLineId());
+            OrderedLine orderLine = orderLines.get(line.getPurchaseOrderLineId());
             if (orderLine == null) {
                 throw new InvoiceRuleViolationException(
                         "Invoice line " + line.getLineNumber() + " does not reference a line of purchase order "
-                                + order.getOrderCode().getValue());
+                                + order.orderCode());
             }
-            line.setMaterialCode(orderLine.getMaterialCode());
-            if (orderLine.getMaterialName() != null) line.setMaterialName(orderLine.getMaterialName());
-            if (orderLine.getUnitOfMeasure() != null) line.setUnitOfMeasure(orderLine.getUnitOfMeasure());
+            line.setMaterialCode(orderLine.materialCode());
+            if (orderLine.materialName() != null) line.setMaterialName(orderLine.materialName());
+            if (orderLine.unitOfMeasure() != null) line.setUnitOfMeasure(orderLine.unitOfMeasure());
 
-            String key = orderLine.getId().toString();
+            String key = orderLine.id().toString();
             int receivedQty = received.getOrDefault(key, 0);
             int alreadyInvoiced = invoiced.getOrDefault(key, 0);
             int billable = creditNote ? alreadyInvoiced : receivedQty - alreadyInvoiced;
-            line.recordMatch(orderLine.getQuantity(), receivedQty, billable, orderLine.getUnitPrice());
+            line.recordMatch(orderLine.quantity(), receivedQty, billable, orderLine.unitPrice());
         }
         invoice.refreshDiscrepancies();
     }
 
-    private PurchaseOrder loadOrder(String purchaseOrderId) {
+    private OrderToInvoice loadOrder(String purchaseOrderId) {
         UUID id;
         try {
             id = UUID.fromString(purchaseOrderId);
         } catch (IllegalArgumentException | NullPointerException e) {
             throw new InvoiceValidationException("purchaseOrderId", "Invalid purchase order ID: " + purchaseOrderId);
         }
-        return purchaseOrderRepository.findById(id)
+        return invoicedOrders.find(id)
                 .orElseThrow(() -> new InvoiceValidationException("purchaseOrderId", "Purchase order not found: " + purchaseOrderId));
     }
 
     /** Quantity accepted per purchase-order line on validated receipts. */
     private Map<String, Integer> acceptedQuantities(String purchaseOrderId) {
         Map<String, Integer> accepted = new HashMap<>();
-        for (GoodsReceipt receipt : goodsReceiptRepository.findByPurchaseOrderId(purchaseOrderId)) {
-            if (!VALIDATED_RECEIPT_STATUSES.contains(receipt.getStatus())) continue;
-            for (GoodsReceiptLine line : receipt.getLines()) {
-                if (line.getPurchaseOrderLineId() == null) continue;
-                int qty = line.getQuantityAccepted() != null
-                        ? line.getQuantityAccepted()
-                        : value(line.getQuantityReceived()) - value(line.getQuantityRejected());
-                accepted.merge(line.getPurchaseOrderLineId(), qty, Integer::sum);
-            }
+        for (ReceivedLine line : invoicedOrders.validatedReceiptLines(purchaseOrderId)) {
+            if (line.purchaseOrderLineId() == null) continue;
+            int qty = line.quantityAccepted() != null
+                    ? line.quantityAccepted()
+                    : value(line.quantityReceived()) - value(line.quantityRejected());
+            accepted.merge(line.purchaseOrderLineId(), qty, Integer::sum);
         }
         return accepted;
     }

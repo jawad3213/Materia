@@ -37,6 +37,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import static com.materia.backend.support.fixtures.CrossContextWiring.*;
 import static com.materia.backend.support.fixtures.GoodsReceiptFixtures.aReceipt;
 import static com.materia.backend.support.fixtures.PurchaseOrderFixtures.anOrder;
 import static org.junit.jupiter.api.Assertions.*;
@@ -59,7 +60,7 @@ class InvoiceServiceMatchTest {
 
     @BeforeEach
     void setUp() {
-        service = new InvoiceService(invoices, new InvoiceMapper(), codeGenerator, orders, receipts, users);
+        service = new InvoiceService(invoices, new InvoiceMapper(), codeGenerator, invoicedOrdersOver(orders, receipts), users);
         when(users.displayName("admin-1")).thenReturn("Ada Admin");
         when(invoices.save(any(Invoice.class))).thenAnswer(inv -> inv.getArgument(0));
         when(codeGenerator.generateCode()).thenReturn(InvoiceCode.of("INV-2026-0042"));

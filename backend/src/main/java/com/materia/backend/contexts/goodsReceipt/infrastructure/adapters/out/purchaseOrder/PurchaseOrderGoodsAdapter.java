@@ -1,34 +1,37 @@
 package com.materia.backend.contexts.goodsReceipt.infrastructure.adapters.out.purchaseOrder;
 
 import com.materia.backend.contexts.goodsReceipt.domain.ports.out.OrderedGoods;
-import com.materia.backend.contexts.purchaseOrder.application.dtos.OrderForReceiptOutput;
+import com.materia.backend.contexts.purchaseOrder.application.dtos.PurchaseOrderView;
+import com.materia.backend.contexts.purchaseOrder.domain.ports.in.PurchaseOrderLookupUseCase;
 import com.materia.backend.contexts.purchaseOrder.domain.ports.in.PurchaseOrderReceivingUseCase;
 import org.springframework.stereotype.Component;
 
 import java.util.Optional;
 import java.util.UUID;
 
-/** Reads and updates purchase orders through the public use case of the purchase order context. */
+/** Reads and updates purchase orders through the public use cases of the purchase order context. */
 @Component
 public class PurchaseOrderGoodsAdapter implements OrderedGoods {
 
-    private final PurchaseOrderReceivingUseCase orders;
+    private final PurchaseOrderLookupUseCase orders;
+    private final PurchaseOrderReceivingUseCase receiving;
 
-    public PurchaseOrderGoodsAdapter(PurchaseOrderReceivingUseCase orders) {
+    public PurchaseOrderGoodsAdapter(PurchaseOrderLookupUseCase orders, PurchaseOrderReceivingUseCase receiving) {
         this.orders = orders;
+        this.receiving = receiving;
     }
 
     @Override
     public Optional<OrderToReceive> find(UUID purchaseOrderId) {
-        return orders.findForReceipt(purchaseOrderId).map(PurchaseOrderGoodsAdapter::toOrderToReceive);
+        return orders.findOrder(purchaseOrderId).map(PurchaseOrderGoodsAdapter::toOrderToReceive);
     }
 
     @Override
     public void recordDelivery(UUID purchaseOrderId, boolean fullyReceived, String userId) {
-        orders.recordReceipt(purchaseOrderId, fullyReceived, userId);
+        receiving.recordReceipt(purchaseOrderId, fullyReceived, userId);
     }
 
-    private static OrderToReceive toOrderToReceive(OrderForReceiptOutput order) {
+    private static OrderToReceive toOrderToReceive(PurchaseOrderView order) {
         return new OrderToReceive(order.id(), order.orderCode(), order.receivable(), order.assignedTo(),
                 order.assignedToName(), order.supplierId(), order.supplierName(), order.expectedDeliveryDate(),
                 order.requisitionId(),

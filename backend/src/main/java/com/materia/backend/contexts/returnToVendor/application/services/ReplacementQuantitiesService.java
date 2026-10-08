@@ -1,27 +1,28 @@
-package com.materia.backend.contexts.returnToVendor.infrastructure.adapters.out.goodsReceipt;
+package com.materia.backend.contexts.returnToVendor.application.services;
 
-import com.materia.backend.contexts.goodsReceipt.domain.ports.out.ReplacedReturnQuantities;
 import com.materia.backend.contexts.returnToVendor.domain.entities.ReturnToVendor;
 import com.materia.backend.contexts.returnToVendor.domain.entities.ReturnToVendorLine;
 import com.materia.backend.contexts.returnToVendor.domain.enums.ReturnStatus;
+import com.materia.backend.contexts.returnToVendor.domain.ports.in.ReplacementQuantitiesUseCase;
 import com.materia.backend.contexts.returnToVendor.domain.ports.out.ReturnToVendorRepository;
-import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Map;
 import java.util.stream.Collectors;
 
-/** Tells goods receipts which returned quantities the supplier is replacing, per purchase-order line. */
-@Component
-public class ReturnReplacementQuantitiesAdapter implements ReplacedReturnQuantities {
+@Service
+@Transactional(readOnly = true)
+public class ReplacementQuantitiesService implements ReplacementQuantitiesUseCase {
 
     private final ReturnToVendorRepository returnRepository;
 
-    public ReturnReplacementQuantitiesAdapter(ReturnToVendorRepository returnRepository) {
+    public ReplacementQuantitiesService(ReturnToVendorRepository returnRepository) {
         this.returnRepository = returnRepository;
     }
 
     @Override
-    public Map<String, Integer> byPurchaseOrderLine(String purchaseOrderId) {
+    public Map<String, Integer> replacedQuantitiesByPurchaseOrderLine(String purchaseOrderId) {
         return returnRepository.findByPurchaseOrderId(purchaseOrderId).stream()
                 .filter(returnToVendor -> returnToVendor.getStatus() == ReturnStatus.RESOLVED)
                 .filter(ReturnToVendor::isReplacement)
