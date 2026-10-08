@@ -27,6 +27,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import static com.materia.backend.support.fixtures.CrossContextWiring.*;
 import static com.materia.backend.support.fixtures.GoodsReceiptFixtures.aReceipt;
 import static com.materia.backend.support.fixtures.MaterialFixtures.aMaterial;
 import static com.materia.backend.support.fixtures.PurchaseOrderFixtures.DEFAULT_RECEIVER_ID;
@@ -53,7 +54,7 @@ class GoodsReceiptServiceReceiveRemainingTest {
     @BeforeEach
     void setUp() {
         service = new GoodsReceiptService(receipts, new GoodsReceiptMapper(), receiptEvents, codeGenerator,
-                orders, materials, orderEvents);
+                orderedGoodsOver(orders, orderEvents), receivedStockOver(materials));
         when(codeGenerator.generateCode()).thenReturn(ReceiptCode.of("GR-2026-0009"));
         when(receipts.save(any(GoodsReceipt.class))).thenAnswer(inv -> {
             GoodsReceipt receipt = inv.getArgument(0);

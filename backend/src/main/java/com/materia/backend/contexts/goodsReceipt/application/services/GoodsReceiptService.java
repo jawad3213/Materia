@@ -21,16 +21,13 @@ import com.materia.backend.contexts.goodsReceipt.domain.exceptions.GoodsReceiptV
 import com.materia.backend.contexts.goodsReceipt.domain.ports.in.GoodsReceiptUseCase;
 import com.materia.backend.contexts.goodsReceipt.domain.ports.out.GoodsReceiptEventPublisher;
 import com.materia.backend.contexts.goodsReceipt.domain.ports.out.GoodsReceiptRepository;
+import com.materia.backend.contexts.goodsReceipt.domain.ports.out.OrderedGoods;
+import com.materia.backend.contexts.goodsReceipt.domain.ports.out.OrderedGoods.OrderToReceive;
+import com.materia.backend.contexts.goodsReceipt.domain.ports.out.OrderedGoods.OrderedLine;
+import com.materia.backend.contexts.goodsReceipt.domain.ports.out.ReceivedStock;
 import com.materia.backend.contexts.goodsReceipt.domain.ports.out.ReplacedReturnQuantities;
+import com.materia.backend.contexts.goodsReceipt.domain.ports.out.RequisitionDeliveries;
 import com.materia.backend.contexts.goodsReceipt.domain.valueObjects.ReceiptCode;
-import com.materia.backend.contexts.masterData.domain.entities.Material;
-import com.materia.backend.contexts.masterData.domain.ports.out.MaterialRepository;
-import com.materia.backend.contexts.purchaseOrder.domain.entities.PurchaseOrder;
-import com.materia.backend.contexts.purchaseOrder.domain.entities.PurchaseOrderLine;
-import com.materia.backend.contexts.purchaseOrder.domain.enums.OrderStatus;
-import com.materia.backend.contexts.purchaseOrder.domain.events.PurchaseOrderDeliveredEvent;
-import com.materia.backend.contexts.purchaseOrder.domain.ports.out.PurchaseOrderEventPublisher;
-import com.materia.backend.contexts.purchaseOrder.domain.ports.out.PurchaseOrderRepository;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Retryable;
@@ -60,21 +57,19 @@ public class GoodsReceiptService implements GoodsReceiptUseCase {
     private final GoodsReceiptMapper goodsReceiptMapper;
     private final GoodsReceiptEventPublisher eventPublisher;
     private final GoodsReceiptCodeGeneratorService codeGenerator;
-    private final PurchaseOrderRepository purchaseOrderRepository;
-    private final MaterialRepository materialRepository;
-    private final PurchaseOrderEventPublisher purchaseOrderEventPublisher;
-    private final com.materia.backend.contexts.purchaseRequisition.domain.ports.in.RequisitionUseCase requisitionUseCase;
+    private final OrderedGoods orderedGoods;
+    private final ReceivedStock receivedStock;
+    private final RequisitionDeliveries requisitionDeliveries;
     private ReplacedReturnQuantities replacedReturnQuantities = ReplacedReturnQuantities.NONE;
 
     public GoodsReceiptService(GoodsReceiptRepository goodsReceiptRepository,
                                GoodsReceiptMapper goodsReceiptMapper,
                                GoodsReceiptEventPublisher eventPublisher,
                                GoodsReceiptCodeGeneratorService codeGenerator,
-                               PurchaseOrderRepository purchaseOrderRepository,
-                               MaterialRepository materialRepository,
-                               PurchaseOrderEventPublisher purchaseOrderEventPublisher) {
-        this(goodsReceiptRepository, goodsReceiptMapper, eventPublisher, codeGenerator, purchaseOrderRepository,
-                materialRepository, purchaseOrderEventPublisher, null);
+                               OrderedGoods orderedGoods,
+                               ReceivedStock receivedStock) {
+        this(goodsReceiptRepository, goodsReceiptMapper, eventPublisher, codeGenerator, orderedGoods, receivedStock,
+                RequisitionDeliveries.NONE);
     }
 
     @org.springframework.beans.factory.annotation.Autowired
@@ -82,18 +77,16 @@ public class GoodsReceiptService implements GoodsReceiptUseCase {
                                GoodsReceiptMapper goodsReceiptMapper,
                                GoodsReceiptEventPublisher eventPublisher,
                                GoodsReceiptCodeGeneratorService codeGenerator,
-                               PurchaseOrderRepository purchaseOrderRepository,
-                               MaterialRepository materialRepository,
-                               PurchaseOrderEventPublisher purchaseOrderEventPublisher,
-                               com.materia.backend.contexts.purchaseRequisition.domain.ports.in.RequisitionUseCase requisitionUseCase) {
-        this.requisitionUseCase = requisitionUseCase;
+                               OrderedGoods orderedGoods,
+                               ReceivedStock receivedStock,
+                               RequisitionDeliveries requisitionDeliveries) {
         this.goodsReceiptRepository = goodsReceiptRepository;
         this.goodsReceiptMapper = goodsReceiptMapper;
         this.eventPublisher = eventPublisher;
         this.codeGenerator = codeGenerator;
-        this.purchaseOrderRepository = purchaseOrderRepository;
-        this.materialRepository = materialRepository;
-        this.purchaseOrderEventPublisher = purchaseOrderEventPublisher;
+        this.orderedGoods = orderedGoods;
+        this.receivedStock = receivedStock;
+        this.requisitionDeliveries = requisitionDeliveries != null ? requisitionDeliveries : RequisitionDeliveries.NONE;
     }
 
     /** Goods sent back for replacement are expected again; optional so the receipt context works without returns. */
@@ -250,7 +243,7 @@ public class GoodsReceiptService implements GoodsReceiptUseCase {
     @Transactional
     public GoodsReceiptOutput complete(UUID id, String userId) {
         GoodsReceipt goodsReceipt = getGoodsReceiptById(id);
-        PurchaseOrder purchaseOrder = validateAndHydrateFromPurchaseOrder(goodsReceipt, userId);
+        OrderToReceive purchaseOrder = validateAndHydrateFromPurchaseOrder(goodsReceipt, userId);
         normalizeLines(goodsReceipt.getLines());
         goodsReceipt.recalculateTotals();
         goodsReceipt.complete(userId);
@@ -307,26 +300,26 @@ public class GoodsReceiptService implements GoodsReceiptUseCase {
     @Override
     @Transactional
     public GoodsReceiptOutput receiveRemaining(String purchaseOrderId, String receiverId, String receiverName) {
-        PurchaseOrder purchaseOrder = getPurchaseOrder(purchaseOrderId);
+        OrderToReceive purchaseOrder = getPurchaseOrder(purchaseOrderId);
         Map<String, Integer> previouslyReceived = receivedQuantitiesByPurchaseOrderLine(
-                purchaseOrder.getId().toString(), null);
+                purchaseOrder.id().toString(), null);
 
         CreateGoodsReceiptInput request = new CreateGoodsReceiptInput();
-        request.setPurchaseOrderId(purchaseOrder.getId().toString());
+        request.setPurchaseOrderId(purchaseOrder.id().toString());
         request.setReceivedBy(receiverId);
         request.setReceivedByName(receiverName);
         request.setUserId(receiverId);
 
         List<GoodsReceiptLineInput> lines = new ArrayList<>();
-        for (PurchaseOrderLine orderLine : purchaseOrder.getLines()) {
-            String orderLineId = orderLine.getId().toString();
-            int remaining = orderLine.getQuantity() - previouslyReceived.getOrDefault(orderLineId, 0);
+        for (OrderedLine orderLine : purchaseOrder.lines()) {
+            String orderLineId = orderLine.id().toString();
+            int remaining = orderLine.quantity() - previouslyReceived.getOrDefault(orderLineId, 0);
             if (remaining <= 0) {
                 continue;
             }
             GoodsReceiptLineInput line = new GoodsReceiptLineInput();
             line.setPurchaseOrderLineId(orderLineId);
-            line.setMaterialCode(orderLine.getMaterialCode());
+            line.setMaterialCode(orderLine.materialCode());
             line.setQuantityReceived(remaining);
             line.setQuantityRejected(0);
             line.setQualityStatus(QualityStatus.ACCEPTED.getCode());
@@ -374,86 +367,85 @@ public class GoodsReceiptService implements GoodsReceiptUseCase {
     }
 
     /** Applies the purchase order as the authoritative source for receipt header and line data. */
-    private PurchaseOrder validateAndHydrateFromPurchaseOrder(GoodsReceipt goodsReceipt, String userId) {
+    private OrderToReceive validateAndHydrateFromPurchaseOrder(GoodsReceipt goodsReceipt, String userId) {
         if (userId == null || userId.isBlank()) {
             throw new AccessDeniedException("An authenticated user is required to process a goods receipt");
         }
 
-        PurchaseOrder purchaseOrder = getPurchaseOrder(goodsReceipt.getPurchaseOrderId());
-        if (purchaseOrder.getStatus() != OrderStatus.READY_FOR_RECEIPT
-                && purchaseOrder.getStatus() != OrderStatus.PARTIALLY_RECEIVED) {
+        OrderToReceive purchaseOrder = getPurchaseOrder(goodsReceipt.getPurchaseOrderId());
+        if (!purchaseOrder.receivable()) {
             throw new GoodsReceiptBusinessException("The purchase order is not ready for receipt", "GOODS_RECEIPT_RULE_VIOLATION");
         }
-        if (purchaseOrder.getAssignedTo() == null || !purchaseOrder.getAssignedTo().equals(userId)) {
+        if (purchaseOrder.assignedTo() == null || !purchaseOrder.assignedTo().equals(userId)) {
             throw new AccessDeniedException("You are not assigned to receive this purchase order");
         }
         if (goodsReceipt.getReceivedBy() == null || !goodsReceipt.getReceivedBy().equals(userId)) {
             throw new AccessDeniedException("The goods receipt receiver must be the assigned purchase-order receiver");
         }
 
-        if (purchaseOrder.getAssignedToName() != null && !purchaseOrder.getAssignedToName().isBlank()) {
-            goodsReceipt.setReceivedByName(purchaseOrder.getAssignedToName());
+        if (purchaseOrder.assignedToName() != null && !purchaseOrder.assignedToName().isBlank()) {
+            goodsReceipt.setReceivedByName(purchaseOrder.assignedToName());
         }
-        goodsReceipt.setPurchaseOrderId(purchaseOrder.getId().toString());
-        goodsReceipt.setPurchaseOrderCode(purchaseOrder.getOrderCode().getValue());
-        goodsReceipt.setSupplierId(purchaseOrder.getSupplierId().toString());
-        goodsReceipt.setSupplierName(purchaseOrder.getSupplierName());
-        goodsReceipt.setExpectedDeliveryDate(purchaseOrder.getExpectedDeliveryDate());
+        goodsReceipt.setPurchaseOrderId(purchaseOrder.id().toString());
+        goodsReceipt.setPurchaseOrderCode(purchaseOrder.orderCode());
+        goodsReceipt.setSupplierId(purchaseOrder.supplierId().toString());
+        goodsReceipt.setSupplierName(purchaseOrder.supplierName());
+        goodsReceipt.setExpectedDeliveryDate(purchaseOrder.expectedDeliveryDate());
 
-        Map<String, PurchaseOrderLine> orderLines = purchaseOrder.getLines().stream()
-                .collect(Collectors.toMap(line -> line.getId().toString(), line -> line));
+        Map<String, OrderedLine> orderLines = purchaseOrder.lines().stream()
+                .collect(Collectors.toMap(line -> line.id().toString(), line -> line));
         Map<String, Integer> previouslyReceived = receivedQuantitiesByPurchaseOrderLine(
-                purchaseOrder.getId().toString(), goodsReceipt.getId());
+                purchaseOrder.id().toString(), goodsReceipt.getId());
         Map<String, Integer> receiptQuantities = new HashMap<>();
 
         for (GoodsReceiptLine receiptLine : goodsReceipt.getLines()) {
             String purchaseOrderLineId = receiptLine.getPurchaseOrderLineId();
-            PurchaseOrderLine orderLine = orderLines.get(purchaseOrderLineId);
+            OrderedLine orderLine = orderLines.get(purchaseOrderLineId);
             if (orderLine == null) {
                 throw new GoodsReceiptValidationException("Each goods receipt line must reference a purchase-order line");
             }
-            if (!orderLine.getMaterialCode().equals(receiptLine.getMaterialCode())) {
+            if (!orderLine.materialCode().equals(receiptLine.getMaterialCode())) {
                 throw new GoodsReceiptBusinessException(
-                        "Receipt material does not match purchase-order line " + orderLine.getLineNumber(), "GOODS_RECEIPT_RULE_VIOLATION");
+                        "Receipt material does not match purchase-order line " + orderLine.lineNumber(), "GOODS_RECEIPT_RULE_VIOLATION");
             }
 
-            validateLineQuantities(receiptLine, orderLine.getQuantity());
+            validateLineQuantities(receiptLine, orderLine.quantity());
             receiptQuantities.merge(purchaseOrderLineId, receiptLine.getQuantityReceived(), Integer::sum);
 
             // A receipt expects what is still outstanding on the order line, not the full ordered quantity,
             // so a receipt that brings in exactly the remainder has no discrepancy (F-005).
-            int outstanding = orderLine.getQuantity() - previouslyReceived.getOrDefault(purchaseOrderLineId, 0);
+            int outstanding = orderLine.quantity() - previouslyReceived.getOrDefault(purchaseOrderLineId, 0);
             receiptLine.setQuantityOrdered(Math.max(0, outstanding));
-            receiptLine.setMaterialId(orderLine.getMaterialId());
-            receiptLine.setMaterialName(orderLine.getMaterialName());
-            receiptLine.setUnitOfMeasure(orderLine.getUnitOfMeasure());
-            receiptLine.setUnitPrice(orderLine.getUnitPrice());
-            receiptLine.setSupplierId(purchaseOrder.getSupplierId().toString());
-            receiptLine.setSupplierName(purchaseOrder.getSupplierName());
+            receiptLine.setMaterialId(orderLine.materialId());
+            receiptLine.setMaterialName(orderLine.materialName());
+            receiptLine.setUnitOfMeasure(orderLine.unitOfMeasure());
+            receiptLine.setUnitPrice(orderLine.unitPrice());
+            receiptLine.setSupplierId(purchaseOrder.supplierId().toString());
+            receiptLine.setSupplierName(purchaseOrder.supplierName());
         }
 
         for (Map.Entry<String, Integer> entry : receiptQuantities.entrySet()) {
-            PurchaseOrderLine orderLine = orderLines.get(entry.getKey());
+            OrderedLine orderLine = orderLines.get(entry.getKey());
             int alreadyReceived = previouslyReceived.getOrDefault(entry.getKey(), 0);
-            if (alreadyReceived + entry.getValue() > orderLine.getQuantity()) {
+            if (alreadyReceived + entry.getValue() > orderLine.quantity()) {
                 throw new GoodsReceiptBusinessException(
                         "Received quantity exceeds the remaining quantity for purchase-order line "
-                                + orderLine.getLineNumber(), "GOODS_RECEIPT_RULE_VIOLATION");
+                                + orderLine.lineNumber(), "GOODS_RECEIPT_RULE_VIOLATION");
             }
         }
         return purchaseOrder;
     }
 
     private void validateAssignedReceiver(GoodsReceipt goodsReceipt, String userId) {
-        PurchaseOrder purchaseOrder = getPurchaseOrder(goodsReceipt.getPurchaseOrderId());
-        if (userId == null || userId.isBlank() || !userId.equals(purchaseOrder.getAssignedTo())) {
+        OrderToReceive purchaseOrder = getPurchaseOrder(goodsReceipt.getPurchaseOrderId());
+        if (userId == null || userId.isBlank() || !userId.equals(purchaseOrder.assignedTo())) {
             throw new AccessDeniedException("You are not assigned to this goods receipt");
         }
     }
 
-    private PurchaseOrder getPurchaseOrder(String purchaseOrderId) {
+    private OrderToReceive getPurchaseOrder(String purchaseOrderId) {
         try {
-            return purchaseOrderRepository.findById(UUID.fromString(purchaseOrderId))
+            return orderedGoods.find(UUID.fromString(purchaseOrderId))
                     .orElseThrow(() -> new GoodsReceiptValidationException("Purchase order not found: " + purchaseOrderId));
         } catch (IllegalArgumentException exception) {
             throw new GoodsReceiptValidationException("Invalid purchase order ID: " + purchaseOrderId);
@@ -505,57 +497,32 @@ public class GoodsReceiptService implements GoodsReceiptUseCase {
             int receivedQuantity = line.getQuantityReceived() != null ? line.getQuantityReceived() : 0;
             if (acceptedQuantity <= 0) {
                 if (receivedQuantity > 0) {
-                    findMaterialIfPresent(line).ifPresent(material -> {
-                        if (releaseOnOrder(material, receivedQuantity)) {
-                            material.setUpdatedBy(userId);
-                            materialRepository.save(material);
-                        }
-                    });
+                    receivedStock.releaseOnOrder(line.getMaterialId(), line.getMaterialCode(), receivedQuantity, userId);
                 }
                 continue;
             }
 
-            Material material = findMaterial(line);
-            int stockBefore = material.getCurrentStock() != null ? material.getCurrentStock() : 0;
-            material.increaseStock(acceptedQuantity, "Goods receipt " + goodsReceipt.getReceiptCode().getValue());
-            releaseOnOrder(material, receivedQuantity);
-            material.setUpdatedBy(userId);
-            Material savedMaterial = materialRepository.save(material);
-            line.setStockBefore(stockBefore);
-            line.setStockAfter(savedMaterial.getCurrentStock());
+            ReceivedStock.StockLevels stock = receivedStock.receive(line.getMaterialId(), line.getMaterialCode(),
+                            acceptedQuantity, receivedQuantity,
+                            "Goods receipt " + goodsReceipt.getReceiptCode().getValue(), userId)
+                    .orElseThrow(() -> new GoodsReceiptValidationException("Material not found: " + line.getMaterialCode()));
+            line.setStockBefore(stock.before());
+            line.setStockAfter(stock.after());
         }
-    }
-
-    /** Reduces the material's stock on order by up to {@code quantity}; true when something changed. */
-    private static boolean releaseOnOrder(Material material, int quantity) {
-        int onOrder = material.getStockOnOrder() != null ? material.getStockOnOrder() : 0;
-        int released = Math.min(onOrder, quantity);
-        if (released <= 0) return false;
-        material.reduceStockOnOrder(released);
-        return true;
-    }
-
-    private java.util.Optional<Material> findMaterialIfPresent(GoodsReceiptLine line) {
-        java.util.Optional<Material> byId = line.getMaterialId() != null
-                ? materialRepository.findById(line.getMaterialId()) : java.util.Optional.empty();
-        if (byId != null && byId.isPresent()) return byId;
-        java.util.Optional<Material> byCode = line.getMaterialCode() != null
-                ? materialRepository.findByCode(line.getMaterialCode()) : java.util.Optional.empty();
-        return byCode != null ? byCode : java.util.Optional.empty();
     }
 
     /**
      * Tells the requisition behind the order what arrived: accepted and rejected quantities, per requisition line,
      * so the requester can follow the delivery of what they asked for.
      */
-    private void recordOnRequisition(PurchaseOrder purchaseOrder, GoodsReceipt goodsReceipt) {
-        if (requisitionUseCase == null || purchaseOrder.getRequisitionId() == null) {
+    private void recordOnRequisition(OrderToReceive purchaseOrder, GoodsReceipt goodsReceipt) {
+        if (purchaseOrder.requisitionId() == null) {
             return;
         }
         Map<String, UUID> requisitionLineByOrderLine = new HashMap<>();
-        for (PurchaseOrderLine orderLine : purchaseOrder.getLines()) {
-            if (orderLine.getRequisitionLineId() != null) {
-                requisitionLineByOrderLine.put(orderLine.getId().toString(), orderLine.getRequisitionLineId());
+        for (OrderedLine orderLine : purchaseOrder.lines()) {
+            if (orderLine.requisitionLineId() != null) {
+                requisitionLineByOrderLine.put(orderLine.id().toString(), orderLine.requisitionLineId());
             }
         }
         for (GoodsReceiptLine line : goodsReceipt.getLines()) {
@@ -564,36 +531,23 @@ public class GoodsReceiptService implements GoodsReceiptUseCase {
             int accepted = line.getQuantityAccepted() != null ? line.getQuantityAccepted() : 0;
             int rejected = line.getQuantityRejected() != null ? line.getQuantityRejected() : 0;
             if (accepted + rejected > 0) {
-                requisitionUseCase.recordReceipt(purchaseOrder.getRequisitionId(), requisitionLineId, accepted, rejected);
+                requisitionDeliveries.recordReceipt(purchaseOrder.requisitionId(), requisitionLineId, accepted, rejected);
             }
         }
     }
 
-    private Material findMaterial(GoodsReceiptLine line) {
-        if (line.getMaterialId() != null) {
-            return materialRepository.findById(line.getMaterialId())
-                    .orElseThrow(() -> new GoodsReceiptValidationException(
-                            "Material not found: " + line.getMaterialCode()));
-        }
-        return materialRepository.findByCode(line.getMaterialCode())
-                .orElseThrow(() -> new GoodsReceiptValidationException("Material not found: " + line.getMaterialCode()));
-    }
-
-    private void updatePurchaseOrderDeliveryStatus(PurchaseOrder purchaseOrder,
+    private void updatePurchaseOrderDeliveryStatus(OrderToReceive purchaseOrder,
                                                    GoodsReceipt completedReceipt,
                                                    String userId) {
         Map<String, Integer> receivedQuantities = receivedQuantitiesByPurchaseOrderLine(
-                purchaseOrder.getId().toString(), completedReceipt.getId());
+                purchaseOrder.id().toString(), completedReceipt.getId());
         for (GoodsReceiptLine line : completedReceipt.getLines()) {
             receivedQuantities.merge(line.getPurchaseOrderLineId(), line.getQuantityReceived(), Integer::sum);
         }
 
-        boolean fullyReceived = purchaseOrder.getLines().stream().allMatch(line ->
-                receivedQuantities.getOrDefault(line.getId().toString(), 0) >= line.getQuantity());
-        purchaseOrder.recordReceipt(fullyReceived, userId);
-        PurchaseOrder saved = purchaseOrderRepository.save(purchaseOrder);
-        purchaseOrderEventPublisher.publish(new PurchaseOrderDeliveredEvent(
-                saved.getId(), saved.getOrderCode().getValue(), saved.getDeliveryStatus(), userId));
+        boolean fullyReceived = purchaseOrder.lines().stream().allMatch(line ->
+                receivedQuantities.getOrDefault(line.id().toString(), 0) >= line.quantity());
+        orderedGoods.recordDelivery(purchaseOrder.id(), fullyReceived, userId);
     }
 
     private UpdateGoodsReceiptInput toUpdateRequest(CreateGoodsReceiptInput request) {

@@ -25,6 +25,7 @@ import org.mockito.quality.Strictness;
 import java.util.List;
 import java.util.Optional;
 
+import static com.materia.backend.support.fixtures.CrossContextWiring.*;
 import static com.materia.backend.support.fixtures.GoodsReceiptFixtures.aReceipt;
 import static com.materia.backend.support.fixtures.MaterialFixtures.aMaterial;
 import static com.materia.backend.support.fixtures.PurchaseOrderFixtures.DEFAULT_RECEIVER_ID;
@@ -51,7 +52,7 @@ class GoodsReceiptServiceDeliveredEventTest {
     @BeforeEach
     void setUp() {
         service = new GoodsReceiptService(receipts, new GoodsReceiptMapper(), receiptEvents, codeGenerator,
-                orders, materials, orderEvents);
+                orderedGoodsOver(orders, orderEvents), receivedStockOver(materials));
         when(receipts.save(any(GoodsReceipt.class))).thenAnswer(inv -> inv.getArgument(0));
         when(receipts.findByPurchaseOrderId(any())).thenReturn(List.of());
         when(orders.save(any(PurchaseOrder.class))).thenAnswer(inv -> inv.getArgument(0));
