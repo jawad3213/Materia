@@ -22,8 +22,8 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 class InfrastructureSmokeTest extends AbstractIntegrationTest {
 
-    /** Every script in db/migration: the baseline, the module migrations and the later fixes. */
-    private static final int EXPECTED_MIGRATIONS = 16;
+    /** db/migration holds V1__init.sql; raise this with each new migration. */
+    private static final int EXPECTED_MIGRATIONS = 1;
 
     @Autowired
     private Flyway flyway;

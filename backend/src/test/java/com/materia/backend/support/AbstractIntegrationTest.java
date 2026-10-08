@@ -22,7 +22,7 @@ import org.testcontainers.containers.PostgreSQLContainer;
  * code on another thread. A test exercising those must clean up what it commits in an
  * {@code @AfterEach}.
  *
- * <p><strong>Schema.</strong> Flyway applies {@code classpath:db/test-migration} at startup,
+ * <p><strong>Schema.</strong> Flyway applies the production {@code classpath:db/migration} at startup,
  * then {@code ddl-auto=validate} checks every entity against the result. Any drift between
  * an entity and its migration fails context startup, and so fails every integration test.
  *
