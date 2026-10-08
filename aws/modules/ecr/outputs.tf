@@ -1,23 +1,14 @@
-# ===================================================================
-# AWS ECR Module - outputs.tf
-# ===================================================================
-
-output "repository_url" {
-  description = "The URL of the ECR repository"
-  value       = aws_ecr_repository.app.repository_url
+output "repository_urls" {
+  description = "Repository URL per image name."
+  value       = { for k, repo in aws_ecr_repository.this : k => repo.repository_url }
 }
 
-output "repository_arn" {
-  description = "The ARN of the ECR repository"
-  value       = aws_ecr_repository.app.arn
+output "repository_arns" {
+  description = "Repository ARNs, for IAM policies."
+  value       = [for repo in aws_ecr_repository.this : repo.arn]
 }
 
-output "repository_name" {
-  description = "The name of the ECR repository"
-  value       = aws_ecr_repository.app.name
-}
-
-output "registry_id" {
-  description = "The registry ID where the repository was created"
-  value       = aws_ecr_repository.app.registry_id
+output "registry" {
+  description = "Registry host (<account>.dkr.ecr.<region>.amazonaws.com)."
+  value       = split("/", values(aws_ecr_repository.this)[0].repository_url)[0]
 }

@@ -1,54 +1,51 @@
 # ===================================================================
-# Production Environment - outputs.tf
+# Environment root - outputs.tf (identical in staging and prod)
 # ===================================================================
 
-# Presentation Layer
-output "cloudfront_domain_name" {
-  description = "CloudFront CDN domain name for Frontend React SPA (point Hostinger CNAME here)"
-  value       = module.frontend_s3_cloudfront.cloudfront_domain_name
+output "app_url" {
+  description = "Where the application is served."
+  value       = local.app_url
 }
 
-output "frontend_s3_bucket" {
-  description = "S3 bucket for frontend build artifacts"
-  value       = module.frontend_s3_cloudfront.s3_bucket_id
+output "instance_id" {
+  description = "Application instance."
+  value       = module.ec2.instance_id
 }
 
-output "cloudfront_distribution_id" {
-  description = "CloudFront Distribution ID (for PROD_CLOUDFRONT_DISTRIBUTION_ID GitHub secret)"
-  value       = module.frontend_s3_cloudfront.cloudfront_distribution_id
+output "public_ip" {
+  description = "Elastic IP; point your DNS record here."
+  value       = module.ec2.public_ip
 }
 
-# Routing & Load Balancer Layer
-output "alb_dns_name" {
-  description = "Application Load Balancer DNS name (point Hostinger API CNAME here)"
-  value       = module.load_balancer.alb_dns_name
+output "ecr_repository_urls" {
+  description = "Image repositories (backend, frontend)."
+  value       = module.ecr.repository_urls
 }
 
-# Compute Layer
-output "ecs_cluster_name" {
-  description = "ECS Cluster Name"
-  value       = module.ecs_fargate.cluster_name
+output "ecr_registry" {
+  description = "ECR registry host."
+  value       = module.ecr.registry
 }
 
-output "ecs_service_name" {
-  description = "ECS Service Name"
-  value       = module.ecs_fargate.service_name
+output "github_deploy_role_arn" {
+  description = "Set as the AWS_DEPLOY_ROLE_ARN variable of the GitHub environment."
+  value       = module.github_deploy_role.role_arn
 }
 
-# Container Registry
-output "ecr_repository_url" {
-  description = "Amazon ECR Repository URL"
-  value       = module.ecr.repository_url
+output "ssm_parameter_path" {
+  description = "Parameter Store path holding the application environment."
+  value       = module.app_parameters.path
 }
 
-# CI/CD Keyless Deploy
-output "github_actions_role_arn" {
-  description = "IAM Role ARN to assume in GitHub Actions (AWS_ROLE_TO_ASSUME)"
-  value       = module.iam_github_actions.role_arn
+output "ssm_session_command" {
+  description = "Open a shell on the instance (no SSH needed)."
+  value       = "aws ssm start-session --region ${var.aws_region} --target ${module.ec2.instance_id}"
 }
 
-# Data Layer
-output "database_endpoint" {
-  description = "RDS PostgreSQL master endpoint"
-  value       = module.database.db_instance_endpoint
+output "github_environment_variables" {
+  description = "Variables to define in the GitHub environment used by the deploy workflow."
+  value = {
+    AWS_REGION          = var.aws_region
+    AWS_DEPLOY_ROLE_ARN = module.github_deploy_role.role_arn
+  }
 }

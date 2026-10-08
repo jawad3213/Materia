@@ -1,55 +1,54 @@
 # ===================================================================
-# AWS ECR Module - main.tf
+# Module: ecr
+# One private repository per image (backend, frontend). Images are
+# tagged with the git commit SHA, so tags are immutable.
 # ===================================================================
 
-resource "aws_ecr_repository" "app" {
-  name                 = "${var.name_prefix}-backend"
-  image_tag_mutability = var.image_tag_mutability
+resource "aws_ecr_repository" "this" {
+  for_each = toset(var.repositories)
+
+  name                 = "${var.name}-${each.value}"
+  image_tag_mutability = "IMMUTABLE"
+  force_delete         = var.force_delete
 
   image_scanning_configuration {
-    scan_on_push = var.scan_on_push
+    scan_on_push = true
   }
 
   encryption_configuration {
     encryption_type = "AES256"
   }
 
-  tags = merge(var.tags, {
-    Name = "${var.name_prefix}-backend-ecr"
-  })
+  tags = merge(var.tags, { Name = "${var.name}-${each.value}" })
 }
 
-resource "aws_ecr_lifecycle_policy" "app" {
-  repository = aws_ecr_repository.app.name
+resource "aws_ecr_lifecycle_policy" "this" {
+  for_each   = aws_ecr_repository.this
+  repository = each.value.name
 
   policy = jsonencode({
     rules = [
       {
         rulePriority = 1
-        description  = "Expire untagged images older than 7 days"
+        description  = "Expire untagged images after 7 days"
         selection = {
           tagStatus   = "untagged"
           countType   = "sinceImagePushed"
           countUnit   = "days"
           countNumber = 7
         }
-        action = {
-          type = "expire"
-        }
+        action = { type = "expire" }
       },
       {
         rulePriority = 2
-        description  = "Keep last ${var.max_image_count} tagged images"
+        description  = "Keep the last ${var.keep_images} images"
         selection = {
-          tagStatus     = "tagged"
-          tagPrefixList = ["v", "release", "sha", "latest"]
-          countType     = "imageCountMoreThan"
-          countNumber   = var.max_image_count
+          tagStatus   = "any"
+          countType   = "imageCountMoreThan"
+          countNumber = var.keep_images
         }
-        action = {
-          type = "expire"
-        }
-      }
+        action = { type = "expire" }
+      },
     ]
   })
 }

@@ -1,160 +1,165 @@
 # ===================================================================
-# Production Environment - main.tf
+# Environment root - main.tf (identical in staging and prod; the
+# differences live in terraform.tfvars and the backend key)
+#
+#   GitHub Actions --OIDC--> deploy role --ECR push--> images
+#                                       \--SSM Run Command--> EC2
+#   EC2 (docker compose: frontend nginx :80 -> backend -> postgres)
+#     reads its .env from Parameter Store /<project>/<env>/app/*
 # ===================================================================
 
 locals {
-  name_prefix = "materia-${var.environment}"
-  common_tags = {
+  name = "${var.project}-${var.environment}"
+
+  tags = {
+    Project     = var.project
     Environment = var.environment
-    Project     = "Materia"
-    ManagedBy   = "Terraform"
+  }
+
+  app_url = var.app_url != "" ? trimsuffix(var.app_url, "/") : "http://${module.ec2.public_ip}"
+
+  # Settings the backend needs and that have no default in application.properties.
+  # Anything in var.app_config overrides these.
+  default_app_config = {
+    SPRING_PROFILES_ACTIVE                  = var.spring_profile
+    POSTGRES_DB                             = "materia"
+    POSTGRES_USER                           = "materia"
+    SPRING_DATASOURCE_DRIVER_CLASS_NAME     = "org.postgresql.Driver"
+    SPRING_JPA_HIBERNATE_DIALECT            = "org.hibernate.dialect.PostgreSQLDialect"
+    SPRING_JPA_DEFAULT_SCHEMA               = "public"
+    SPRING_FLYWAY_DEFAULT_SCHEMA            = "public"
+    SPRING_JPA_BATCH_SIZE                   = "50"
+    SPRING_JPA_ORDER_INSERTS                = "true"
+    SPRING_JPA_ORDER_UPDATES                = "true"
+    APP_MESSAGING_TYPE                      = "spring"
+    SPRING_KAFKA_CONSUMER_GROUP_ID          = "materia-${var.environment}"
+    SPRING_KAFKA_CONSUMER_AUTO_OFFSET_RESET = "earliest"
+    SPRING_KAFKA_LISTENER_AUTO_STARTUP      = "false"
+    JWT_EXPIRATION_MS                       = "900000"
+    JWT_REFRESH_EXPIRATION_MS               = "604800000"
+    SPRINGDOC_API_DOCS_PATH                 = "/v3/api-docs"
+    SPRINGDOC_SWAGGER_UI_PATH               = "/swagger-ui.html"
+    SPRINGDOC_INFO_TITLE                    = "Materia API"
+    SPRINGDOC_INFO_DESCRIPTION              = "Materia procure-to-pay API (${var.environment})"
+    SPRINGDOC_INFO_VERSION                  = "1.0.0"
+    SPRINGDOC_INFO_CONTACT_NAME             = "Materia"
+    SPRINGDOC_INFO_CONTACT_EMAIL            = var.contact_email
+    APP_CORS_ALLOWED_ORIGINS                = local.app_url
+    APP_LOGIN_URL                           = "${local.app_url}/login"
+    APP_RESET_PASSWORD_URL                  = "${local.app_url}/reset-password"
+    APP_AUTH_REFRESH_COOKIE_SECURE          = tostring(var.refresh_cookie_secure)
+    JAVA_TOOL_OPTIONS                       = "-XX:MaxRAMPercentage=60"
   }
 }
 
-# 1. VPC Module (3 Availability Zones for Prod High Availability)
-module "vpc" {
-  source = "../../modules/vpc"
+# -------------------------------------------------------------------
+# Network and firewall
+# -------------------------------------------------------------------
+module "network" {
+  source = "../../modules/network"
 
-  name_prefix              = local.name_prefix
-  cidr_block               = var.vpc_cidr
-  availability_zones       = var.availability_zones
-  public_subnet_cidrs      = var.public_subnet_cidrs
-  private_app_subnet_cidrs = var.private_app_subnet_cidrs
-  private_db_subnet_cidrs  = var.private_db_subnet_cidrs
-  tags                     = local.common_tags
+  name                = local.name
+  vpc_cidr            = var.vpc_cidr
+  public_subnet_cidrs = var.public_subnet_cidrs
+  tags                = local.tags
 }
 
-# 2. Networking Module (Single NAT Gateway for cost optimization)
-module "networking" {
-  source = "../../modules/networking"
-
-  name_prefix            = local.name_prefix
-  vpc_id                 = module.vpc.vpc_id
-  internet_gateway_id    = module.vpc.internet_gateway_id
-  public_subnet_ids      = module.vpc.public_subnet_ids
-  private_app_subnet_ids = module.vpc.private_app_subnet_ids
-  private_db_subnet_ids  = module.vpc.private_db_subnet_ids
-  enable_nat_gateway     = true
-  single_nat_gateway     = true # Cost-optimized: 1 shared NAT Gateway across all AZs
-  tags                   = local.common_tags
-}
-
-# 3. Security Module
 module "security" {
   source = "../../modules/security"
 
-  name_prefix       = local.name_prefix
-  vpc_id            = module.vpc.vpc_id
-  app_port          = var.app_port
-  alb_ingress_cidrs = ["0.0.0.0/0"]
-  tags              = local.common_tags
+  name               = local.name
+  vpc_id             = module.network.vpc_id
+  allowed_http_cidrs = var.allowed_http_cidrs
+  enable_https       = var.enable_https
+  tags               = local.tags
 }
 
-# 4. Database Module (Production Multi-AZ RDS PostgreSQL 16)
-module "database" {
-  source = "../../modules/database"
-
-  name_prefix             = local.name_prefix
-  db_name                 = var.db_name
-  db_username             = var.db_username
-  db_password             = var.db_password
-  db_subnet_group_name    = module.networking.db_subnet_group_name
-  vpc_security_group_ids  = [module.security.database_security_group_id]
-  instance_class          = var.db_instance_class
-  allocated_storage       = 50
-  max_allocated_storage   = 500
-  multi_az                = true
-  backup_retention_period = 30
-  deletion_protection     = true
-  skip_final_snapshot     = false
-  tags                    = local.common_tags
-}
-
-# 5. Secrets Manager Module (Database & JWT Credentials)
-module "secrets" {
-  source = "../../modules/secrets"
-
-  name_prefix             = local.name_prefix
-  db_username             = var.db_username
-  db_password             = var.db_password
-  db_name                 = var.db_name
-  db_host                 = module.database.db_instance_address
-  db_port                 = module.database.db_instance_port
-  jwt_access_secret       = var.jwt_access_secret
-  jwt_refresh_secret      = var.jwt_refresh_secret
-  recovery_window_in_days = 7 # Protection against accidental deletion in prod
-  tags                    = local.common_tags
-}
-
-# 6. Load Balancer Module (With deletion protection & SSL support)
-module "load_balancer" {
-  source = "../../modules/load_balancer"
-
-  name_prefix                = local.name_prefix
-  vpc_id                     = module.vpc.vpc_id
-  public_subnet_ids          = module.vpc.public_subnet_ids
-  security_group_ids         = [module.security.alb_security_group_id]
-  app_port                   = var.app_port
-  health_check_path          = "/actuator/health"
-  target_type                = "ip"
-  certificate_arn            = var.certificate_arn
-  enable_deletion_protection = true
-  tags                       = local.common_tags
-}
-
-# 7. ECR Module (Container Registry with CVE scanning)
+# -------------------------------------------------------------------
+# Images
+# -------------------------------------------------------------------
 module "ecr" {
-  source          = "../../modules/ecr"
-  name_prefix     = local.name_prefix
-  max_image_count = 30
-  tags            = local.common_tags
+  source = "../../modules/ecr"
+
+  name         = local.name
+  keep_images  = var.ecr_keep_images
+  force_delete = var.ecr_force_delete
+  tags         = local.tags
 }
 
-# 8. ECS Fargate Compute Module (Spring Boot Backend Modular Monolith)
-module "ecs_fargate" {
-  source = "../../modules/ecs_fargate"
-
-  name_prefix               = local.name_prefix
-  aws_region                = var.aws_region
-  cpu                       = var.ecs_cpu
-  memory                    = var.ecs_memory
-  desired_count             = var.ecs_desired_count
-  container_image           = var.container_image != null && var.container_image != "" ? var.container_image : "${module.ecr.repository_url}:latest"
-  app_port                  = var.app_port
-  private_subnet_ids        = module.vpc.private_app_subnet_ids
-  security_group_ids        = [module.security.ecs_security_group_id]
-  target_group_arn          = module.load_balancer.target_group_arn
-  db_secret_arn             = module.secrets.db_secret_arn
-  jwt_secret_arn            = module.secrets.jwt_secret_arn
-  spring_profiles_active    = var.environment
-  app_messaging_type        = "spring" # In-process event publisher ($0 messaging cost!)
-  enable_container_insights = true
-  tags                      = local.common_tags
+# -------------------------------------------------------------------
+# Application configuration and secrets (Parameter Store)
+# -------------------------------------------------------------------
+resource "random_password" "postgres" {
+  length  = 32
+  special = false # the value goes through a docker compose .env file
 }
 
-# 9. Presentation Layer: Frontend S3 + CloudFront CDN Module
-module "frontend_s3_cloudfront" {
-  source = "../../modules/frontend_s3_cloudfront"
-
-  name_prefix           = local.name_prefix
-  custom_domain_aliases = var.custom_domain_aliases
-  certificate_arn       = var.cloudfront_certificate_arn
-  price_class           = "PriceClass_All" # Worldwide lowest latency edge caching
-  force_destroy         = false            # Protect prod assets from accidental wipe
-  tags                  = local.common_tags
+# The backend base64-decodes its JWT keys (HMAC-SHA, 512 bits).
+resource "random_bytes" "jwt_access" {
+  length = 64
 }
 
-# 10. CI/CD: IAM Role for GitHub Actions (Keyless OIDC)
-module "iam_github_actions" {
-  source = "../../modules/iam_github_actions"
+resource "random_bytes" "jwt_refresh" {
+  length = 64
+}
 
-  name_prefix                 = local.name_prefix
-  github_repo                 = var.github_repo
-  create_oidc_provider        = var.create_oidc_provider
-  ecr_repository_arn          = module.ecr.repository_arn
-  ecs_task_execution_role_arn = module.ecs_fargate.execution_role_arn
-  ecs_task_role_arn           = module.ecs_fargate.task_role_arn
-  frontend_s3_bucket_arn      = module.frontend_s3_cloudfront.s3_bucket_arn
-  cloudfront_distribution_arn = module.frontend_s3_cloudfront.cloudfront_distribution_arn
-  tags                        = local.common_tags
+module "app_parameters" {
+  source = "../../modules/ssm_parameters"
+
+  path       = "/${var.project}/${var.environment}/app"
+  parameters = merge(local.default_app_config, var.app_config)
+  secure_parameters = merge(
+    {
+      POSTGRES_PASSWORD  = random_password.postgres.result
+      JWT_ACCESS_SECRET  = random_bytes.jwt_access.base64
+      JWT_REFRESH_SECRET = random_bytes.jwt_refresh.base64
+    },
+    var.extra_secrets,
+  )
+  tags = local.tags
+}
+
+# -------------------------------------------------------------------
+# Application host
+# -------------------------------------------------------------------
+module "instance_iam" {
+  source = "../../modules/instance_iam"
+
+  name                = local.name
+  ecr_repository_arns = module.ecr.repository_arns
+  parameter_path_arns = module.app_parameters.path_arns
+  tags                = local.tags
+}
+
+module "ec2" {
+  source = "../../modules/ec2"
+
+  name                    = local.name
+  instance_type           = var.instance_type
+  architecture            = var.architecture
+  subnet_id               = module.network.public_subnet_ids[0]
+  security_group_ids      = [module.security.app_security_group_id]
+  instance_profile_name   = module.instance_iam.instance_profile_name
+  root_volume_size        = var.root_volume_size
+  data_volume_size        = var.data_volume_size
+  swap_size_mb            = var.swap_size_mb
+  detailed_monitoring     = var.detailed_monitoring
+  enable_snapshots        = var.enable_snapshots
+  snapshot_retention_days = var.snapshot_retention_days
+  tags                    = local.tags
+}
+
+# -------------------------------------------------------------------
+# GitHub Actions deploys (OIDC -> ECR push + SSM Run Command)
+# -------------------------------------------------------------------
+module "github_deploy_role" {
+  source = "../../modules/github_deploy_role"
+
+  name                = local.name
+  oidc_provider_arn   = var.github_oidc_provider_arn
+  github_repository   = var.github_repository
+  github_environment  = var.github_environment
+  ecr_repository_arns = module.ecr.repository_arns
+  instance_arn        = module.ec2.instance_arn
+  tags                = local.tags
 }

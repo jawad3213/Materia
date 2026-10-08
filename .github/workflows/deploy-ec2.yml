@@ -1,0 +1,176 @@
+name: Deploy to EC2 (reusable)
+
+# Build -> push images to ECR -> deploy on the EC2 host through SSM Run Command.
+# AWS access is keyless: the job exchanges its GitHub OIDC token for the
+# environment's deploy role (aws/modules/github_deploy_role).
+#
+# GitHub environment variables (Settings > Environments > <env>):
+#   AWS_DEPLOY_ROLE_ARN  - terraform output github_deploy_role_arn
+#   AWS_REGION           - optional, defaults to eu-west-3
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: "Terraform environment: staging or prod"
+        type: string
+        required: true
+      github_environment:
+        description: "GitHub environment holding the deploy variables (staging / production)"
+        type: string
+        required: true
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  PROJECT: materia
+  APP_DIR: /opt/materia
+
+jobs:
+  deploy:
+    name: Build and deploy (${{ inputs.environment }})
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.github_environment }}
+    concurrency:
+      group: deploy-${{ inputs.environment }}
+      cancel-in-progress: false
+    env:
+      ENVIRONMENT: ${{ inputs.environment }}
+      AWS_REGION: ${{ vars.AWS_REGION || 'eu-west-3' }}
+      IMAGE_TAG: ${{ github.sha }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ---------------------------------------------------------------
+      # Build and test
+      # ---------------------------------------------------------------
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      - name: Build backend (tests included)
+        working-directory: backend
+        run: |
+          chmod +x mvnw
+          ./mvnw -B clean verify
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Test frontend
+        working-directory: frontend
+        run: |
+          npm ci
+          npm test -- --run
+
+      # ---------------------------------------------------------------
+      # AWS (OIDC) and images
+      # ---------------------------------------------------------------
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: gh-${{ github.run_id }}-${{ inputs.environment }}
+
+      - name: Log in to Amazon ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push images
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+        run: |
+          BACKEND="$REGISTRY/$PROJECT-$ENVIRONMENT-backend:$IMAGE_TAG"
+          FRONTEND="$REGISTRY/$PROJECT-$ENVIRONMENT-frontend:$IMAGE_TAG"
+          docker build -t "$BACKEND" backend/
+          # nginx in the frontend image proxies /api to the backend, so the API is same-origin.
+          docker build --build-arg VITE_API_BASE_URL=/api/v1 -t "$FRONTEND" frontend/
+          docker push "$BACKEND"
+          docker push "$FRONTEND"
+
+      # ---------------------------------------------------------------
+      # Deploy through SSM Run Command (no SSH, no open port)
+      # ---------------------------------------------------------------
+      - name: Find the instance
+        id: instance
+        run: |
+          ID=$(aws ec2 describe-instances \
+            --filters "Name=tag:Project,Values=$PROJECT" "Name=tag:Environment,Values=$ENVIRONMENT" \
+                      "Name=tag:Role,Values=app" "Name=instance-state-name,Values=running" \
+            --query 'Reservations[].Instances[].InstanceId' --output text)
+          if [ -z "$ID" ] || [ "$(wc -w <<<"$ID")" -ne 1 ]; then
+            echo "::error::Expected exactly one running $PROJECT/$ENVIRONMENT app instance, found: '${ID}'"
+            exit 1
+          fi
+          PING=$(aws ssm describe-instance-information --filters "Key=InstanceIds,Values=$ID" \
+            --query 'InstanceInformationList[0].PingStatus' --output text)
+          if [ "$PING" != "Online" ]; then
+            echo "::error::Instance $ID is not connected to SSM (status: $PING)"
+            exit 1
+          fi
+          echo "id=$ID" >> "$GITHUB_OUTPUT"
+
+      - name: Run deploy on the instance
+        env:
+          INSTANCE_ID: ${{ steps.instance.outputs.id }}
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+        run: |
+          COMPOSE_B64=$(base64 -w0 aws/deploy/docker-compose.yml)
+          DEPLOY_B64=$(base64 -w0 aws/deploy/deploy.sh)
+          jq -n \
+            --arg dir "$APP_DIR" --arg compose "$COMPOSE_B64" --arg deploy "$DEPLOY_B64" \
+            --arg run "PROJECT=$PROJECT ENVIRONMENT=$ENVIRONMENT AWS_REGION=$AWS_REGION REGISTRY=$REGISTRY IMAGE_TAG=$IMAGE_TAG APP_DIR=$APP_DIR $APP_DIR/deploy.sh" \
+            '{
+              commands: [
+                "set -euo pipefail",
+                "mkdir -p \($dir)",
+                "echo \($compose) | base64 -d > \($dir)/docker-compose.yml",
+                "echo \($deploy) | base64 -d > \($dir)/deploy.sh",
+                "chmod 700 \($dir)/deploy.sh",
+                $run
+              ],
+              executionTimeout: ["1200"]
+            }' > ssm-params.json
+
+          COMMAND_ID=$(aws ssm send-command \
+            --instance-ids "$INSTANCE_ID" \
+            --document-name AWS-RunShellScript \
+            --comment "materia $ENVIRONMENT ${IMAGE_TAG:0:12}" \
+            --parameters file://ssm-params.json \
+            --query Command.CommandId --output text)
+          echo "SSM command $COMMAND_ID on $INSTANCE_ID"
+
+          STATUS=Pending
+          for _ in $(seq 1 150); do
+            sleep 8
+            STATUS=$(aws ssm get-command-invocation --command-id "$COMMAND_ID" --instance-id "$INSTANCE_ID" \
+              --query Status --output text 2>/dev/null || echo Pending)
+            case "$STATUS" in Pending|InProgress|Delayed) continue ;; *) break ;; esac
+          done
+
+          echo "::group::Deploy output"
+          aws ssm get-command-invocation --command-id "$COMMAND_ID" --instance-id "$INSTANCE_ID" \
+            --query StandardOutputContent --output text || true
+          echo "::endgroup::"
+          ERRORS=$(aws ssm get-command-invocation --command-id "$COMMAND_ID" --instance-id "$INSTANCE_ID" \
+            --query StandardErrorContent --output text || true)
+          if [ -n "$ERRORS" ] && [ "$ERRORS" != "None" ]; then
+            echo "::group::Deploy errors"; echo "$ERRORS"; echo "::endgroup::"
+          fi
+
+          if [ "$STATUS" != "Success" ]; then
+            echo "::error::Deploy finished with status $STATUS"
+            exit 1
+          fi
+          echo "### Deployed \`${IMAGE_TAG:0:12}\` to $ENVIRONMENT ($INSTANCE_ID)" >> "$GITHUB_STEP_SUMMARY"

@@ -1,156 +1,163 @@
 # ===================================================================
-# Production Environment - variables.tf
+# Environment root - variables.tf (identical in staging and prod)
 # ===================================================================
 
+# --- General --------------------------------------------------------
 variable "aws_region" {
-  description = "AWS Region to deploy resources into"
+  description = "AWS region of the environment."
   type        = string
   default     = "eu-west-3"
 }
 
-variable "environment" {
-  description = "Environment identifier"
-  type        = string
-  default     = "prod"
-}
-
-variable "vpc_cidr" {
-  description = "CIDR block for the VPC"
-  type        = string
-  default     = "10.2.0.0/16"
-}
-
-variable "availability_zones" {
-  description = "Availability zones for subnets (min 3 for production high availability)"
-  type        = list(string)
-  default     = ["eu-west-3a", "eu-west-3b", "eu-west-3c"]
-}
-
-variable "public_subnet_cidrs" {
-  description = "CIDR blocks for public subnets"
-  type        = list(string)
-  default     = ["10.2.1.0/24", "10.2.2.0/24", "10.2.3.0/24"]
-}
-
-variable "private_app_subnet_cidrs" {
-  description = "CIDR blocks for private app subnets"
-  type        = list(string)
-  default     = ["10.2.11.0/24", "10.2.12.0/24", "10.2.13.0/24"]
-}
-
-variable "private_db_subnet_cidrs" {
-  description = "CIDR blocks for private db subnets"
-  type        = list(string)
-  default     = ["10.2.21.0/24", "10.2.22.0/24", "10.2.23.0/24"]
-}
-
-variable "app_port" {
-  description = "Port the application backend listens on"
-  type        = number
-  default     = 8080
-}
-
-# -------------------------------------------------------------------
-# Database Variables (Production Multi-AZ)
-# -------------------------------------------------------------------
-variable "db_name" {
-  description = "Database name"
+variable "project" {
+  description = "Project name: prefixes resource names and the parameter path."
   type        = string
   default     = "materia"
 }
 
-variable "db_username" {
-  description = "Database master username"
+variable "environment" {
+  description = "staging or prod."
   type        = string
-  default     = "postgres"
+
+  validation {
+    condition     = contains(["staging", "prod"], var.environment)
+    error_message = "environment must be staging or prod."
+  }
 }
 
-variable "db_password" {
-  description = "Database master password"
+# --- Network ----------------------------------------------------------
+variable "vpc_cidr" {
+  description = "CIDR block of the VPC."
   type        = string
-  sensitive   = true
 }
 
-variable "db_instance_class" {
-  description = "RDS instance class"
-  type        = string
-  default     = "db.t4g.medium"
+variable "public_subnet_cidrs" {
+  description = "Public subnets; the instance goes in the first one."
+  type        = list(string)
 }
 
-# -------------------------------------------------------------------
-# Application Secrets
-# -------------------------------------------------------------------
-variable "jwt_access_secret" {
-  description = "JWT Access Token Secret Key"
-  type        = string
-  sensitive   = true
+variable "allowed_http_cidrs" {
+  description = "IPv4 ranges allowed to open the application. Restrict staging to your office/VPN if you can."
+  type        = list(string)
+  default     = ["0.0.0.0/0"]
 }
 
-variable "jwt_refresh_secret" {
-  description = "JWT Refresh Token Secret Key"
-  type        = string
-  sensitive   = true
+variable "enable_https" {
+  description = "Open port 443 (once TLS is terminated on the host)."
+  type        = bool
+  default     = false
 }
 
-# -------------------------------------------------------------------
-# ECS Fargate Compute Variables
-# -------------------------------------------------------------------
-variable "ecs_cpu" {
-  description = "Fargate CPU units (1024 = 1 vCPU)"
+# --- Instance ---------------------------------------------------------
+variable "instance_type" {
+  description = "EC2 instance type."
+  type        = string
+}
+
+variable "architecture" {
+  description = "x86_64 or arm64; must match instance_type and the images built in CI."
+  type        = string
+  default     = "x86_64"
+}
+
+variable "root_volume_size" {
+  description = "Root volume size in GiB."
   type        = number
-  default     = 1024
+  default     = 30
 }
 
-variable "ecs_memory" {
-  description = "Fargate Memory in MiB (2048 = 2GB RAM)"
+variable "data_volume_size" {
+  description = "PostgreSQL data volume size in GiB."
+  type        = number
+  default     = 20
+}
+
+variable "swap_size_mb" {
+  description = "Swap file size in MiB."
   type        = number
   default     = 2048
 }
 
-variable "ecs_desired_count" {
-  description = "Desired number of ECS task replicas for high availability"
-  type        = number
-  default     = 2
-}
-
-variable "container_image" {
-  description = "Initial Docker container image for ECS bootstrapping before CI/CD registers active task definitions"
-  type        = string
-  default     = "public.ecr.aws/nginx/nginx:alpine"
-}
-
-# -------------------------------------------------------------------
-# Networking & Routing Variables (ALB & CloudFront)
-# -------------------------------------------------------------------
-variable "certificate_arn" {
-  description = "ARN of ACM SSL certificate for ALB HTTPS listener (optional)"
-  type        = string
-  default     = null
-}
-
-variable "custom_domain_aliases" {
-  description = "Custom domains for CloudFront CDN (e.g. app.materia.com)"
-  type        = list(string)
-  default     = []
-}
-
-variable "cloudfront_certificate_arn" {
-  description = "ACM SSL Certificate for CloudFront (must be in us-east-1)"
-  type        = string
-  default     = null
-}
-
-# -------------------------------------------------------------------
-# CI/CD GitHub Actions Variables
-# -------------------------------------------------------------------
-variable "github_repo" {
-  description = "GitHub repository for OIDC authentication (e.g. jawad3213/materia)"
-  type        = string
-  default     = "*"
-}
-
-variable "create_oidc_provider" {
-  description = "Whether to create the GitHub OIDC provider (false by default in prod to reuse the one created by staging or existing in the account)"
+variable "detailed_monitoring" {
+  description = "1-minute CloudWatch metrics."
   type        = bool
   default     = false
+}
+
+variable "enable_snapshots" {
+  description = "Daily snapshots of the data volume."
+  type        = bool
+  default     = true
+}
+
+variable "snapshot_retention_days" {
+  description = "Daily snapshots kept."
+  type        = number
+  default     = 7
+}
+
+# --- Images -----------------------------------------------------------
+variable "ecr_keep_images" {
+  description = "Images kept per repository."
+  type        = number
+  default     = 15
+}
+
+variable "ecr_force_delete" {
+  description = "Allow terraform destroy to delete repositories that still contain images."
+  type        = bool
+  default     = false
+}
+
+# --- GitHub OIDC ------------------------------------------------------
+variable "github_oidc_provider_arn" {
+  description = "Output github_oidc_provider_arn of aws/bootstrap."
+  type        = string
+}
+
+variable "github_repository" {
+  description = "owner/name of the repository that deploys this environment."
+  type        = string
+}
+
+variable "github_environment" {
+  description = "GitHub environment of the deploy job (staging / production)."
+  type        = string
+}
+
+# --- Application ------------------------------------------------------
+variable "spring_profile" {
+  description = "Spring profile of the backend (staging or prod)."
+  type        = string
+}
+
+variable "app_url" {
+  description = "Public URL of the application, e.g. https://app.example.com. Empty: http://<elastic ip>."
+  type        = string
+  default     = ""
+}
+
+variable "refresh_cookie_secure" {
+  description = "Mark the refresh-token cookie Secure. Requires HTTPS; keep false while the site is served over plain HTTP."
+  type        = bool
+  default     = false
+}
+
+variable "contact_email" {
+  description = "Contact e-mail shown in the API documentation."
+  type        = string
+  default     = "support@example.com"
+}
+
+variable "app_config" {
+  description = "Extra or overriding non-secret backend settings (environment variable => value), e.g. SPRING_MAIL_HOST."
+  type        = map(string)
+  default     = {}
+}
+
+variable "extra_secrets" {
+  description = "Extra secrets (environment variable => value), e.g. SPRING_MAIL_PASSWORD, EXCHANGE_API_KEY. Stored as SecureString."
+  type        = map(string)
+  default     = {}
+  sensitive   = true
 }

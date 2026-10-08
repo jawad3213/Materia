@@ -1,238 +1,120 @@
-# Materia AWS Cloud-Native Infrastructure (Terraform)
+# Materia on AWS EC2 (staging and prod)
 
-Production-grade, multi-environment Infrastructure as Code (IaC) for deploying the **Materia** application on Amazon Web Services (AWS) using **Terraform**.
-
----
-
-## 🏛️ Architecture Overview
+Each environment is one EC2 instance running the app with docker compose:
 
 ```
-┌────────────────────────────────────────────────────────────────────────────────────────┐
-│  🖥️ COUCHE PRÉSENTATION                                                                │
-│  ├── 🖥️ Frontend React SPA                                                             │
-│  ├── 🌐 Amazon CloudFront (CDN - Worldwide Edge Caching)                                │
-│  └── 📦 Amazon S3 (Private Asset Bucket with Origin Access Control - OAC)             │
-├────────────────────────────────────────────────────────────────────────────────────────┤
-│  🔄 COUCHE ROUTING & API GATEWAY                                                       │
-│  ├── 🌐 Hostinger DNS (CNAME pointers to CloudFront & ALB)                              │
-│  └── 🔄 Application Load Balancer (ALB) (HTTP/HTTPS, Health Checks, Target Group "ip")  │
-├────────────────────────────────────────────────────────────────────────────────────────┤
-│  ⚙️ COUCHE APPLICATION (MODULAR MONOLITH)                                              │
-│  ├── 🚀 Amazon ECS Fargate (Spring Boot 3.2.5 / Java 21)                                │
-│  ├── 📨 Spring In-Process Events (Zero AWS MSK cost: APP_MESSAGING_TYPE=spring)        │
-│  └── 📋 Amazon CloudWatch Logs (Container Insights & centralized streams)             │
-├────────────────────────────────────────────────────────────────────────────────────────┤
-│  🗄️ COUCHE DONNÉES                                                                     │
-│  └── 🐘 Amazon RDS PostgreSQL 16 (Multi-AZ High Availability)                           │
-├────────────────────────────────────────────────────────────────────────────────────────┤
-│  🔐 COUCHE SÉCURITÉ & SECRETS                                                          │
-│  ├── 🔑 AWS Secrets Manager (Database URL/credentials & JWT Signing Keys)              │
-│  └── 🛡️ VPC Security Groups (Least-privilege chained ingress rules)                    │
-├────────────────────────────────────────────────────────────────────────────────────────┤
-│  🚀 COUCHE CI/CD & REGISTRY                                                            │
-│  ├── 🐳 Amazon ECR (Docker Container Registry with automated CVE scan-on-push)         │
-│  └── 🐙 GitHub Actions CI/CD (Keyless AWS authentication via IAM OIDC Role)            │
-└────────────────────────────────────────────────────────────────────────────────────────┘
+Browser ──HTTP :80──▶ EC2 (Amazon Linux 2023, Elastic IP)
+                       └─ docker compose
+                           frontend (nginx: SPA + proxy /api) ─▶ backend (Spring Boot) ─▶ postgres
+                                                                                  data on EBS /data, daily snapshots
+
+GitHub Actions ──OIDC──▶ deploy role ──▶ ECR (push images)
+                                     └─▶ SSM Run Command on the instance ─▶ deploy.sh
+EC2 instance role ──▶ ECR (pull) + Parameter Store /materia/<env>/app/* (config + secrets)
+Admins ──▶ SSM Session Manager (no SSH key, no port 22)
 ```
 
----
-
-## 📁 Repository Structure
+## Layout
 
 ```
 aws/
-│
-├── modules/                                  # Shared reusable Terraform modules
-│   ├── vpc/                                  # VPC, Internet Gateway, 3-tier Subnets
-│   ├── networking/                           # NAT Gateways, Route Tables, DB Subnet Group
-│   ├── security/                             # Security Groups (ALB, ECS Tasks, RDS PostgreSQL)
-│   ├── database/                             # RDS PostgreSQL 16 (Multi-AZ Standby)
-│   ├── secrets/                              # AWS Secrets Manager (DB credentials & JWT secrets)
-│   ├── load_balancer/                        # ALB, Listeners (HTTP->HTTPS redirect), Target Group (ip)
-│   ├── ecr/                                  # Container Registry with scanning & lifecycle policy
-│   ├── ecs_fargate/                          # ECS Cluster, Fargate Service, Task Def, CloudWatch logs
-│   ├── frontend_s3_cloudfront/               # S3 Bucket, CloudFront CDN, OAC, SPA 403/404 routing
-│   └── iam_github_actions/                   # GitHub Actions OIDC Provider & IAM Deploy Role
-│
-├── environments/                             # Isolated deployment environments
-│   ├── staging/                              # Pre-prod parity: 1 NAT, single-AZ RDS, 2 Fargate tasks
-│   └── prod/                                 # HA: 1 NAT, Multi-AZ RDS, 2+ Fargate tasks
-│
-├── scripts/                                  # Shell automation scripts
-│   ├── plan.sh                               # Preview plan for dev/staging/prod
-│   ├── deploy.sh                             # Apply plan for dev/staging/prod
-│   └── destroy.sh                            # Destroy environment with confirmation
-│
-├── .gitignore
-├── Makefile
-└── README.md
+├── bootstrap/                 one-time: S3 state bucket + GitHub OIDC provider
+├── modules/
+│   ├── network/               VPC, public subnets, internet gateway
+│   ├── security/              instance security group (80, optional 443, no SSH)
+│   ├── ecr/                   backend + frontend repositories, lifecycle rules
+│   ├── ssm_parameters/        app environment in Parameter Store (String / SecureString)
+│   ├── instance_iam/          instance role: SSM, ECR pull, parameter read
+│   ├── ec2/                   instance, data volume, Elastic IP, snapshots, bootstrap script
+│   └── github_deploy_role/    OIDC role: ECR push + SSM SendCommand on this instance only
+├── environments/
+│   ├── staging/               main.tf, variables.tf, outputs.tf, providers.tf, *.example
+│   └── prod/                  same files, own state key and values
+└── deploy/
+    ├── docker-compose.yml     stack run on the instance
+    └── deploy.sh              run on the instance by SSM: .env from Parameter Store, pull, up, health check, rollback
 ```
 
----
+`main.tf`, `variables.tf` and `outputs.tf` are identical in both environments; the differences are in
+`terraform.tfvars`, `backend.hcl` and the state key in `providers.tf`.
 
-## 🌐 Hostinger DNS Setup
+## First setup
 
-Once your environment is deployed with `terraform apply`, retrieve the endpoints from the outputs:
-- `cloudfront_domain_name` (e.g. `d123456789abcdef.cloudfront.net`)
-- `alb_dns_name` (e.g. `materia-prod-alb-123456789.eu-west-3.elb.amazonaws.com`)
+Requirements: Terraform >= 1.10, AWS CLI v2 with admin credentials for the account, and the
+[Session Manager plugin](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html) to open shells.
 
-In your **Hostinger DNS Zone Management**, create the following DNS records:
+1. **Bootstrap** (once per account, local state):
+   ```bash
+   cd aws/bootstrap
+   cp terraform.tfvars.example terraform.tfvars   # set a unique state_bucket_name
+   terraform init && terraform apply
+   ```
+   Note the outputs `state_bucket_name` and `github_oidc_provider_arn`.
 
-| Type | Host / Name | Value / Points to | TTL | Purpose |
-| :--- | :--- | :--- | :--- | :--- |
-| **CNAME** | `@` (or `app`) | `d123456789abcdef.cloudfront.net` | 300 | Routes frontend visitors to CloudFront CDN |
-| **CNAME** | `api` | `materia-prod-alb-123456789.eu-west-3.elb.amazonaws.com` | 300 | Routes backend API requests to AWS ALB |
+2. **Staging** (then the same for `prod`):
+   ```bash
+   cd aws/environments/staging
+   cp backend.hcl.example backend.hcl             # bucket = state_bucket_name
+   cp terraform.tfvars.example terraform.tfvars   # github_oidc_provider_arn, sizes, mail settings...
+   terraform init -backend-config=backend.hcl
+   terraform plan -out=tfplan && terraform apply tfplan
+   ```
 
-> [!TIP]
-> If using apex domain (`@`) with Hostinger, check if Hostinger supports CNAME Flattening or ALIAS records. If not, point `app.yourdomain.com` or `www.yourdomain.com` via CNAME to CloudFront, and `api.yourdomain.com` to the ALB.
+3. **GitHub**: in *Settings → Environments*, create `staging` and `production` and add the variables
+   printed by `terraform output github_environment_variables`:
+   - `AWS_DEPLOY_ROLE_ARN`
+   - `AWS_REGION`
 
----
+   Add required reviewers to `production` to gate prod deploys.
 
-## 🐙 Keyless GitHub Actions CI/CD Pipeline
+4. **Deploy**: push to `staging`/`develop` (staging) or `main` (prod), or run the workflow by hand.
+   The workflow builds and tests, pushes `materia-<env>-backend|frontend:<sha>` to ECR, finds the instance by
+   its tags and runs `deploy.sh` through SSM. If the backend is not healthy, the script rolls back to the
+   previous tag and the job fails.
 
-The `modules/iam_github_actions` module configures AWS OpenID Connect (OIDC). You do **not** need hardcoded `AWS_ACCESS_KEY_ID` or `AWS_SECRET_ACCESS_KEY` secrets in GitHub!
+## Day to day
 
-### Example `.github/workflows/deploy.yml`
+| Task | Command |
+|---|---|
+| Shell on the instance | `terraform output -raw ssm_session_command` then run it |
+| Logs | in the session: `cd /opt/materia && sudo docker compose logs -f backend` |
+| Change a setting | edit `app_config` / `extra_secrets` in `terraform.tfvars`, `terraform apply`, then redeploy |
+| Read a parameter | `aws ssm get-parameter --name /materia/staging/app/APP_LOGIN_URL` |
+| Redeploy the same commit | re-run the workflow |
+| Bootstrap log | `/var/log/materia-bootstrap.log` on the instance |
 
-```yaml
-name: CI/CD Pipeline
+## Secrets
 
-on:
-  push:
-    branches: [main]
+- The PostgreSQL password and both JWT keys are generated by Terraform and stored as SecureString.
+  Mail and exchange-rate keys go in `extra_secrets` in `terraform.tfvars`.
+- `terraform.tfvars`, `backend.hcl`, state files and saved plans are git-ignored. Only `*.example` files are
+  tracked.
+- SecureString values are also in the Terraform state, which is why the state bucket is private, encrypted,
+  versioned and TLS-only.
+- Rotating the JWT keys signs everyone out:
+  ```bash
+  terraform apply -replace=random_bytes.jwt_access -replace=random_bytes.jwt_refresh
+  ```
+  Then redeploy.
 
-permissions:
-  id-token: write   # Required for requesting the OIDC JWT token
-  contents: read
+## HTTPS
 
-jobs:
-  deploy-backend:
-    name: Build & Deploy Backend (ECS Fargate)
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+The stack serves plain HTTP on the Elastic IP. To serve HTTPS:
 
-      - name: Set up JDK 21
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '21'
-          cache: 'maven'
+1. Point a DNS record at `public_ip`.
+2. Terminate TLS on the host, e.g. with a Caddy or certbot container in front of the frontend.
+3. Set `enable_https = true`, `app_url = "https://your.domain"` and `refresh_cookie_secure = true`.
+4. Run `terraform apply` and redeploy.
 
-      - name: Build JAR with Maven
-        run: |
-          cd backend
-          ./mvnw clean package -DskipTests
+Keep `refresh_cookie_secure = false` while the site is HTTP, otherwise browsers drop the refresh cookie.
 
-      - name: Configure AWS Credentials via OIDC
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }} # Output: github_actions_role_arn
-          aws-region: eu-west-3
+## Replacing the instance
 
-      - name: Log in to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
-
-      - name: Build & Push Docker Image
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: materia-prod-backend
-          IMAGE_TAG: ${{ github.sha }}
-        run: |
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -t $ECR_REGISTRY/$ECR_REPOSITORY:latest backend/
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
-
-      - name: Deploy to Amazon ECS
-        run: |
-          aws ecs update-service \
-            --cluster materia-prod-cluster \
-            --service materia-prod-service \
-            --force-new-deployment
-
-  deploy-frontend:
-    name: Build & Deploy Frontend (S3 + CloudFront)
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Build Frontend
-        run: |
-          cd frontend
-          npm ci
-          npm run build
-
-      - name: Configure AWS Credentials via OIDC
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
-          aws-region: eu-west-3
-
-      - name: Sync build artifacts to S3
-        run: |
-          aws s3 sync frontend/dist/ s3://${{ secrets.FRONTEND_S3_BUCKET }} --delete
-
-      - name: Invalidate CloudFront CDN Cache
-        run: |
-          aws cloudfront create-invalidation \
-            --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} \
-            --paths "/*"
-```
-
----
-
-## ⚙️ Environment Sizing & Differences
-
-| Dimension | Staging (`environments/staging`) | Prod (`environments/prod`) |
-| :--- | :--- | :--- |
-| **Availability Zones** | 2 (`eu-west-3a`, `3b`) | 3 (`eu-west-3a`, `3b`, `3c`) |
-| **NAT Gateways** | 1 (shared) | 1 (shared - cost-optimized) |
-| **RDS PostgreSQL 16** | Single-AZ (`db.t4g.small`) | Multi-AZ Standby (`db.t4g.medium`) |
-| **RDS Backups** | 7 days | 30 days |
-| **Deletion Protection**| Disabled | Enabled (RDS & ALB) |
-| **ECS Fargate Compute** | 2 tasks (0.5 vCPU / 1GB) | 2+ tasks (1 vCPU / 2GB) |
-| **CloudWatch Insights**| Disabled | Enabled |
-| **CloudFront Price Class**| `PriceClass_100` | `PriceClass_All` |
-| **Messaging Cost** | **$0** (`spring` in-process) | **$0** (`spring` in-process) |
-
----
-
-## 🚀 Quick Start Guide
-
-### Prerequisites
-1. [Terraform CLI](https://developer.hashicorp.com/terraform/downloads) (>= 1.5.0)
-2. [AWS CLI](https://aws.amazon.com/cli/) configured (`aws configure`)
-
-### 1. Using Makefile Commands
+`ami` and `user_data` changes are ignored so a running host is never replaced by accident. To move to a new
+AMI, run:
 
 ```bash
-cd aws
-
-# Preview changes for staging or prod
-make plan-staging
-make plan-prod
-
-# Deploy
-make apply-staging
-make apply-prod
-
-# Destroy
-make destroy-staging
+terraform apply -replace=module.ec2.aws_instance.app
 ```
 
-### 2. Manual Terraform Execution
-
-```bash
-cd aws/environments/prod
-terraform init
-terraform plan -var-file="terraform.tfvars"
-terraform apply -var-file="terraform.tfvars"
-```
+The data volume survives and is re-mounted at `/data`. Then redeploy.

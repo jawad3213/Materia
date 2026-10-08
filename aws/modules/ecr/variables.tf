@@ -1,32 +1,28 @@
-# ===================================================================
-# AWS ECR Module - variables.tf
-# ===================================================================
-
-variable "name_prefix" {
-  description = "Prefix for naming resources (e.g. materia-dev)"
+variable "name" {
+  description = "Repository name prefix, e.g. materia-staging (gives materia-staging-backend)."
   type        = string
 }
 
-variable "image_tag_mutability" {
-  description = "Tag mutability setting for repository (MUTABLE or IMMUTABLE)"
-  type        = string
-  default     = "MUTABLE"
+variable "repositories" {
+  description = "Image names."
+  type        = list(string)
+  default     = ["backend", "frontend"]
 }
 
-variable "scan_on_push" {
-  description = "Indicates whether images are scanned after being pushed to repository"
-  type        = bool
-  default     = true
-}
-
-variable "max_image_count" {
-  description = "Number of tagged images to keep in ECR lifecycle policy"
+variable "keep_images" {
+  description = "How many images to keep per repository (enough to roll back)."
   type        = number
   default     = 15
 }
 
+variable "force_delete" {
+  description = "Allow destroying a repository that still holds images."
+  type        = bool
+  default     = false
+}
+
 variable "tags" {
-  description = "Map of tags to assign to resources"
+  description = "Extra tags."
   type        = map(string)
   default     = {}
 }

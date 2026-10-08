@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - "aws/**"
+      - ".github/workflows/terraform-ci.yml"
   workflow_dispatch:
 
 permissions:
@@ -11,10 +12,17 @@ permissions:
 
 jobs:
   validate:
-    name: Lint & Validate Infrastructure
+    name: Format and validate
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        root:
+          - aws/bootstrap
+          - aws/environments/staging
+          - aws/environments/prod
     steps:
-      - name: Checkout Source Code
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Set up Terraform
@@ -22,19 +30,15 @@ jobs:
         with:
           terraform_version: "1.10.5"
 
-      - name: Check Terraform Formatting
-        run: |
-          cd aws
-          terraform fmt -check -recursive
+      - name: Check formatting
+        run: terraform fmt -check -recursive aws
 
-      - name: Validate Staging Environment
+      - name: Validate ${{ matrix.root }}
+        working-directory: ${{ matrix.root }}
         run: |
-          cd aws/environments/staging
-          terraform init -backend=false
+          terraform init -backend=false -input=false
           terraform validate
 
-      - name: Validate Production Environment
-        run: |
-          cd aws/environments/prod
-          terraform init -backend=false
-          terraform validate
+      - name: Check the deploy script
+        if: matrix.root == 'aws/bootstrap'
+        run: shellcheck aws/deploy/deploy.sh

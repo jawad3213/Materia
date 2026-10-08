@@ -1,25 +1,29 @@
 # ===================================================================
-# Production Environment - providers.tf
+# Production - providers.tf
+# State: S3 bucket from aws/bootstrap, native S3 locking (no DynamoDB).
+# The bucket name comes from backend.hcl:
+#   terraform init -backend-config=backend.hcl
 # ===================================================================
 
 terraform {
-  required_version = ">= 1.5.0"
+  required_version = ">= 1.10.0"
 
   required_providers {
     aws = {
       source  = "hashicorp/aws"
       version = "~> 5.0"
     }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.6"
+    }
   }
 
-  # Production S3 remote state storage with DynamoDB state locking
-  # backend "s3" {
-  #   bucket         = "materia-terraform-state-prod"
-  #   key            = "prod/terraform.tfstate"
-  #   region         = "us-east-1"
-  #   dynamodb_table = "materia-terraform-locks-prod"
-  #   encrypt        = true
-  # }
+  backend "s3" {
+    key          = "prod/terraform.tfstate"
+    encrypt      = true
+    use_lockfile = true
+  }
 }
 
 provider "aws" {
@@ -27,8 +31,8 @@ provider "aws" {
 
   default_tags {
     tags = {
-      Project     = "Materia"
-      Environment = "prod"
+      Project     = var.project
+      Environment = var.environment
       ManagedBy   = "Terraform"
     }
   }
