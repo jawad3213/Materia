@@ -82,6 +82,13 @@ class ModuleBoundariesTest {
                 }
             });
 
+    /** Security is resolved at the edge: use cases receive the user id; the gateway may become its own service. */
+    @ArchTest
+    static final ArchRule domainAndApplicationKnowNoGateway =
+            noClasses().that().resideInAnyPackage("com.materia.backend.contexts.*.domain..",
+                            "com.materia.backend.contexts.*.application..")
+                    .should().dependOnClassesThat().resideInAPackage("com.materia.backend.gateway..");
+
     @ArchTest
     static final ArchRule sharedKernelKnowsNoContext =
             noClasses().that().resideInAPackage("com.materia.backend.common..")

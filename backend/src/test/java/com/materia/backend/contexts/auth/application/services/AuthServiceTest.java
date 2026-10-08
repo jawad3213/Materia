@@ -1,5 +1,6 @@
 package com.materia.backend.contexts.auth.application.services;
 
+import com.materia.backend.contexts.auth.infrastructure.adapters.out.token.JwtTokenIssuer;
 import com.materia.backend.contexts.auth.application.dtos.AuthOutput;
 import com.materia.backend.contexts.auth.application.dtos.ChangePasswordInput;
 import com.materia.backend.contexts.auth.application.dtos.ForgotPasswordInput;
@@ -68,7 +69,7 @@ class AuthServiceTest {
     @BeforeEach
     void setUp() {
         userMapper = new UserMapper();
-        authService = new AuthService(userRepository, refreshTokenRepository, passwordResetTokenRepository, passwordEncoder, jwtTokenProvider, userMapper, emailSender);
+        authService = new AuthService(userRepository, refreshTokenRepository, passwordResetTokenRepository, passwordEncoder, new JwtTokenIssuer(jwtTokenProvider), userMapper, emailSender);
 
         testUser = User.builder()
                 .id(testUserId)

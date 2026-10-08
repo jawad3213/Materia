@@ -1,5 +1,6 @@
 package com.materia.backend.contexts.auth.application.services;
 
+import com.materia.backend.contexts.auth.infrastructure.adapters.out.token.JwtTokenIssuer;
 import com.materia.backend.contexts.auth.application.dtos.ChangePasswordInput;
 import com.materia.backend.contexts.auth.application.dtos.ForgotPasswordInput;
 import com.materia.backend.contexts.auth.application.dtos.LoginInput;
@@ -52,7 +53,7 @@ class AuthServiceCoverageTest {
 
     @BeforeEach
     void setUp() {
-        service = new AuthService(users, refreshTokens, resetTokens, encoder, jwt, new UserMapper(), email);
+        service = new AuthService(users, refreshTokens, resetTokens, encoder, new JwtTokenIssuer(jwt), new UserMapper(), email);
         when(jwt.hashToken(anyString())).thenAnswer(i -> "sha256:" + i.getArgument(0));
     }
 

@@ -1,5 +1,6 @@
 package com.materia.backend.contexts.auth.application.services;
 
+import com.materia.backend.contexts.auth.infrastructure.adapters.out.token.JwtTokenIssuer;
 import com.materia.backend.contexts.auth.application.dtos.AuthOutput;
 import com.materia.backend.contexts.auth.application.dtos.ChangePasswordInput;
 import com.materia.backend.contexts.auth.application.dtos.ForgotPasswordInput;
@@ -74,7 +75,7 @@ class AuthServiceBehaviourTest {
     @BeforeEach
     void setUp() {
         authService = new AuthService(userRepository, refreshTokenRepository, passwordResetTokenRepository,
-                passwordEncoder, jwtTokenProvider, new UserMapper(), emailSender);
+                passwordEncoder, new JwtTokenIssuer(jwtTokenProvider), new UserMapper(), emailSender);
         // Hashing is deterministic and visibly distinct from its input, so a test can tell
         // a stored hash from a raw token.
         lenient().when(jwtTokenProvider.hashToken(anyString())).thenAnswer(i -> "sha256:" + i.getArgument(0));

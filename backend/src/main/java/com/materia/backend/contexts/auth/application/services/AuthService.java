@@ -20,7 +20,7 @@ import com.materia.backend.contexts.auth.domain.ports.in.AuthUseCase;
 import com.materia.backend.contexts.auth.domain.ports.out.PasswordResetTokenRepository;
 import com.materia.backend.contexts.auth.domain.ports.out.RefreshTokenRepository;
 import com.materia.backend.contexts.auth.domain.ports.out.UserRepository;
-import com.materia.backend.gateway.security.JwtTokenProvider;
+import com.materia.backend.contexts.auth.domain.ports.out.TokenIssuer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.core.GrantedAuthority;
@@ -54,7 +54,7 @@ public class AuthService implements AuthUseCase {
     private final RefreshTokenRepository refreshTokenRepository;
     private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final PasswordEncoder passwordEncoder;
-    private final JwtTokenProvider jwtTokenProvider;
+    private final TokenIssuer jwtTokenProvider;
     private final UserMapper userMapper;
     private final EmailSender emailSender;
 
@@ -63,7 +63,7 @@ public class AuthService implements AuthUseCase {
             RefreshTokenRepository refreshTokenRepository,
             PasswordResetTokenRepository passwordResetTokenRepository,
             PasswordEncoder passwordEncoder,
-            JwtTokenProvider jwtTokenProvider,
+            TokenIssuer jwtTokenProvider,
             UserMapper userMapper,
             EmailSender emailSender) {
         this.userRepository = userRepository;

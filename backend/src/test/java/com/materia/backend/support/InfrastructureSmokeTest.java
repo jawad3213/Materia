@@ -22,7 +22,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class InfrastructureSmokeTest extends AbstractIntegrationTest {
 
     /** The 7 original migrations, the drift fix, and the 3 table migrations. */
-    private static final int EXPECTED_MIGRATIONS = 12;
+    private static final int EXPECTED_MIGRATIONS = 13;
 
     @Autowired
     private Flyway flyway;
@@ -42,7 +42,7 @@ class InfrastructureSmokeTest extends AbstractIntegrationTest {
     }
 
     @Test
-    @DisplayName("schema: all 22 entity tables exist, including out-of-scope ones that validation requires")
+    @DisplayName("schema: all 23 entity tables exist (the outbox included), including out-of-scope ones that validation requires")
     void allEntityTablesExist() {
         Integer tables = jdbc.queryForObject(
                 "select count(*) from information_schema.tables "
@@ -50,7 +50,7 @@ class InfrastructureSmokeTest extends AbstractIntegrationTest {
                         + "and table_name <> 'flyway_schema_history'",
                 Integer.class);
 
-        assertEquals(22, tables);
+        assertEquals(23, tables);
     }
 
     @Test
