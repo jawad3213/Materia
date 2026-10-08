@@ -21,8 +21,8 @@ public class RequisitionSourceAdapter implements RequisitionSource {
     @Override
     public RequisitionToOrder get(UUID requisitionId) {
         RequisitionOutput requisition = requisitions.getById(requisitionId);
-        List<RequestedLine> lines = requisition.getLines() == null ? List.of() : requisition.getLines().stream()
-                .map(line -> new RequestedLine(line.getId(), line.getMaterialCode(), line.getQuantity(), line.getSupplierId()))
+        List<RequestedLine> lines = requisition.getLineSummaries().stream()
+                .map(line -> new RequestedLine(line.id(), line.materialCode(), line.quantity(), line.supplierId()))
                 .toList();
         return new RequisitionToOrder(requisition.getRequisitionCode(), requisition.getCurrencyCode(),
                 requisition.getStatus(), requisition.getPurchaseOrderId(), lines);

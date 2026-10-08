@@ -227,6 +227,14 @@ public class RequisitionOutput extends BaseOutput {
         this.lines = lines != null ? new ArrayList<>(lines) : new ArrayList<>();
     }
 
+    /** The lines as other contexts may see them; {@link #getLines()} exposes domain entities and stays internal. */
+    public List<RequisitionLineSummary> getLineSummaries() {
+        return (lines != null ? lines : List.<RequisitionLine>of()).stream()
+                .map(line -> new RequisitionLineSummary(line.getId(), line.getMaterialCode(), line.getQuantity(),
+                        line.getSupplierId()))
+                .toList();
+    }
+
     public String getCreatedBy() {
         return createdBy;
     }
