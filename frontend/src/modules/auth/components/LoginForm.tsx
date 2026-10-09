@@ -8,25 +8,29 @@ import Button from '../../../shared/components/ui/button/Button';
 import useAuth from '../hooks/useAuth';
 import authService from '../services/authService';
 
+// Accounts the backend's dev seeder creates (dev profile, app.seed.password). Only offered in development builds:
+// Vite drops this panel from production bundles.
+const DEV_SEED_PASSWORD = 'Materia.Dev1!';
+
 const DEV_TEST_ACCOUNTS = [
   {
     role: 'Admin',
     email: 'admin@materia.com',
-    password: 'admin123',
+    password: DEV_SEED_PASSWORD,
     badgeColor: 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800',
     dotColor: 'bg-purple-500',
   },
   {
     role: 'Purchaser',
     email: 'purchaser@materia.com',
-    password: 'user123',
+    password: DEV_SEED_PASSWORD,
     badgeColor: 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800',
     dotColor: 'bg-blue-500',
   },
   {
     role: 'Receiver',
     email: 'receiver@materia.com',
-    password: 'user123',
+    password: DEV_SEED_PASSWORD,
     badgeColor: 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800',
     dotColor: 'bg-emerald-500',
   },
@@ -218,7 +222,8 @@ export default function LoginForm() {
         </div>
       </div>
 
-      {/* Dev Mode Test Account Chips */}
+      {/* Dev Mode Test Account Chips (development builds only) */}
+      {import.meta.env.DEV && (
       <div className="mb-5 p-3 rounded-2xl bg-gray-50/90 dark:bg-white/[0.03] border border-dashed border-gray-200 dark:border-gray-800">
         <div className="flex items-center justify-between mb-2">
           <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 flex items-center gap-1.5">
@@ -246,12 +251,12 @@ export default function LoginForm() {
               >
                 <span className={`w-1.5 h-1.5 rounded-full ${acc.dotColor}`} />
                 <span>{acc.role}</span>
-                <span className="text-[10px] opacity-60 font-mono">({acc.password})</span>
               </button>
             );
           })}
         </div>
       </div>
+      )}
 
       {/* Form Fields matching screenshot */}
       <form onSubmit={handleSubmit} noValidate>
