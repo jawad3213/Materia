@@ -11,7 +11,6 @@ import com.materia.backend.contexts.auth.domain.ports.out.UserRepository;
 import com.materia.backend.support.AbstractIntegrationTest;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,9 +25,6 @@ import static org.junit.jupiter.api.Assertions.*;
  * Each test rolls back, and fixtures use unique emails to avoid the seed accounts.
  */
 class AuthPersistenceIT extends AbstractIntegrationTest {
-
-    private static final String FINDING_018 =
-            "FINDING-018: email uniqueness is case-sensitive in the database, so case variants can coexist";
 
     @Autowired private UserRepository users;
     @Autowired private RefreshTokenRepository refreshTokens;
@@ -92,7 +88,6 @@ class AuthPersistenceIT extends AbstractIntegrationTest {
     }
 
     @Test
-    @Disabled(FINDING_018)
     @DisplayName("users: two accounts whose emails differ only by case are rejected as duplicates")
     void user_caseVariantEmail_isRejected() {
         String email = uniqueEmail();

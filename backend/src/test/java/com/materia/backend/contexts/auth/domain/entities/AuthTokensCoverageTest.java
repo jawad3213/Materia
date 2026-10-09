@@ -55,7 +55,7 @@ class AuthTokensCoverageTest {
     }
 
     @Test
-    @DisplayName("refresh token: tokens are equal by id or by token value, never to another type or null")
+    @DisplayName("refresh token: tokens are equal by token value (the id only when there is none), never to another type or null")
     void refresh_identity() {
         RefreshToken a = refresh("same", null);
         RefreshToken sameValue = refresh("same", null);
@@ -65,7 +65,7 @@ class AuthTokensCoverageTest {
 
         assertEquals(a, a);
         assertEquals(a, sameValue);
-        assertEquals(a, sameId);
+        assertNotEquals(a, sameId, "a different token value is a different token, whatever its id");
         assertNotEquals(a, other);
         assertNotEquals(a, null);
         assertNotEquals(a, "same");
@@ -108,7 +108,7 @@ class AuthTokensCoverageTest {
     }
 
     @Test
-    @DisplayName("reset token: tokens are equal by id or by token value, never to another type or null")
+    @DisplayName("reset token: tokens are equal by token value (the id only when there is none), never to another type or null")
     void reset_identity() {
         PasswordResetToken a = reset("same", null);
         PasswordResetToken sameValue = reset("same", null);
@@ -117,7 +117,7 @@ class AuthTokensCoverageTest {
 
         assertEquals(a, a);
         assertEquals(a, sameValue);
-        assertEquals(a, sameId);
+        assertNotEquals(a, sameId, "a different token value is a different token, whatever its id");
         assertNotEquals(a, reset("other", null));
         assertNotEquals(a, null);
         assertNotEquals(a, "same");

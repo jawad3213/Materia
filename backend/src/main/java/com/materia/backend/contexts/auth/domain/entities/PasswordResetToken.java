@@ -125,12 +125,14 @@ public class PasswordResetToken extends BaseEntity {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         PasswordResetToken that = (PasswordResetToken) o;
-        return Objects.equals(getId(), that.getId()) ||
-               Objects.equals(token, that.token);
+        // The token value identifies a token; the id is only the fallback for one not yet given a value.
+        // hashCode follows the same rule, so equal tokens always share a hash.
+        if (token != null || that.token != null) return Objects.equals(token, that.token);
+        return getId() != null && Objects.equals(getId(), that.getId());
     }
-    
+
     @Override
     public int hashCode() {
-        return Objects.hash(getId(), token);
+        return token != null ? token.hashCode() : Objects.hashCode(getId());
     }
 }

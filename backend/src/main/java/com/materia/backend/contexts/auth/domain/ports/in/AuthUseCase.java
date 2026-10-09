@@ -24,5 +24,9 @@ public interface AuthUseCase {
 
     String resetPassword(ResetPasswordInput input);
 
-    String changePassword(java.util.UUID userId, String email, com.materia.backend.contexts.auth.application.dtos.ChangePasswordInput input);
+    /**
+     * Changes the signed-in user's own password, ends all of their sessions and returns a fresh one.
+     * The current password is required unless the account is in forced first-login change mode.
+     */
+    AuthOutput changePassword(java.util.UUID userId, com.materia.backend.contexts.auth.application.dtos.ChangePasswordInput input);
 }

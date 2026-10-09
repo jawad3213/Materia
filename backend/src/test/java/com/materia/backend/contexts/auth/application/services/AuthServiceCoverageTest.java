@@ -80,6 +80,8 @@ class AuthServiceCoverageTest {
         LoginInput input = new LoginInput();
         input.setEmail(" A@Materia.test ");
         input.setPassword("whatever");
+        // Only a caller who knows the password learns the account is disabled (FINDING-012).
+        when(encoder.matches("whatever", inactive.getPasswordHash())).thenReturn(true);
 
         AuthenticationFailedException e = assertThrows(AuthenticationFailedException.class, () -> service.login(input));
         assertEquals("AUTH_USER_DISABLED", code(e));
@@ -166,31 +168,32 @@ class AuthServiceCoverageTest {
     @Test
     @DisplayName("change password: missing, mismatched or too-short new passwords are refused before any lookup")
     void change_inputChecks() {
-        assertThrows(AuthenticationFailedException.class, () -> service.changePassword(UUID.randomUUID(), null, null));
+        assertThrows(AuthenticationFailedException.class, () -> service.changePassword(UUID.randomUUID(), null));
 
         ChangePasswordInput mismatch = new ChangePasswordInput();
         mismatch.setNewPassword("Str0ng!Pass");
         mismatch.setConfirmPassword("Other1!pass");
         assertEquals("AUTH_PASSWORDS_MISMATCH", code(assertThrows(AuthenticationFailedException.class,
-                () -> service.changePassword(UUID.randomUUID(), null, mismatch))));
+                () -> service.changePassword(UUID.randomUUID(), mismatch))));
 
         ChangePasswordInput shortOne = new ChangePasswordInput();
         shortOne.setNewPassword("S1!a");
         assertEquals("AUTH_PASSWORD_TOO_SHORT", code(assertThrows(AuthenticationFailedException.class,
-                () -> service.changePassword(UUID.randomUUID(), null, shortOne))));
+                () -> service.changePassword(UUID.randomUUID(), shortOne))));
         verifyNoInteractions(users);
     }
 
     @Test
-    @DisplayName("change password: with no id and no email, or no matching account, the user is not found")
+    @DisplayName("change password: with no signed-in caller it is refused; an unknown caller is not found")
     void change_userNotFound() {
         ChangePasswordInput input = new ChangePasswordInput();
         input.setNewPassword("Str0ng!Pass");
 
-        assertThrows(UserNotFoundException.class, () -> service.changePassword(null, null, input));
+        assertEquals("AUTH_REQUIRED", code(assertThrows(AuthenticationFailedException.class,
+                () -> service.changePassword(null, input))));
         when(users.findById(any())).thenReturn(Optional.empty());
-        when(users.findByEmail(anyString())).thenReturn(Optional.empty());
-        assertThrows(UserNotFoundException.class, () -> service.changePassword(UUID.randomUUID(), "x@materia.test", input));
+        assertThrows(UserNotFoundException.class, () -> service.changePassword(UUID.randomUUID(), input));
+        verify(users, never()).findByEmail(anyString());
     }
 
     @Test
@@ -204,31 +207,46 @@ class AuthServiceCoverageTest {
         wrongCurrent.setNewPassword("Str0ng!Pass");
         when(encoder.matches("Wrong1!pass", user.getPasswordHash())).thenReturn(false);
         assertEquals("AUTH_INVALID_CURRENT_PASSWORD", code(assertThrows(AuthenticationFailedException.class,
-                () -> service.changePassword(user.getId(), null, wrongCurrent))));
+                () -> service.changePassword(user.getId(), wrongCurrent))));
 
         ChangePasswordInput same = new ChangePasswordInput();
+        same.setCurrentPassword("Str0ng!Pass");
         same.setNewPassword("Str0ng!Pass");
         when(encoder.matches("Str0ng!Pass", user.getPasswordHash())).thenReturn(true);
         assertEquals("AUTH_PASSWORD_IDENTICAL", code(assertThrows(AuthenticationFailedException.class,
-                () -> service.changePassword(user.getId(), null, same))));
+                () -> service.changePassword(user.getId(), same))));
         verify(users, never()).save(any());
     }
 
     @Test
-    @DisplayName("change password: a valid change is saved and clears the must-change flag; lookup by email works without an id")
-    void change_success_byEmail() {
+    @DisplayName("change password: in forced first-login mode no current password is needed; the flag is cleared and sessions renewed")
+    void change_success_forcedChange() {
         User user = aUser().mustChangePassword(true).build();
-        when(users.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
+        when(users.findById(user.getId())).thenReturn(Optional.of(user));
         when(encoder.matches(anyString(), anyString())).thenReturn(false);
         when(encoder.encode("Str0ng!Pass")).thenReturn("hashed");
         ChangePasswordInput input = new ChangePasswordInput();
         input.setNewPassword("Str0ng!Pass");
         input.setConfirmPassword("Str0ng!Pass");
 
-        assertNotNull(service.changePassword(null, " " + user.getEmail().toUpperCase() + " ", input));
+        service.changePassword(user.getId(), input);
 
         assertEquals("hashed", user.getPasswordHash());
         assertFalse(user.isMustChangePassword());
         verify(users).save(user);
+        verify(refreshTokens).revokeAllForUserId(user.getId());
+    }
+
+    @Test
+    @DisplayName("change password: outside forced first-login mode the current password is required")
+    void change_missingCurrentPassword_isRefused() {
+        User user = aUser().mustChangePassword(false).build();
+        when(users.findById(user.getId())).thenReturn(Optional.of(user));
+        ChangePasswordInput input = new ChangePasswordInput();
+        input.setNewPassword("Str0ng!Pass");
+
+        assertEquals("AUTH_CURRENT_PASSWORD_REQUIRED", code(assertThrows(AuthenticationFailedException.class,
+                () -> service.changePassword(user.getId(), input))));
+        verify(users, never()).save(any());
     }
 }

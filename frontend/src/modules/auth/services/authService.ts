@@ -33,9 +33,10 @@ class AuthService {
     const email = backendUser.email || data.email || '';
     const userId = backendUser.id || backendUser.userId || data.userId || '';
 
-    const fullName = [backendUser.firstName, backendUser.lastName]
-      .filter(Boolean)
-      .join(' ')
+    // The login/refresh response is flat (firstName, lastName, fullName at the top level).
+    const firstName = backendUser.firstName ?? data.firstName;
+    const lastName = backendUser.lastName ?? data.lastName;
+    const fullName = (backendUser.fullName ?? data.fullName ?? [firstName, lastName].filter(Boolean).join(' '))
       .trim();
     const name =
       (backendUser.name && backendUser.name.trim()) ||
@@ -115,25 +116,22 @@ class AuthService {
   }
 
   /**
-   * Change user password (used during first-login or profile update)
+   * Change the signed-in user's password (used during first-login or from the profile page).
+   * The server ends every session on a password change and returns a fresh one, which is stored here.
    */
   async changePassword(data: ChangePasswordCredentials): Promise<{ message: string }> {
-    const currentUser = this.getStoredUser();
-    const response = await axiosClient.post<{ message: string }>('/auth/change-password', {
-      email: currentUser?.email,
+    const response = await axiosClient.post<any>('/auth/change-password', {
       currentPassword: data.currentPassword,
       newPassword: data.newPassword,
       confirmPassword: data.confirmPassword,
     });
 
-    // Clear mustChangePassword flag in local cached user
-    if (currentUser) {
-      currentUser.mustChangePassword = false;
-      const storage = isRememberMe() ? localStorage : sessionStorage;
-      storage.setItem(USER_STORAGE_KEY, JSON.stringify(currentUser));
-    }
+    const authData = this.normalizeAuthResponse(response.data);
+    // Keep the cached profile (name, avatar...) and only clear the first-login flag.
+    const currentUser = this.getStoredUser();
+    this.setSession({ ...authData, user: { ...(currentUser ?? authData.user), mustChangePassword: false } });
 
-    return response.data;
+    return { message: 'Password successfully updated.' };
   }
 
   /**
@@ -164,14 +162,21 @@ class AuthService {
       setRefreshToken(authData.refreshToken);
     }
     if (authData.user) {
-      const storage = isRememberMe() ? localStorage : sessionStorage;
-      storage.setItem(USER_STORAGE_KEY, JSON.stringify(authData.user));
-      // Clean opposite storage to avoid stale user data
-      if (isRememberMe()) {
-        sessionStorage.removeItem(USER_STORAGE_KEY);
-      } else {
-        localStorage.removeItem(USER_STORAGE_KEY);
-      }
+      this.storeUser(authData.user);
+    }
+  }
+
+  /**
+   * Persist the cached user profile in the storage matching the rememberMe preference
+   */
+  storeUser(user: User): void {
+    const storage = isRememberMe() ? localStorage : sessionStorage;
+    storage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
+    // Clean opposite storage to avoid stale user data
+    if (isRememberMe()) {
+      sessionStorage.removeItem(USER_STORAGE_KEY);
+    } else {
+      localStorage.removeItem(USER_STORAGE_KEY);
     }
   }
 

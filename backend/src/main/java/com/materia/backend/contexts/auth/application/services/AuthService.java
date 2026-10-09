@@ -91,35 +91,20 @@ public class AuthService implements AuthUseCase {
                     return new AuthenticationFailedException("Invalid email or password", "AUTH_INVALID_CREDENTIALS");
                 });
 
-        if (!user.isEnabled() || (user.getStatus() != null && !user.getStatus().isActive())) {
-            log.warn("[AUTH-SERVICE] Login failed: account '{}' is disabled or inactive", email);
-            throw new AuthenticationFailedException("User account is disabled", "AUTH_USER_DISABLED");
-        }
-
+        // The password is checked first, so only someone who knows it learns that the account is disabled.
         if (!passwordEncoder.matches(input.getPassword(), user.getPasswordHash())) {
             log.warn("[AUTH-SERVICE] Login failed: incorrect password for email '{}'", email);
             throw new AuthenticationFailedException("Invalid email or password", "AUTH_INVALID_CREDENTIALS");
         }
 
+        if (!user.isEnabled() || (user.getStatus() != null && !user.getStatus().isActive())) {
+            log.warn("[AUTH-SERVICE] Login failed: account '{}' is disabled or inactive", email);
+            throw new AuthenticationFailedException("User account is disabled", "AUTH_USER_DISABLED");
+        }
+
         log.info("[AUTH-SERVICE] Login successful for user '{}' with role {}", email, user.getRole().getCode());
 
-        List<GrantedAuthority> authorities = buildAuthorities(user);
-        String accessToken = jwtTokenProvider.generateAccessTokenWithAuthorities(user.getId(), user.getEmail(), authorities);
-
-        // Generate cryptographically secure random 256-bit refresh token
-        String rawRefreshToken = jwtTokenProvider.generateRandomRefreshToken();
-        String tokenHash = jwtTokenProvider.hashToken(rawRefreshToken);
-
-        // Store SHA-256 hash in DB with 7-day expiration
-        RefreshToken refreshTokenEntity = RefreshToken.builder()
-                .userId(user.getId())
-                .token(tokenHash)
-                .expiryDate(LocalDateTime.now().plusDays(7))
-                .revoked(false)
-                .build();
-        refreshTokenRepository.save(refreshTokenEntity);
-
-        return userMapper.toAuthOutput(user, accessToken, rawRefreshToken);
+        return issueSession(user);
     }
 
     @Override
@@ -156,22 +141,7 @@ public class AuthService implements AuthUseCase {
 
         log.debug("[AUTH-SERVICE] Rotating tokens for user email: {}", user.getEmail());
 
-        List<GrantedAuthority> authorities = buildAuthorities(user);
-        String newAccessToken = jwtTokenProvider.generateAccessTokenWithAuthorities(user.getId(), user.getEmail(), authorities);
-
-        // Generate new rotated refresh token & save its SHA-256 hash
-        String newRawRefreshToken = jwtTokenProvider.generateRandomRefreshToken();
-        String newTokenHash = jwtTokenProvider.hashToken(newRawRefreshToken);
-
-        RefreshToken newRefreshTokenEntity = RefreshToken.builder()
-                .userId(user.getId())
-                .token(newTokenHash)
-                .expiryDate(LocalDateTime.now().plusDays(7))
-                .revoked(false)
-                .build();
-        refreshTokenRepository.save(newRefreshTokenEntity);
-
-        return userMapper.toAuthOutput(user, newAccessToken, newRawRefreshToken);
+        return issueSession(user);
     }
 
     @Override
@@ -242,6 +212,9 @@ public class AuthService implements AuthUseCase {
                     "Password must be at least " + MIN_PASSWORD_LENGTH + " characters", "AUTH_PASSWORD_TOO_SHORT");
         }
 
+        // Same complexity policy as a password change (uppercase, lowercase, number/special).
+        Password.fromRaw(input.getPassword());
+
         if (!StringUtils.hasText(input.getToken())) {
             throw new AuthenticationFailedException("Reset token is required", "AUTH_TOKEN_REQUIRED");
         }
@@ -282,7 +255,7 @@ public class AuthService implements AuthUseCase {
 
     @Override
     @Transactional
-    public String changePassword(UUID userId, String email, ChangePasswordInput input) {
+    public AuthOutput changePassword(UUID userId, ChangePasswordInput input) {
         if (input == null || !StringUtils.hasText(input.getNewPassword())) {
             throw new AuthenticationFailedException("New password is required", "AUTH_FIELDS_REQUIRED");
         }
@@ -299,23 +272,22 @@ public class AuthService implements AuthUseCase {
         // Validate password against domain rules (uppercase, lowercase, number/special)
         Password.fromRaw(input.getNewPassword());
 
-        User user = null;
-        if (userId != null) {
-            user = userRepository.findById(userId).orElse(null);
+        // The account is only ever the signed-in caller's own: never one picked by a request value.
+        if (userId == null) {
+            throw new AuthenticationFailedException("Authentication required", "AUTH_REQUIRED");
         }
-        if (user == null && StringUtils.hasText(email)) {
-            user = userRepository.findByEmail(email.trim().toLowerCase()).orElse(null);
-        }
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException("User not found to update password"));
 
-        if (user == null) {
-            throw new UserNotFoundException("User not found to update password");
+        // Proof of the current password is required, so a stolen session alone cannot take the account.
+        // The only exception is the forced first-login change, where the user has just signed in with
+        // the temporary password moments earlier.
+        boolean hasCurrentPassword = StringUtils.hasText(input.getCurrentPassword());
+        if (!hasCurrentPassword && !user.isMustChangePassword()) {
+            throw new AuthenticationFailedException("Current password is required", "AUTH_CURRENT_PASSWORD_REQUIRED");
         }
-
-        // If current password provided, verify it
-        if (StringUtils.hasText(input.getCurrentPassword())) {
-            if (!passwordEncoder.matches(input.getCurrentPassword(), user.getPasswordHash())) {
-                throw new AuthenticationFailedException("Current password is incorrect", "AUTH_INVALID_CURRENT_PASSWORD");
-            }
+        if (hasCurrentPassword && !passwordEncoder.matches(input.getCurrentPassword(), user.getPasswordHash())) {
+            throw new AuthenticationFailedException("Current password is incorrect", "AUTH_INVALID_CURRENT_PASSWORD");
         }
 
         // Disallow setting the exact same password as temporary/current
@@ -327,8 +299,33 @@ public class AuthService implements AuthUseCase {
         user.setMustChangePassword(false);
         userRepository.save(user);
 
+        // As with a reset, a changed password ends every existing session, so one held by someone
+        // else dies with the old password. The caller gets a fresh session to stay signed in.
+        refreshTokenRepository.revokeAllForUserId(user.getId());
+
         log.info("[AUTH-SERVICE] Password successfully changed and first-login flag cleared for user: {}", user.getEmail());
-        return "Password successfully updated. Welcome to Materia ERP!";
+        return issueSession(user);
+    }
+
+    /** Issues a new access token and a new stored refresh token for this user. */
+    private AuthOutput issueSession(User user) {
+        List<GrantedAuthority> authorities = buildAuthorities(user);
+        String accessToken = jwtTokenProvider.generateAccessTokenWithAuthorities(user.getId(), user.getEmail(), authorities);
+
+        // Generate cryptographically secure random 256-bit refresh token
+        String rawRefreshToken = jwtTokenProvider.generateRandomRefreshToken();
+        String tokenHash = jwtTokenProvider.hashToken(rawRefreshToken);
+
+        // Store SHA-256 hash in DB with 7-day expiration
+        RefreshToken refreshTokenEntity = RefreshToken.builder()
+                .userId(user.getId())
+                .token(tokenHash)
+                .expiryDate(LocalDateTime.now().plusDays(7))
+                .revoked(false)
+                .build();
+        refreshTokenRepository.save(refreshTokenEntity);
+
+        return userMapper.toAuthOutput(user, accessToken, rawRefreshToken);
     }
 
     private List<GrantedAuthority> buildAuthorities(User user) {

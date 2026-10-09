@@ -166,17 +166,28 @@ public class AuthController {
         return ResponseEntity.ok(new MessageWebResponse(message));
     }
 
+    /**
+     * /api/v1/auth/** is a public route, so the caller must be checked here: the account changed is
+     * always the one named by the access token, never one chosen by the request body.
+     * The change ends every session, so the response carries a fresh one, as /refresh does.
+     */
     @PostMapping("/change-password")
-    public ResponseEntity<MessageWebResponse> changePassword(
-            @Valid @RequestBody ChangePasswordWebRequest request) {
-        java.util.UUID userId = SecurityUtils.getCurrentUserId().orElse(null);
-        String email = StringUtils.hasText(request.getEmail()) 
-                ? request.getEmail() 
-                : SecurityUtils.getCurrentUserEmail().orElse(null);
+    public ResponseEntity<AuthWebResponse> changePassword(
+            @Valid @RequestBody ChangePasswordWebRequest request,
+            HttpServletRequest httpRequest) {
+        java.util.UUID userId = SecurityUtils.getCurrentUserId()
+                .orElseThrow(() -> new AuthenticationFailedException("Authentication required", "AUTH_REQUIRED"));
 
         ChangePasswordInput input = webMapper.toAppChangePasswordInput(request);
-        String message = authUseCase.changePassword(userId, email, input);
-        return ResponseEntity.ok(new MessageWebResponse(message));
+        AuthOutput output = authUseCase.changePassword(userId, input);
+
+        ResponseCookie cookie = buildRefreshTokenCookie(output.getRefreshToken(), httpRequest.isSecure(), 30L * 24 * 60 * 60);
+        AuthWebResponse responseBody = webMapper.toWebResponse(output);
+        responseBody.setRefreshToken(output.getRefreshToken());
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                .body(responseBody);
     }
 
     private ResponseCookie buildRefreshTokenCookie(String tokenValue, boolean isSecure, long maxAge) {

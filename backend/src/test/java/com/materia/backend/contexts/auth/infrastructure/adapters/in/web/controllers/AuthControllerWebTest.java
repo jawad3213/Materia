@@ -162,16 +162,35 @@ class AuthControllerWebTest extends AbstractWebMvcTest {
     }
 
     @Test
-    @WithMockUser
-    @DisplayName("changePassword: a signed-in user can change their password")
+    @DisplayName("changePassword: a signed-in user changes their own password and gets a fresh session; a body email is ignored")
     void changePassword_authenticated_is200() throws Exception {
-        when(authUseCase.changePassword(any(), any(), any())).thenReturn("Password successfully updated.");
+        UUID caller = UUID.randomUUID();
+        when(authUseCase.changePassword(any(), any())).thenReturn(new AuthOutput(
+                "new-access", "new-refresh", caller, "u@materia.test", Role.PURCHASER, java.util.Set.of()));
 
         mockMvc.perform(post(BASE + "/change-password").contentType(MediaType.APPLICATION_JSON)
-                        .content(json(Map.of("currentPassword", "Old1!pass", "newPassword", "NewPass1!",
-                                "confirmPassword", "NewPass1!"))))
+                        // The principal is the user's UUID, exactly as the JWT filter sets it.
+                        .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors
+                                .authentication(new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(
+                                        caller, null, java.util.List.of())))
+                        .content(json(Map.of("email", "victim@materia.test", "currentPassword", "Old1!pass",
+                                "newPassword", "NewPass1!", "confirmPassword", "NewPass1!"))))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.message").value("Password successfully updated."));
+                .andExpect(jsonPath("$.accessToken").value("new-access"))
+                .andExpect(header().string("Set-Cookie", org.hamcrest.Matchers.containsString("refresh_token=new-refresh")));
+
+        verify(authUseCase).changePassword(org.mockito.ArgumentMatchers.eq(caller), any());
+    }
+
+    @Test
+    @WithMockUser
+    @DisplayName("changePassword: a session without a user id is refused before the service is reached")
+    void changePassword_withoutUserId_is401() throws Exception {
+        mockMvc.perform(post(BASE + "/change-password").contentType(MediaType.APPLICATION_JSON)
+                        .content(json(Map.of("email", "victim@materia.test", "newPassword", "NewPass1!",
+                                "confirmPassword", "NewPass1!"))))
+                .andExpect(status().isUnauthorized());
+        verifyNoInteractions(authUseCase);
     }
 
     // ---- Renewal and sign-out ----

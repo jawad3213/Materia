@@ -10,8 +10,6 @@ import jakarta.validation.constraints.Size;
  */
 public class ChangePasswordWebRequest {
 
-    private String email;
-
     private String currentPassword;
 
     @NotBlank(message = "New password must not be blank")
@@ -23,19 +21,10 @@ public class ChangePasswordWebRequest {
 
     public ChangePasswordWebRequest() {}
 
-    public ChangePasswordWebRequest(String email, String currentPassword, String newPassword, String confirmPassword) {
-        this.email = email;
+    public ChangePasswordWebRequest(String currentPassword, String newPassword, String confirmPassword) {
         this.currentPassword = currentPassword;
         this.newPassword = newPassword;
         this.confirmPassword = confirmPassword;
-    }
-
-    public String getEmail() {
-        return email;
-    }
-
-    public void setEmail(String email) {
-        this.email = email;
     }
 
     public String getCurrentPassword() {

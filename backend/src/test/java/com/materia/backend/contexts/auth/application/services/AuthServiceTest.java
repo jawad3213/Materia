@@ -126,12 +126,13 @@ class AuthServiceTest {
     }
 
     @Test
-    @DisplayName("login: throws AuthenticationFailedException when account is disabled")
+    @DisplayName("login: with the right password, a disabled account is refused as disabled")
     void login_userDisabled() {
         testUser.setEnabled(false);
         LoginInput input = new LoginInput("john@example.com", "raw_password");
 
         when(userRepository.findByEmail("john@example.com")).thenReturn(Optional.of(testUser));
+        when(passwordEncoder.matches("raw_password", testUser.getPasswordHash())).thenReturn(true);
 
         AuthenticationFailedException ex = assertThrows(AuthenticationFailedException.class,
                 () -> authService.login(input));
@@ -221,7 +222,7 @@ class AuthServiceTest {
     @Test
     @DisplayName("resetPassword: successfully verifies valid token and updates password")
     void resetPassword_success() {
-        ResetPasswordInput input = new ResetPasswordInput("john@example.com", "valid_token_xyz", "newPassword123", "newPassword123");
+        ResetPasswordInput input = new ResetPasswordInput("john@example.com", "valid_token_xyz", "NewPassword123!", "NewPassword123!");
         PasswordResetToken validToken = PasswordResetToken.builder()
                 .token("hashed_valid_token")
                 .userId(testUserId)
@@ -233,7 +234,7 @@ class AuthServiceTest {
         when(jwtTokenProvider.hashToken("valid_token_xyz")).thenReturn("hashed_valid_token");
         when(passwordResetTokenRepository.findByToken("hashed_valid_token")).thenReturn(Optional.of(validToken));
         when(userRepository.findById(testUserId)).thenReturn(Optional.of(testUser));
-        when(passwordEncoder.encode("newPassword123")).thenReturn("encoded_new");
+        when(passwordEncoder.encode("NewPassword123!")).thenReturn("encoded_new");
 
         String message = authService.resetPassword(input);
 
@@ -248,7 +249,7 @@ class AuthServiceTest {
     @Test
     @DisplayName("resetPassword: throws InvalidTokenException when token does not exist")
     void resetPassword_tokenNotFound() {
-        ResetPasswordInput input = new ResetPasswordInput("john@example.com", "unknown_token", "newPassword123", "newPassword123");
+        ResetPasswordInput input = new ResetPasswordInput("john@example.com", "unknown_token", "NewPassword123!", "NewPassword123!");
         when(jwtTokenProvider.hashToken("unknown_token")).thenReturn("hashed_unknown_token");
         when(passwordResetTokenRepository.findByToken("hashed_unknown_token")).thenReturn(Optional.empty());
 
@@ -259,7 +260,7 @@ class AuthServiceTest {
     @Test
     @DisplayName("resetPassword: throws TokenExpiredException when token is expired")
     void resetPassword_tokenExpired() {
-        ResetPasswordInput input = new ResetPasswordInput("john@example.com", "expired_token", "newPassword123", "newPassword123");
+        ResetPasswordInput input = new ResetPasswordInput("john@example.com", "expired_token", "NewPassword123!", "NewPassword123!");
         PasswordResetToken expiredToken = PasswordResetToken.builder()
                 .token("hashed_expired_token")
                 .userId(testUserId)
@@ -278,7 +279,7 @@ class AuthServiceTest {
     @Test
     @DisplayName("resetPassword: throws InvalidTokenException when token has already been used")
     void resetPassword_tokenAlreadyUsed() {
-        ResetPasswordInput input = new ResetPasswordInput("john@example.com", "used_token", "newPassword123", "newPassword123");
+        ResetPasswordInput input = new ResetPasswordInput("john@example.com", "used_token", "NewPassword123!", "NewPassword123!");
         PasswordResetToken usedToken = PasswordResetToken.builder()
                 .token("hashed_used_token")
                 .userId(testUserId)
@@ -297,7 +298,7 @@ class AuthServiceTest {
     @Test
     @DisplayName("resetPassword: throws exception when passwords mismatch")
     void resetPassword_mismatch() {
-        ResetPasswordInput input = new ResetPasswordInput("john@example.com", "token123", "newPassword123", "differentPassword");
+        ResetPasswordInput input = new ResetPasswordInput("john@example.com", "token123", "NewPassword123!", "differentPassword");
 
         AuthenticationFailedException ex = assertThrows(AuthenticationFailedException.class,
                 () -> authService.resetPassword(input));
@@ -316,9 +317,8 @@ class AuthServiceTest {
         when(passwordEncoder.encode("BrandNew123!")).thenReturn("new_hashed_pwd");
 
         ChangePasswordInput input = new ChangePasswordInput("Temp1234!", "BrandNew123!", "BrandNew123!");
-        String message = authService.changePassword(testUserId, null, input);
+        authService.changePassword(testUserId, input);
 
-        assertNotNull(message);
         assertEquals("new_hashed_pwd", testUser.getPasswordHash());
         assertFalse(testUser.isMustChangePassword());
         verify(userRepository).save(testUser);
@@ -330,7 +330,7 @@ class AuthServiceTest {
         ChangePasswordInput input = new ChangePasswordInput("Temp1234!", "BrandNew123!", "DifferentBrandNew123!");
 
         AuthenticationFailedException ex = assertThrows(AuthenticationFailedException.class,
-                () -> authService.changePassword(testUserId, null, input));
+                () -> authService.changePassword(testUserId, input));
 
         assertEquals("AUTH_PASSWORDS_MISMATCH", ex.getErrorCode());
         verify(userRepository, never()).save(any());
@@ -345,7 +345,7 @@ class AuthServiceTest {
         ChangePasswordInput input = new ChangePasswordInput("WrongPassword!", "BrandNew123!", "BrandNew123!");
 
         AuthenticationFailedException ex = assertThrows(AuthenticationFailedException.class,
-                () -> authService.changePassword(testUserId, null, input));
+                () -> authService.changePassword(testUserId, input));
 
         assertEquals("AUTH_INVALID_CURRENT_PASSWORD", ex.getErrorCode());
         verify(userRepository, never()).save(any());

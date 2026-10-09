@@ -1,6 +1,5 @@
 package com.materia.backend.contexts.auth.domain.entities;
 
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -13,9 +12,6 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /** Single-use and expiry rules for refresh tokens and password-reset tokens (T035, T036). */
 class AuthTokensTest {
-
-    private static final String FINDING_016 =
-            "FINDING-016: token equals() matches on id OR token, but hashCode() hashes both";
 
     private static RefreshToken refresh(boolean revoked, LocalDateTime expiry) {
         return RefreshToken.builder().userId(UUID.randomUUID()).token("t").revoked(revoked).expiryDate(expiry).build();
@@ -87,7 +83,6 @@ class AuthTokensTest {
     // ---- equals / hashCode contract ----
 
     @Test
-    @Disabled(FINDING_016)
     @DisplayName("tokens: two tokens that are equal also hash identically, as every hash-based collection requires")
     void tokens_equalImpliesSameHash() {
         RefreshToken a = RefreshToken.builder().id(UUID.randomUUID()).token("same").build();

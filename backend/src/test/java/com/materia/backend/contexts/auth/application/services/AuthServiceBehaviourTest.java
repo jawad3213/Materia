@@ -21,7 +21,6 @@ import com.materia.backend.contexts.auth.domain.ports.out.UserRepository;
 import com.materia.backend.gateway.security.JwtTokenProvider;
 import com.materia.backend.support.TimeAssertions;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -53,14 +52,6 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class AuthServiceBehaviourTest {
 
-    private static final String FINDING_012 =
-            "FINDING-012: login reveals a disabled account exists before checking the password";
-    private static final String FINDING_013 =
-            "FINDING-013: changePassword accepts an omitted current password and leaves other sessions alive";
-    private static final String FINDING_017 =
-            "FINDING-017: changePassword falls back to a caller-supplied email when the caller's own account is not found";
-    private static final String FINDING_014 =
-            "FINDING-014: resetPassword checks length only, skipping the complexity policy";
 
     @Mock private UserRepository userRepository;
     @Mock private RefreshTokenRepository refreshTokenRepository;
@@ -114,7 +105,6 @@ class AuthServiceBehaviourTest {
     }
 
     @Test
-    @Disabled(FINDING_012)
     @DisplayName("login: a disabled account with a wrong password is refused like any wrong password, without revealing it exists")
     void login_disabledAccountWrongPassword_doesNotRevealExistence() {
         when(userRepository.findByEmail("jane@example.com"))
@@ -363,7 +353,6 @@ class AuthServiceBehaviourTest {
     }
 
     @Test
-    @Disabled(FINDING_014)
     @DisplayName("resetPassword: a password failing the complexity policy is refused, as it is everywhere else")
     void resetPassword_weakPassword_isRefused() {
         lenient().when(passwordResetTokenRepository.findByToken("sha256:reset")).thenReturn(Optional.of(validResetToken()));
@@ -378,7 +367,7 @@ class AuthServiceBehaviourTest {
     @DisplayName("changePassword: a password failing the complexity policy is refused")
     void changePassword_weakPassword_isRefused() {
         assertThrows(IllegalArgumentException.class,
-                () -> authService.changePassword(userId, null, new ChangePasswordInput("Old1!pass", "aaaaaaaa", "aaaaaaaa")));
+                () -> authService.changePassword(userId, new ChangePasswordInput("Old1!pass", "aaaaaaaa", "aaaaaaaa")));
         verify(userRepository, never()).save(any());
     }
 
@@ -389,42 +378,36 @@ class AuthServiceBehaviourTest {
         when(passwordEncoder.matches("Same1!pass", "stored-hash")).thenReturn(true);
 
         assertEquals("AUTH_PASSWORD_IDENTICAL", errorCode(() -> authService.changePassword(
-                userId, null, new ChangePasswordInput("Same1!pass", "Same1!pass", "Same1!pass"))));
+                userId, new ChangePasswordInput("Same1!pass", "Same1!pass", "Same1!pass"))));
     }
 
     @Test
-    @Disabled(FINDING_013)
     @DisplayName("changePassword: the current password must be supplied, so a stolen session alone cannot change it")
     void changePassword_missingCurrentPassword_isRefused() {
         lenient().when(userRepository.findById(userId)).thenReturn(Optional.of(activeUser()));
         lenient().when(passwordEncoder.matches(anyString(), anyString())).thenReturn(false);
 
         assertThrows(AuthenticationFailedException.class, () -> authService.changePassword(
-                userId, null, new ChangePasswordInput(null, "NewPass1!", "NewPass1!")));
+                userId, new ChangePasswordInput(null, "NewPass1!", "NewPass1!")));
         verify(userRepository, never()).save(any());
     }
 
     @Test
-    @Disabled(FINDING_017)
-    @DisplayName("changePassword: a caller-supplied email can never redirect the change to a different account")
+    @DisplayName("changePassword: a caller whose account no longer exists is refused, with no fallback to another account")
     void changePassword_cannotTargetAnotherAccountByEmail() {
         // The caller's token names an account that no longer exists (deleted while the token is
-        // still valid). The service must refuse, not fall back to an email the caller chose.
+        // still valid). The service must refuse; it has no way to pick a different account.
         UUID deletedCaller = UUID.randomUUID();
-        User victim = User.builder().id(UUID.randomUUID()).email("victim@example.com")
-                .passwordHash("victim-hash").role(Role.ADMIN).status(UserStatus.ACTIVE).enabled(true).build();
         lenient().when(userRepository.findById(deletedCaller)).thenReturn(Optional.empty());
-        lenient().when(userRepository.findByEmail("victim@example.com")).thenReturn(Optional.of(victim));
         lenient().when(passwordEncoder.matches(anyString(), anyString())).thenReturn(false);
-        lenient().when(passwordEncoder.encode(anyString())).thenReturn("attacker-hash");
 
         assertThrows(RuntimeException.class, () -> authService.changePassword(
-                deletedCaller, "victim@example.com", new ChangePasswordInput(null, "Takeover1!", "Takeover1!")));
-        verify(userRepository, never()).save(victim);
+                deletedCaller, new ChangePasswordInput(null, "Takeover1!", "Takeover1!")));
+        verify(userRepository, never()).findByEmail(anyString());
+        verify(userRepository, never()).save(any());
     }
 
     @Test
-    @Disabled(FINDING_013)
     @DisplayName("changePassword: a successful change ends every other session, as a reset does")
     void changePassword_revokesOtherSessions() {
         when(userRepository.findById(userId)).thenReturn(Optional.of(activeUser()));
@@ -432,7 +415,7 @@ class AuthServiceBehaviourTest {
         when(passwordEncoder.matches("NewPass1!", "stored-hash")).thenReturn(false);
         when(passwordEncoder.encode("NewPass1!")).thenReturn("new-hash");
 
-        authService.changePassword(userId, null, new ChangePasswordInput("Old1!pass", "NewPass1!", "NewPass1!"));
+        authService.changePassword(userId, new ChangePasswordInput("Old1!pass", "NewPass1!", "NewPass1!"));
 
         verify(refreshTokenRepository).revokeAllForUserId(userId);
     }
