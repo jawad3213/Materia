@@ -52,7 +52,8 @@ import java.util.stream.Collectors;
  */
 @Service
 @Transactional(readOnly = true)
-public class GoodsReceiptService implements GoodsReceiptUseCase {
+public class GoodsReceiptService implements GoodsReceiptUseCase,
+        com.materia.backend.contexts.goodsReceipt.domain.ports.in.ReceiptStockLevelsUseCase {
 
     private final GoodsReceiptRepository goodsReceiptRepository;
     private final GoodsReceiptMapper goodsReceiptMapper;
@@ -242,15 +243,30 @@ public class GoodsReceiptService implements GoodsReceiptUseCase {
 
     @Override
     @Transactional
+    public void recordStockLevels(UUID goodsReceiptId, UUID goodsReceiptLineId, int stockBefore, int stockAfter) {
+        if (goodsReceiptId == null || goodsReceiptLineId == null) return;
+        goodsReceiptRepository.findById(goodsReceiptId).ifPresent(receipt -> receipt.getLines().stream()
+                .filter(line -> goodsReceiptLineId.equals(line.getId()))
+                .findFirst()
+                .ifPresent(line -> {
+                    line.setStockBefore(stockBefore);
+                    line.setStockAfter(stockAfter);
+                    goodsReceiptRepository.save(receipt);
+                }));
+    }
+
+    @Override
+    @Transactional
     public GoodsReceiptOutput complete(UUID id, String userId) {
         GoodsReceipt goodsReceipt = getGoodsReceiptById(id);
         OrderToReceive purchaseOrder = validateAndHydrateFromPurchaseOrder(goodsReceipt, userId);
         normalizeLines(goodsReceipt.getLines());
         goodsReceipt.recalculateTotals();
         goodsReceipt.complete(userId);
-        applyAcceptedStock(goodsReceipt, userId);
+        requireKnownMaterials(goodsReceipt);
         recordOnRequisition(purchaseOrder, goodsReceipt);
         GoodsReceipt saved = goodsReceiptRepository.save(goodsReceipt);
+        announceReceivedStock(saved, userId);
         updatePurchaseOrderDeliveryStatus(purchaseOrder, saved, userId);
 
         if (saved.getStatus() == ReceiptStatus.PARTIAL) {
@@ -489,27 +505,30 @@ public class GoodsReceiptService implements GoodsReceiptUseCase {
                 ));
     }
 
-    /**
-     * Accepted goods enter stock. Everything received (accepted or rejected) is no longer on order: the order
-     * counts it as received, so the material's stock on order is reduced by it.
-     */
-    private void applyAcceptedStock(GoodsReceipt goodsReceipt, String userId) {
+    /** Accepted goods can only enter the stock of a material that exists: checked before the receipt commits. */
+    private void requireKnownMaterials(GoodsReceipt goodsReceipt) {
         for (GoodsReceiptLine line : goodsReceipt.getLines()) {
             int acceptedQuantity = line.getQuantityAccepted() != null ? line.getQuantityAccepted() : 0;
-            int receivedQuantity = line.getQuantityReceived() != null ? line.getQuantityReceived() : 0;
-            if (acceptedQuantity <= 0) {
-                if (receivedQuantity > 0) {
-                    receivedStock.releaseOnOrder(line.getMaterialId(), line.getMaterialCode(), receivedQuantity, userId);
-                }
-                continue;
+            if (acceptedQuantity > 0 && !receivedStock.knows(line.getMaterialId(), line.getMaterialCode())) {
+                throw new GoodsReceiptValidationException("Material not found: " + line.getMaterialCode());
             }
+        }
+    }
 
-            ReceivedStock.StockLevels stock = receivedStock.receive(line.getMaterialId(), line.getMaterialCode(),
-                            acceptedQuantity, receivedQuantity,
-                            "Goods receipt " + goodsReceipt.getReceiptCode().getValue(), userId)
-                    .orElseThrow(() -> new GoodsReceiptValidationException("Material not found: " + line.getMaterialCode()));
-            line.setStockBefore(stock.before());
-            line.setStockAfter(stock.after());
+    /**
+     * Accepted goods enter stock. Everything received (accepted or rejected) is no longer on order: the order
+     * counts it as received, so the material's stock on order is reduced by it. Master data applies this from the
+     * announced lines after the receipt committed, and sends back the stock levels recorded on each line.
+     */
+    private void announceReceivedStock(GoodsReceipt saved, String userId) {
+        String reason = "Goods receipt " + saved.getReceiptCode().getValue();
+        for (GoodsReceiptLine line : saved.getLines()) {
+            int acceptedQuantity = line.getQuantityAccepted() != null ? line.getQuantityAccepted() : 0;
+            int receivedQuantity = line.getQuantityReceived() != null ? line.getQuantityReceived() : 0;
+            if (receivedQuantity > 0 || acceptedQuantity > 0) {
+                receivedStock.received(saved.getId(), line.getId(), line.getMaterialId(), line.getMaterialCode(),
+                        Math.max(0, acceptedQuantity), receivedQuantity, reason, userId);
+            }
         }
     }
 

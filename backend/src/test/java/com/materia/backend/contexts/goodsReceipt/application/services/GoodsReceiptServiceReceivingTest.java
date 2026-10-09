@@ -67,8 +67,11 @@ class GoodsReceiptServiceReceivingTest {
 
     @BeforeEach
     void setUp() {
+        com.materia.backend.support.fixtures.InlineEvents events = new com.materia.backend.support.fixtures.InlineEvents();
         service = new GoodsReceiptService(receipts, new GoodsReceiptMapper(), receiptEvents, codeGenerator,
-                orderedGoodsOver(orders, orderEvents), receivedStockOver(materials));
+                orderedGoodsOver(orders, orderEvents), receivedStockOver(materials, events));
+        // Master data answers with the stock levels, which the receipt records on its lines.
+        events.add(new com.materia.backend.contexts.goodsReceipt.infrastructure.adapters.in.events.ReceiptStockLevelsHandler(service));
         when(receipts.save(any(GoodsReceipt.class))).thenAnswer(inv -> inv.getArgument(0));
         when(receipts.findByPurchaseOrderId(any())).thenReturn(List.of());
         when(codeGenerator.generateCode()).thenReturn(ReceiptCode.of("GR-2026-0001"));

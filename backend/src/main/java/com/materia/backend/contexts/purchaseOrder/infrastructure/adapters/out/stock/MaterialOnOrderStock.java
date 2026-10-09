@@ -1,28 +1,36 @@
 package com.materia.backend.contexts.purchaseOrder.infrastructure.adapters.out.stock;
 
-import com.materia.backend.contexts.masterData.domain.ports.in.MaterialInventoryUseCase;
+import com.materia.backend.contexts.purchaseOrder.domain.events.StockOnOrderChangedEvent;
 import com.materia.backend.contexts.purchaseOrder.domain.ports.out.OnOrderStock;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
 import java.util.UUID;
 
-/** Records stock on order through the public use case of the master data context. */
+/**
+ * Announces changes of stock on order as {@link StockOnOrderChangedEvent}s; the master data context applies them
+ * after the order committed. Nothing here calls master data, so the two contexts can run as separate services.
+ */
 @Component
 public class MaterialOnOrderStock implements OnOrderStock {
 
-    private final MaterialInventoryUseCase materials;
+    private final ApplicationEventPublisher events;
 
-    public MaterialOnOrderStock(MaterialInventoryUseCase materials) {
-        this.materials = materials;
+    public MaterialOnOrderStock(ApplicationEventPublisher events) {
+        this.events = events;
     }
 
     @Override
     public void add(UUID materialId, String materialCode, int quantity) {
-        materials.addStockOnOrder(materialId, materialCode, quantity, null);
+        if (quantity > 0) {
+            events.publishEvent(new StockOnOrderChangedEvent(materialId, materialCode, quantity));
+        }
     }
 
     @Override
     public void release(UUID materialId, String materialCode, int quantity) {
-        materials.releaseStockOnOrder(materialId, materialCode, quantity, null);
+        if (quantity > 0) {
+            events.publishEvent(new StockOnOrderChangedEvent(materialId, materialCode, -quantity));
+        }
     }
 }

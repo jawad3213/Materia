@@ -52,7 +52,18 @@ public final class CrossContextWiring {
 
     /** The goods receipt context's view of the stock of the materials held by {@code materials}. */
     public static ReceivedStock receivedStockOver(MaterialRepository materials) {
-        return new MaterialReceivedStock(new MaterialInventoryService(materials));
+        return receivedStockOver(materials, new InlineEvents());
+    }
+
+    /**
+     * Same, over {@code events}: master data's handler applies the announced lines at once. Register the receipt's
+     * stock-levels handler on {@code events} to also see the levels recorded on the lines.
+     */
+    public static ReceivedStock receivedStockOver(MaterialRepository materials, InlineEvents events) {
+        MaterialInventoryService inventory = new MaterialInventoryService(materials);
+        events.add(new com.materia.backend.contexts.masterData.infrastructure.adapters.in.events.ReceivedGoodsStockHandler(
+                inventory, events));
+        return new MaterialReceivedStock(inventory, events);
     }
 
     /** The invoice context's view of the orders in {@code orders} and the receipts in {@code receipts}. */

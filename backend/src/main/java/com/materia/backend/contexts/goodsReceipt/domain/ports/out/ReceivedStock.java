@@ -1,23 +1,20 @@
 package com.materia.backend.contexts.goodsReceipt.domain.ports.out;
 
-import java.util.Optional;
 import java.util.UUID;
 
-/** The material stock that receipts move. */
+/**
+ * The material stock that receipts move. Moving it is asynchronous: the receipt announces what each line received,
+ * and the stock levels come back later (see the goods receipt's stock-levels event handler).
+ */
 public interface ReceivedStock {
 
+    /** Whether the material exists; by id when one is given, else by code. A read-only check made before committing. */
+    boolean knows(UUID materialId, String materialCode);
+
     /**
-     * Accepted goods enter stock; everything received (accepted or rejected) leaves the stock on order. The
-     * material is found by id when one is given, else by code.
-     *
-     * @return the stock before and after, or empty when the material is unknown
+     * Announces a validated receipt line: the accepted quantity enters stock, and everything received (accepted or
+     * rejected) leaves the stock on order. Call it once the receipt is saved.
      */
-    Optional<StockLevels> receive(UUID materialId, String materialCode, int acceptedQuantity, int receivedQuantity,
-                                  String reason, String userId);
-
-    /** Releases up to {@code quantity} of the stock on order, never below zero. */
-    void releaseOnOrder(UUID materialId, String materialCode, int quantity, String userId);
-
-    record StockLevels(int before, int after) {
-    }
+    void received(UUID goodsReceiptId, UUID goodsReceiptLineId, UUID materialId, String materialCode,
+                  int acceptedQuantity, int receivedQuantity, String reason, String userId);
 }
