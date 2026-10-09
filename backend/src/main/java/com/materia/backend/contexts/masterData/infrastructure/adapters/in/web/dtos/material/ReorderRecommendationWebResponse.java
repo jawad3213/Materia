@@ -28,4 +28,9 @@ public class ReorderRecommendationWebResponse {
     private String reason;
     private Boolean isUrgent;
     private String stockStatus;
+
+    /** The same code under the name the reorder dialog renders ({@code recommendation.currency}). */
+    public String getCurrency() {
+        return currencyCode;
+    }
 }

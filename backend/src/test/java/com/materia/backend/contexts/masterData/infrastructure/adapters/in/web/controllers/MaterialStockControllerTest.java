@@ -9,7 +9,6 @@ import com.materia.backend.contexts.masterData.domain.exceptions.MaterialNotFoun
 import com.materia.backend.contexts.masterData.domain.ports.in.MaterialUseCase;
 import com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.mappers.MaterialWebMapper;
 import com.materia.backend.support.AbstractWebMvcTest;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -40,9 +39,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class MaterialStockControllerTest extends AbstractWebMvcTest {
 
     private static final String BASE = "/api/v1/masterdata/materials";
-    private static final String FINDING_025 =
-            "FINDING-025: the reorder recommendation sends currencyCode, but the frontend renders currency";
-
     @MockBean
     private MaterialUseCase useCase;
 
@@ -150,7 +146,6 @@ class MaterialStockControllerTest extends AbstractWebMvcTest {
     }
 
     @Test
-    @Disabled(FINDING_025)
     @DisplayName("recommendation: sends the currency under the name the dialog renders, so the cost shows its currency")
     void recommendation_sendsCurrencyUnderFrontendName() throws Exception {
         when(useCase.getReorderRecommendation(id)).thenReturn(recommendation());

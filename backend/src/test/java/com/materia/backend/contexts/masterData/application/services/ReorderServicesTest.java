@@ -10,7 +10,6 @@ import com.materia.backend.contexts.masterData.domain.ports.out.MaterialReposito
 import com.materia.backend.contexts.masterData.domain.valueObjects.ReorderQuantity;
 import com.materia.backend.contexts.masterData.domain.ports.out.RequisitionRequests;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -33,9 +32,6 @@ import static org.mockito.Mockito.*;
  */
 @ExtendWith(MockitoExtension.class)
 class ReorderServicesTest {
-
-    private static final String FINDING_024 =
-            "FINDING-024: the reorder recommendation ignores stock on order, so automatic reordering double-orders";
 
     @Mock private MaterialRepository materials;
     @Mock private NotificationService notifications;
@@ -142,7 +138,6 @@ class ReorderServicesTest {
     }
 
     @Test
-    @Disabled(FINDING_024)
     @DisplayName("auto-reorder: when stock already on order covers the shortfall, no second requisition is raised")
     void autoReorder_alreadyCovered_doesNotDoubleOrder() {
         Material m = aMaterial().stock(10).reorderPoint(20).onOrder(500).build();

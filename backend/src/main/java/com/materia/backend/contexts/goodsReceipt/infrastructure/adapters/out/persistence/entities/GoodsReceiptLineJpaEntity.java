@@ -87,8 +87,8 @@ public class GoodsReceiptLineJpaEntity extends BaseJpaEntity {
     @Column(name = "currency_code", length = 10)
     private String currencyCode;
 
-    @Column(name = "supplier_id", length = 100)
-    private String supplierId;
+    @Column(name = "supplier_id")
+    private UUID supplierId;
 
     @Column(name = "supplier_name", length = 255)
     private String supplierName;
@@ -265,11 +265,11 @@ public class GoodsReceiptLineJpaEntity extends BaseJpaEntity {
         this.currencyCode = currencyCode;
     }
 
-    public String getSupplierId() {
+    public UUID getSupplierId() {
         return supplierId;
     }
 
-    public void setSupplierId(String supplierId) {
+    public void setSupplierId(UUID supplierId) {
         this.supplierId = supplierId;
     }
 

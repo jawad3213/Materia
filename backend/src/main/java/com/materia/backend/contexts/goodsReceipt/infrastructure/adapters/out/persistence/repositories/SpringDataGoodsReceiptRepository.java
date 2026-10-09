@@ -24,7 +24,7 @@ public interface SpringDataGoodsReceiptRepository extends JpaRepository<GoodsRec
 
     List<GoodsReceiptJpaEntity> findByReceivedBy(String receivedBy);
 
-    List<GoodsReceiptJpaEntity> findBySupplierId(String supplierId);
+    List<GoodsReceiptJpaEntity> findBySupplierId(java.util.UUID supplierId);
 
     List<GoodsReceiptJpaEntity> findByReceiptDateBetween(LocalDate startDate, LocalDate endDate);
 }

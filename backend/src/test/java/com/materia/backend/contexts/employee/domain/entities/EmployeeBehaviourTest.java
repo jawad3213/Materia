@@ -63,7 +63,7 @@ class EmployeeBehaviourTest {
         assertEquals(LocalDate.now(), defaults.getTerminationDate());
         assertEquals("Standard Offboarding", defaults.getTerminationReason());
 
-        Employee given = base().build();
+        Employee given = base().hireDate(LocalDate.of(2024, 3, 1)).build();
         given.terminate(LocalDate.of(2026, 1, 31), "  Contract end  ");
         assertEquals(LocalDate.of(2026, 1, 31), given.getTerminationDate());
         assertEquals("Contract end", given.getTerminationReason());

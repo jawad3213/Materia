@@ -93,8 +93,13 @@ public class Employee extends BaseEntity {
         if (this.status == EmploymentStatus.TERMINATED) {
             throw new EmployeeAlreadyTerminatedException(this.code != null ? this.code.getValue() : "UNKNOWN");
         }
+        LocalDate effectiveDate = terminationDate != null ? terminationDate : LocalDate.now();
+        if (this.hireDate != null && effectiveDate.isBefore(this.hireDate)) {
+            throw new IllegalArgumentException(
+                    "Termination date " + effectiveDate + " cannot be before the hire date " + this.hireDate);
+        }
         this.status = EmploymentStatus.TERMINATED;
-        this.terminationDate = terminationDate != null ? terminationDate : LocalDate.now();
+        this.terminationDate = effectiveDate;
         this.terminationReason = reason != null ? reason.trim() : "Standard Offboarding";
         this.updatedAt = LocalDateTime.now();
     }

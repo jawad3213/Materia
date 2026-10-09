@@ -351,16 +351,19 @@ public class Material extends BaseEntity {
         if (quantity == null || quantity <= 0) {
             throw new IllegalArgumentException("La quantité doit être positive");
         }
-        int available = this.currentStock != null ? this.currentStock : 0;
-        if (available < quantity) {
+        int onHand = this.currentStock != null ? this.currentStock : 0;
+        // Reserved units are on hand but not free: the issue is checked against the same free stock it is
+        // subtracted from, so neither figure can go negative.
+        int free = this.availableStock != null ? Math.min(this.availableStock, onHand) : onHand;
+        if (free < quantity) {
             throw new IllegalStateException(
-                    "Stock insuffisant. Disponible: " + available +
+                    "Stock insuffisant. Disponible: " + free +
                             ", Demandé: " + quantity
             );
         }
-        int previousStock = available;
-        this.currentStock = available - quantity;
-        this.availableStock = (this.availableStock != null ? this.availableStock : available) - quantity;
+        int previousStock = onHand;
+        this.currentStock = onHand - quantity;
+        this.availableStock = free - quantity;
         recordStockMovement(StockMovementType.ISSUE, quantity, previousStock, this.currentStock, "Stock decrease");
         this.setUpdatedAt(LocalDateTime.now());
 

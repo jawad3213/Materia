@@ -33,7 +33,7 @@ public class GoodsReceiptPersistenceMapper {
         jpa.setReceivedBy(domain.getReceivedBy());
         jpa.setReceivedByName(domain.getReceivedByName());
         jpa.setNotes(domain.getNotes());
-        jpa.setSupplierId(domain.getSupplierId());
+        jpa.setSupplierId(toUuid(domain.getSupplierId()));
         jpa.setSupplierName(domain.getSupplierName());
         jpa.setTotalQuantityOrdered(domain.getTotalQuantityOrdered());
         jpa.setTotalQuantityReceived(domain.getTotalQuantityReceived());
@@ -71,7 +71,7 @@ public class GoodsReceiptPersistenceMapper {
         domain.setReceivedBy(jpa.getReceivedBy());
         domain.setReceivedByName(jpa.getReceivedByName());
         domain.setNotes(jpa.getNotes());
-        domain.setSupplierId(jpa.getSupplierId());
+        domain.setSupplierId(jpa.getSupplierId() != null ? jpa.getSupplierId().toString() : null);
         domain.setSupplierName(jpa.getSupplierName());
         domain.setTotalQuantityOrdered(jpa.getTotalQuantityOrdered());
         domain.setTotalQuantityReceived(jpa.getTotalQuantityReceived());
@@ -124,7 +124,7 @@ public class GoodsReceiptPersistenceMapper {
         jpa.setUnitPrice(toAmount(domain.getUnitPrice()));
         jpa.setLineTotal(toAmount(resolveLineTotal(domain)));
         jpa.setCurrencyCode(resolveCurrencyCode(domain.getUnitPrice(), domain.getLineTotal()));
-        jpa.setSupplierId(domain.getSupplierId());
+        jpa.setSupplierId(toUuid(domain.getSupplierId()));
         jpa.setSupplierName(domain.getSupplierName());
         jpa.setBatchNumber(domain.getBatchNumber());
         jpa.setExpiryDate(domain.getExpiryDate());
@@ -164,7 +164,7 @@ public class GoodsReceiptPersistenceMapper {
         domain.setStockAfter(jpa.getStockAfter());
         domain.setUnitPrice(toMoney(jpa.getUnitPrice(), jpa.getCurrencyCode()));
         domain.setLineTotal(resolveDomainLineTotal(jpa));
-        domain.setSupplierId(jpa.getSupplierId());
+        domain.setSupplierId(jpa.getSupplierId() != null ? jpa.getSupplierId().toString() : null);
         domain.setSupplierName(jpa.getSupplierName());
         domain.setBatchNumber(jpa.getBatchNumber());
         domain.setExpiryDate(jpa.getExpiryDate());
@@ -225,5 +225,15 @@ public class GoodsReceiptPersistenceMapper {
             return currencyCode.trim().toUpperCase();
         }
         return CurrencyCode.MAD.getCode();
+    }
+
+    /** The supplier id is a UUID in the database; a blank one is none, a malformed one is refused (400). */
+    public static java.util.UUID toUuid(String supplierId) {
+        if (supplierId == null || supplierId.isBlank()) return null;
+        try {
+            return java.util.UUID.fromString(supplierId.trim());
+        } catch (IllegalArgumentException notAUuid) {
+            throw new IllegalArgumentException("Invalid supplier id: " + supplierId);
+        }
     }
 }

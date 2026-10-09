@@ -36,8 +36,13 @@ public class MaterialStockDomainService {
         if (material == null || !material.isBelowReorderPoint()) {
             return null;
         }
-        
+        // Stock already on order counts: when it covers the shortfall, ordering again would double-order.
+        if (!material.isVirtualStockBelowReorderPoint()) {
+            return null;
+        }
+
         int currentStock = material.getCurrentStock() != null ? material.getCurrentStock() : 0;
+        int virtualStock = material.getVirtualStock();
         int reorderPoint = material.getReorderPoint() != null ? material.getReorderPoint() : 0;
         int safetyStock = material.getSafetyStock() != null ? material.getSafetyStock() : 0;
         int eoq = material.getEconomicOrderQuantity() != null ? material.getEconomicOrderQuantity() : 100;
@@ -49,7 +54,7 @@ public class MaterialStockDomainService {
         
         // Si stock en dessous du safety stock → URGENT
         if (currentStock <= safetyStock) {
-            quantity = Math.max(eoq, (reorderPoint - currentStock) + safetyStock);
+            quantity = Math.max(eoq, (reorderPoint - virtualStock) + safetyStock);
             reason = "Stock critique (en dessous du stock de sécurité)";
             isUrgent = true;
         } else {

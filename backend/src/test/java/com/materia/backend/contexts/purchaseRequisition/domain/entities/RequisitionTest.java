@@ -5,7 +5,6 @@ import com.materia.backend.common.domain.valueObjects.Money;
 import com.materia.backend.contexts.purchaseRequisition.domain.exceptions.RequisitionCurrencyMismatchException;
 import com.materia.backend.contexts.purchaseRequisition.domain.exceptions.RequisitionInvalidStatusTransitionException;
 import com.materia.backend.support.TimeAssertions;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -155,7 +154,6 @@ class RequisitionTest {
     }
 
     @Test
-    @Disabled("FINDING-019: addLine appends the line before validating currency, so a refused line is left behind")
     @DisplayName("total: a refused mixed-currency line is not left behind in the requisition")
     void total_mixedCurrencies_leavesNoTrace() {
         Requisition r = aRequisition().withLine(1, "10.00").build();

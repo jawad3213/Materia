@@ -4,7 +4,6 @@ import com.materia.backend.contexts.employee.domain.enums.EmploymentStatus;
 import com.materia.backend.contexts.employee.domain.exceptions.EmployeeAlreadyTerminatedException;
 import com.materia.backend.contexts.employee.domain.valueObjects.EmployeeCode;
 import com.materia.backend.contexts.employee.domain.valueObjects.EmployeeFullName;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -19,9 +18,6 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /** Employee state rules and value objects (T077, T078, US4). */
 class EmployeeTest {
-
-    private static final String FINDING_029 =
-            "FINDING-029: terminate() accepts a termination date before the hire date";
 
     private static Employee active() {
         return Employee.builder().id(UUID.randomUUID()).code(EmployeeCode.of("EMP-0001"))
@@ -63,7 +59,6 @@ class EmployeeTest {
     }
 
     @Test
-    @Disabled(FINDING_029)
     @DisplayName("terminate: a termination date before the hire date is refused")
     void terminate_beforeHireDate_isRefused() {
         Employee e = active(); // hired 2024-03-01

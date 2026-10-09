@@ -1,7 +1,6 @@
 package com.materia.backend.common.domain.valueObjects;
 
 import com.materia.backend.common.domain.enums.CurrencyCode;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -16,10 +15,6 @@ class MoneyTest {
      * resolved. Money validates decimal places on the raw result before rounding it, so any
      * fractional multiply, percentage, or VAT calculation on a non-round amount throws.
      */
-    private static final String FINDING_008 =
-            "FINDING-008: fractional arithmetic on ordinary prices throws instead of rounding "
-                    + "- see specs/001-backend-module-tests/research.md";
-
     private static Money mad(String amount) {
         return Money.of(amount, CurrencyCode.MAD);
     }
@@ -115,7 +110,6 @@ class MoneyTest {
     }
 
     @Test
-    @Disabled(FINDING_008)
     @DisplayName("multiply: a fractional factor rounds half-up to the currency's decimal places")
     void multiply_byFraction_roundsHalfUp() {
         // 10.01 x 1.5 = 15.015 -> 15.02
@@ -147,7 +141,6 @@ class MoneyTest {
     }
 
     @Test
-    @Disabled(FINDING_008)
     @DisplayName("applyPercentage: rounds half-up when the result has more decimal places than the currency")
     void applyPercentage_unroundAmount_roundsHalfUp() {
         // 10.01 x 20% = 2.002 -> 2.00
@@ -161,7 +154,6 @@ class MoneyTest {
     }
 
     @Test
-    @Disabled(FINDING_008)
     @DisplayName("addTax: adds VAT to an ordinary price and rounds half-up")
     void addTax_ordinaryPrice_roundsHalfUp() {
         // 10.01 x 1.20 = 12.012 -> 12.01

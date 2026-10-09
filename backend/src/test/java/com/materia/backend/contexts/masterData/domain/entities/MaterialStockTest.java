@@ -2,7 +2,6 @@ package com.materia.backend.contexts.masterData.domain.entities;
 
 import com.materia.backend.contexts.masterData.domain.enums.MaterialStatus;
 import com.materia.backend.contexts.masterData.domain.events.MaterialBelowReorderPointEvent;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -21,9 +20,6 @@ class MaterialStockTest {
 
     private static final String FINDING_022 =
             "FINDING-022: the reorder alert fires only when stock on order already covers the shortfall";
-    private static final String FINDING_023 =
-            "FINDING-023: decreaseStock checks current stock but subtracts from available stock, which can go negative";
-
     private static Material withStock(int current) {
         return aMaterial().stock(current).safety(5).minimum(10).reorderPoint(20).build();
     }
@@ -96,7 +92,6 @@ class MaterialStockTest {
     }
 
     @Test
-    @Disabled(FINDING_023)
     @DisplayName("decrease: available stock never goes negative, even when part of the stock is reserved")
     void decrease_neverMakesAvailableStockNegative() {
         // 10 on hand, 3 available: 7 are reserved. Issuing 5 must be refused, since only 3 are free.

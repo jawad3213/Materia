@@ -174,7 +174,10 @@ public class Money {
         if (factor.compareTo(BigDecimal.ZERO) < 0) {
             throw new IllegalArgumentException("Factor cannot be negative");
         }
-        return new Money(this.amount.multiply(factor), this.currency);
+        // A computed amount (a price x 1.5, a tax) is rounded to the currency; only given amounts must already fit.
+        BigDecimal result = this.amount.multiply(factor)
+                .setScale(this.currency.getDecimalPlaces(), DEFAULT_ROUNDING);
+        return new Money(result, this.currency);
     }
 
     /**
@@ -219,7 +222,8 @@ public class Money {
         if (percentage == null) {
             throw new IllegalArgumentException("Percentage is required");
         }
-        BigDecimal factor = percentage.divide(new BigDecimal("100"), DEFAULT_SCALE, DEFAULT_ROUNDING);
+        // Exact: rounding the factor first would turn 12.5% into 0.13.
+        BigDecimal factor = percentage.movePointLeft(2);
         return multiply(factor);
     }
 

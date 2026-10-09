@@ -137,7 +137,14 @@ public class GoodsReceiptPersistenceAdapter implements GoodsReceiptRepository {
 
     @Override
     public List<GoodsReceipt> findBySupplierId(String supplierId) {
-        return jpaRepository.findBySupplierId(supplierId).stream()
+        java.util.UUID id;
+        try {
+            id = GoodsReceiptPersistenceMapper.toUuid(supplierId);
+        } catch (IllegalArgumentException notAUuid) {
+            return List.of(); // no receipt can belong to a malformed id
+        }
+        if (id == null) return List.of();
+        return jpaRepository.findBySupplierId(id).stream()
                 .map(mapper::toDomainEntity)
                 .collect(Collectors.toList());
     }

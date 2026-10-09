@@ -37,7 +37,7 @@ public class GoodsReceiptLineWebRequest extends BaseInput {
     @PositiveOrZero private BigDecimal unitPrice;
     @Pattern(regexp = "^(MAD|EUR|USD)$", message = "Currency must be MAD, EUR, or USD")
     private String currencyCode;
-    @Size(max = 100) private String supplierId;
+    @Pattern(regexp = "^$|^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$", message = "supplierId must be a UUID") private String supplierId;
     @Size(max = 255) private String supplierName;
     @Size(max = 100) private String batchNumber;
     private LocalDate expiryDate;

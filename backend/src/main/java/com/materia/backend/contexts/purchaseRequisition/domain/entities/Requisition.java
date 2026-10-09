@@ -661,7 +661,14 @@ public class Requisition extends BaseEntity {
         // Assigner le numéro de ligne
         line.setLineNumber(this.lines.size() + 1);
         this.lines.add(line);
-        recalculateTotal();
+        try {
+            recalculateTotal();
+        } catch (RuntimeException refused) {
+            // A refused line (e.g. another currency) must leave the requisition exactly as it was.
+            this.lines.remove(this.lines.size() - 1);
+            recalculateTotal();
+            throw refused;
+        }
         this.setUpdatedAt(LocalDateTime.now());
     }
 

@@ -49,6 +49,7 @@ class EmployeeOffboardingServiceTest {
                 .code(EmployeeCode.of("EMP-0001"))
                 .fullName(EmployeeFullName.of("John", "Doe"))
                 .email("john@example.com")
+                .hireDate(LocalDate.of(2024, 3, 1))
                 .status(EmploymentStatus.ACTIVE)
                 .userId(userId)
                 .build();

@@ -23,7 +23,7 @@ public class CreateGoodsReceiptWebRequest extends BaseInput {
     private String receivedBy;
     @Size(max = 255) private String receivedByName;
     @Size(max = 1000) private String notes;
-    @Size(max = 100) private String supplierId;
+    @Pattern(regexp = "^$|^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$", message = "supplierId must be a UUID") private String supplierId;
     @Size(max = 255) private String supplierName;
     @Size(max = 1000) private String discrepancyNotes;
     @NotEmpty(message = "At least one goods receipt line is required") @Valid
