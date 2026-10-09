@@ -1,5 +1,6 @@
 package com.materia.backend.contexts.payment.infrastructure.adapters.out.persistence.entities;
 
+import com.materia.backend.common.audit.application.Audited;
 import com.materia.backend.common.infrastructure.persistence.BaseJpaEntity;
 import com.materia.backend.contexts.payment.domain.enums.PaymentStatus;
 import jakarta.persistence.CascadeType;
@@ -24,6 +25,7 @@ import java.util.List;
         @Index(name = "idx_payment_status", columnList = "status"),
         @Index(name = "idx_payment_supplier_id", columnList = "supplier_id")
 })
+@Audited(type = "Payment", code = "paymentCode", readPermission = "payment:read")
 public class PaymentJpaEntity extends BaseJpaEntity {
 
     @Column(name = "payment_code", nullable = false, unique = true, length = 50)

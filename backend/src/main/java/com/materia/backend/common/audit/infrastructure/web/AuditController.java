@@ -1,5 +1,6 @@
 package com.materia.backend.common.audit.infrastructure.web;
 
+import com.materia.backend.common.audit.infrastructure.AuditedTypes;
 import com.materia.backend.common.infrastructure.web.CsvWriter;
 import com.materia.backend.common.audit.application.AuditLogReader;
 import com.materia.backend.common.audit.application.AuditLogReader.AuditEntry;
@@ -15,7 +16,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
-import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -29,20 +30,6 @@ public class AuditController {
     private static final int MAX_ENTRIES = 500;
     private static final int MAX_EXPORT = 5000;
 
-    /** The permission that reads each kind of record, and therefore its history. */
-    static final Map<String, String> READ_PERMISSION = Map.ofEntries(
-            Map.entry("PurchaseOrder", "order:read"),
-            Map.entry("Requisition", "requisition:read"),
-            Map.entry("GoodsReceipt", "receipt:read"),
-            Map.entry("Invoice", "invoice:read"),
-            Map.entry("Payment", "payment:read"),
-            Map.entry("ReturnToVendor", "return:read"),
-            Map.entry("Supplier", "supplier:read"),
-            Map.entry("Material", "material:read"),
-            Map.entry("Category", "category:read"),
-            Map.entry("User", "user:read"),
-            Map.entry("Employee", "user:read"),
-            Map.entry("Setting", "setting:read"));
 
     private final AuditLogReader reader;
 
@@ -54,12 +41,14 @@ public class AuditController {
     @GetMapping("/{entityType}/{entityId}")
     public ResponseEntity<List<AuditEntry>> history(@PathVariable String entityType, @PathVariable UUID entityId,
                                                     Authentication authentication) {
-        String permission = READ_PERMISSION.get(entityType);
-        if (permission == null) {
-            throw new IllegalArgumentException("Unknown record type: " + entityType);
-        }
-        if (!holds(authentication, permission) && !holds(authentication, "log:read")) {
-            throw new AccessDeniedException("Reading the history of " + entityType + " requires " + permission);
+        // Each context declares, on its own entities, the permission that reads them (@Audited).
+        Optional<String> permission = AuditedTypes.readPermissionOf(entityType)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown record type: " + entityType));
+        boolean allowed = holds(authentication, "log:read")
+                || permission.map(required -> holds(authentication, required)).orElse(false);
+        if (!allowed) {
+            throw new AccessDeniedException("Reading the history of " + entityType + " requires "
+                    + permission.orElse("log:read"));
         }
         return ResponseEntity.ok(reader.historyOf(entityType, entityId, MAX_ENTRIES));
     }

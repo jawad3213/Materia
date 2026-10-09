@@ -1,5 +1,6 @@
 package com.materia.backend.contexts.invoice.infrastructure.adapters.out.persistence.entities;
 
+import com.materia.backend.common.audit.application.Audited;
 import com.materia.backend.common.infrastructure.persistence.BaseJpaEntity;
 import com.materia.backend.contexts.invoice.domain.enums.InvoiceStatus;
 import com.materia.backend.contexts.invoice.domain.enums.InvoiceType;
@@ -28,6 +29,7 @@ import java.util.List;
         @Index(name = "idx_invoice_po_id", columnList = "purchase_order_id"),
         @Index(name = "idx_invoice_date", columnList = "invoice_date")
 })
+@Audited(type = "Invoice", code = "invoiceCode", readPermission = "invoice:read")
 public class InvoiceJpaEntity extends BaseJpaEntity {
 
     @Column(name = "invoice_code", nullable = false, unique = true, length = 50)

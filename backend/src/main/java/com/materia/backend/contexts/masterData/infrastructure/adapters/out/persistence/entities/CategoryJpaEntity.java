@@ -1,5 +1,6 @@
 package com.materia.backend.contexts.masterData.infrastructure.adapters.out.persistence.entities;
 
+import com.materia.backend.common.audit.application.Audited;
 import com.materia.backend.common.infrastructure.persistence.BaseJpaEntity;
 import com.materia.backend.contexts.masterData.domain.enums.MaterialCategoryType;
 
@@ -18,6 +19,7 @@ import java.util.List;
         @Index(name = "idx_category_status", columnList = "status"),
         @Index(name = "idx_category_type", columnList = "category_type")
 })
+@Audited(type = "Category", code = "code", readPermission = "category:read")
 public class CategoryJpaEntity extends BaseJpaEntity {
 
     // ---- IDENTIFICATION ----

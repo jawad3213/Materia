@@ -1,5 +1,6 @@
 package com.materia.backend.contexts.purchaseRequisition.infrastructure.adapters.out.persistence.entities;
 
+import com.materia.backend.common.audit.application.Audited;
 import com.materia.backend.common.infrastructure.persistence.BaseJpaEntity;
 import com.materia.backend.contexts.purchaseRequisition.domain.enums.RequisitionStatus;
 import jakarta.persistence.CascadeType;
@@ -29,6 +30,7 @@ import java.util.List;
         @Index(name = "idx_pr_approver_id", columnList = "approver_id"),
         @Index(name = "idx_pr_required_date", columnList = "required_date")
 })
+@Audited(type = "Requisition", code = "requisitionCode", readPermission = "requisition:read")
 public class RequisitionJpaEntity extends BaseJpaEntity {
 
     @Column(name = "requisition_code", nullable = false, unique = true, length = 50)

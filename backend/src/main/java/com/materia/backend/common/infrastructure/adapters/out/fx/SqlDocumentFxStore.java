@@ -5,7 +5,6 @@ import com.materia.backend.common.domain.fx.FxDocument;
 import com.materia.backend.common.domain.fx.FxValuation;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
-import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.sql.Date;
@@ -17,33 +16,31 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * The rate copies on purchase_orders, invoices and payments, read and written with plain SQL. The document entities
- * map these columns read-only, so saving a document never overwrites its copy.
+ * The copy of a document's reporting-currency rate, read and written with plain SQL on the owning context's own
+ * table. Each context that owns valued documents extends this for its table: shared code never names a table, so
+ * every context keeps doing this on its own database once it is a separate service.
  */
-@Component
-public class DocumentFxJpaStore implements DocumentFxStore {
-
-    /** Table, amount and valuation-date expressions of each document kind. */
-    private record Mapping(String table, String amount, String date) {
-    }
-
-    private static Mapping mapping(FxDocument kind) {
-        return switch (kind) {
-            case PURCHASE_ORDER -> new Mapping("purchase_orders", "grand_total", "coalesce(order_date, cast(created_at as date))");
-            case INVOICE -> new Mapping("invoices", "total_amount_with_tax", "coalesce(invoice_date, cast(created_at as date))");
-            case PAYMENT -> new Mapping("payments", "total_amount",
-                    "coalesce(cast(confirmed_date as date), cast(payment_date as date), cast(created_at as date))");
-        };
-    }
+public abstract class SqlDocumentFxStore implements DocumentFxStore {
 
     @PersistenceContext
     private EntityManager em;
 
+    /** The kind of document this store owns. */
+    public abstract FxDocument kind();
+
+    /** The owner's table, e.g. {@code purchase_orders}. */
+    protected abstract String table();
+
+    /** SQL expression of the amount to value. */
+    protected abstract String amountColumn();
+
+    /** SQL expression of the date whose rate values the document. */
+    protected abstract String dateExpression();
+
     @Override
     public Optional<DocumentAmount> find(FxDocument kind, UUID id) {
-        Mapping m = mapping(kind);
-        List<?> rows = em.createNativeQuery("select id, upper(currency_code), " + m.amount() + ", " + m.date()
-                        + ", status, fx_reporting_currency from public." + m.table() + " where id = :id")
+        List<?> rows = em.createNativeQuery("select id, upper(currency_code), " + amountColumn() + ", " + dateExpression()
+                        + ", status, fx_reporting_currency from public." + table() + " where id = :id")
                 .setParameter("id", id)
                 .getResultList();
         return rows.stream().findFirst().map(row -> toDocument((Object[]) row));
@@ -51,12 +48,11 @@ public class DocumentFxJpaStore implements DocumentFxStore {
 
     @Override
     public List<DocumentAmount> unvalued(FxDocument kind, String reportingCurrency, int limit) {
-        Mapping m = mapping(kind);
-        List<?> rows = em.createNativeQuery("select id, upper(currency_code), " + m.amount() + ", " + m.date()
-                        + ", status, fx_reporting_currency from public." + m.table()
+        List<?> rows = em.createNativeQuery("select id, upper(currency_code), " + amountColumn() + ", " + dateExpression()
+                        + ", status, fx_reporting_currency from public." + table()
                         + " where status in (:statuses) and currency_code is not null"
                         + " and (fx_reporting_currency is null or fx_reporting_currency <> :reporting)")
-                .setParameter("statuses", kind.committedStatuses())
+                .setParameter("statuses", kind().committedStatuses())
                 .setParameter("reporting", reportingCurrency)
                 .setMaxResults(limit)
                 .getResultList();
@@ -65,7 +61,7 @@ public class DocumentFxJpaStore implements DocumentFxStore {
 
     @Override
     public void saveValuation(FxDocument kind, UUID id, FxValuation valuation, BigDecimal amountReporting) {
-        em.createNativeQuery("update public." + mapping(kind).table() + " set fx_rate_to_reporting = :rate, "
+        em.createNativeQuery("update public." + table() + " set fx_rate_to_reporting = :rate, "
                         + "amount_reporting = :amount, fx_rate_date = :rateDate, fx_rate_source = :source, "
                         + "fx_reporting_currency = :reporting where id = :id")
                 .setParameter("rate", valuation.rate())

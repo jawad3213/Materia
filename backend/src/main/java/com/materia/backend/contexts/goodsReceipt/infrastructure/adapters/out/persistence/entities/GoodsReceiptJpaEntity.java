@@ -1,5 +1,6 @@
 package com.materia.backend.contexts.goodsReceipt.infrastructure.adapters.out.persistence.entities;
 
+import com.materia.backend.common.audit.application.Audited;
 import java.util.UUID;
 import com.materia.backend.common.infrastructure.persistence.BaseJpaEntity;
 import com.materia.backend.contexts.goodsReceipt.domain.enums.ReceiptStatus;
@@ -28,6 +29,7 @@ import java.util.List;
         @Index(name = "idx_gr_supplier_id", columnList = "supplier_id"),
         @Index(name = "idx_gr_receipt_date", columnList = "receipt_date")
 })
+@Audited(type = "GoodsReceipt", code = "receiptCode", readPermission = "receipt:read")
 public class GoodsReceiptJpaEntity extends BaseJpaEntity {
 
     @Column(name = "receipt_code", nullable = false, unique = true, length = 50)

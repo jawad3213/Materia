@@ -1,5 +1,6 @@
 package com.materia.backend.contexts.auth.infrastructure.adapters.out.persistence.entities;
 
+import com.materia.backend.common.audit.application.Audited;
 import com.materia.backend.common.infrastructure.persistence.BaseJpaEntity;
 import com.materia.backend.contexts.auth.domain.enums.Role;
 import com.materia.backend.contexts.auth.domain.enums.UserStatus;
@@ -17,6 +18,7 @@ import jakarta.persistence.Table;
  */
 @Entity
 @Table(name = "users")
+@Audited(type = "User", code = "email", readPermission = "user:read")
 public class UserJpaEntity extends BaseJpaEntity {
 
     @Column(name = "email", nullable = false, unique = true, length = 255)

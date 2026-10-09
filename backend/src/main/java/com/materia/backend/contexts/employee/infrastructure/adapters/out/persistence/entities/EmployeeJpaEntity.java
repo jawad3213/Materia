@@ -1,5 +1,6 @@
 package com.materia.backend.contexts.employee.infrastructure.adapters.out.persistence.entities;
 
+import com.materia.backend.common.audit.application.Audited;
 import com.materia.backend.common.infrastructure.persistence.BaseJpaEntity;
 import com.materia.backend.contexts.employee.domain.enums.EmploymentStatus;
 import jakarta.persistence.*;
@@ -14,6 +15,7 @@ import java.util.UUID;
  */
 @Entity
 @Table(name = "employees")
+@Audited(type = "Employee", code = "code", readPermission = "user:read")
 public class EmployeeJpaEntity extends BaseJpaEntity {
 
     @Column(name = "code", nullable = false, unique = true, length = 50)

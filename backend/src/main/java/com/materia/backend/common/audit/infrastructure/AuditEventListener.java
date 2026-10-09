@@ -145,7 +145,7 @@ public class AuditEventListener implements PostInsertEventListener, PostUpdateEv
             Object ownerType = valueOf(names, state, "ownerType");
             Object ownerId = valueOf(names, state, "ownerId");
             if (ownerType != null && ownerId instanceof UUID owner) {
-                parentType = AuditedEntities.ATTACHMENT_OWNERS.get(ownerType.toString());
+                parentType = AuditedEntities.historyTypeOf(ownerType.toString());
                 parentId = parentType != null ? owner : null;
             }
         }
@@ -187,7 +187,7 @@ public class AuditEventListener implements PostInsertEventListener, PostUpdateEv
     private static Optional<Spec> spec(Object entity) {
         if (entity == null || AuditContext.suspended()) return Optional.empty();
         Class<?> type = Hibernate.getClassLazy(entity);
-        return AuditedEntities.of(type.getSimpleName());
+        return AuditedEntities.of(type);
     }
 
     /** The user making the change: the authenticated principal (a user id), or "system" for jobs and start-up work. */

@@ -1,5 +1,6 @@
 package com.materia.backend.contexts.invoice.infrastructure.adapters.out.persistence.entities;
 
+import com.materia.backend.common.audit.application.Audited;
 import com.materia.backend.common.infrastructure.persistence.BaseJpaEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -12,6 +13,7 @@ import java.math.BigDecimal;
 
 @Entity
 @Table(name = "invoice_lines")
+@Audited(type = "InvoiceLine", code = "materialCode", parent = "invoice", parentType = "Invoice")
 public class InvoiceLineJpaEntity extends BaseJpaEntity {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)

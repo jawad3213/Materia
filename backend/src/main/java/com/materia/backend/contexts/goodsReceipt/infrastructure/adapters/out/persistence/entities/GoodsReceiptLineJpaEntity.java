@@ -1,5 +1,6 @@
 package com.materia.backend.contexts.goodsReceipt.infrastructure.adapters.out.persistence.entities;
 
+import com.materia.backend.common.audit.application.Audited;
 import com.materia.backend.common.infrastructure.persistence.BaseJpaEntity;
 import com.materia.backend.contexts.goodsReceipt.domain.enums.QualityStatus;
 import jakarta.persistence.Column;
@@ -23,6 +24,7 @@ import java.util.UUID;
         @Index(name = "idx_grl_material_code", columnList = "material_code"),
         @Index(name = "idx_grl_line_number", columnList = "line_number")
 })
+@Audited(type = "GoodsReceiptLine", code = "materialCode", parent = "goodsReceipt", parentType = "GoodsReceipt")
 public class GoodsReceiptLineJpaEntity extends BaseJpaEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)

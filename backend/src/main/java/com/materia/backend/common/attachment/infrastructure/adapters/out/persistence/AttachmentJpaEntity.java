@@ -1,5 +1,6 @@
 package com.materia.backend.common.attachment.infrastructure.adapters.out.persistence;
 
+import com.materia.backend.common.audit.application.Audited;
 import com.materia.backend.common.attachment.domain.entities.Attachment;
 import com.materia.backend.common.attachment.domain.enums.AttachmentCategory;
 import com.materia.backend.common.attachment.domain.enums.AttachmentOwnerType;
@@ -16,6 +17,7 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "attachments", indexes = @Index(name = "idx_attachments_owner", columnList = "owner_type, owner_id"))
+@Audited(type = "Attachment", code = "fileName")
 public class AttachmentJpaEntity {
 
     @Id

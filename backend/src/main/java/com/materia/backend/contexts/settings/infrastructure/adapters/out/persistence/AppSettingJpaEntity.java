@@ -1,5 +1,6 @@
 package com.materia.backend.contexts.settings.infrastructure.adapters.out.persistence;
 
+import com.materia.backend.common.audit.application.Audited;
 import com.materia.backend.common.infrastructure.persistence.BaseJpaEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -9,6 +10,7 @@ import jakarta.persistence.UniqueConstraint;
 /** One stored setting value. */
 @Entity
 @Table(name = "app_settings", uniqueConstraints = @UniqueConstraint(name = "uk_app_settings_key", columnNames = "setting_key"))
+@Audited(type = "Setting", code = "settingKey", readPermission = "setting:read")
 public class AppSettingJpaEntity extends BaseJpaEntity {
 
     @Column(name = "setting_key", nullable = false, length = 100)

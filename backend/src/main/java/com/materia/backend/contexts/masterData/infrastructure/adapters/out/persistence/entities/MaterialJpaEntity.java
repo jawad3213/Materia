@@ -1,4 +1,5 @@
 package com.materia.backend.contexts.masterData.infrastructure.adapters.out.persistence.entities;
+import com.materia.backend.common.audit.application.Audited;
 import com.materia.backend.common.domain.valueObjects.Money;
 
 import com.materia.backend.common.infrastructure.persistence.BaseJpaEntity;
@@ -24,6 +25,7 @@ import java.util.List;
         @Index(name = "idx_material_supplier_id", columnList = "supplier_id"),
         @Index(name = "idx_material_status", columnList = "status")
 })
+@Audited(type = "Material", code = "code", readPermission = "material:read")
 public class MaterialJpaEntity extends BaseJpaEntity {
 
     // ---- IDENTIFICATION ----

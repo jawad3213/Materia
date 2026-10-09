@@ -1,5 +1,6 @@
 package com.materia.backend.contexts.masterData.infrastructure.adapters.out.persistence.entities;
 
+import com.materia.backend.common.audit.application.Audited;
 import com.materia.backend.common.infrastructure.persistence.BaseJpaEntity;
 import com.materia.backend.common.domain.enums.CurrencyCode;
 
@@ -18,6 +19,7 @@ import jakarta.persistence.*;
         @Index(name = "idx_supplier_country", columnList = "country"),
         @Index(name = "idx_supplier_city", columnList = "city")
 })
+@Audited(type = "Supplier", code = "code", readPermission = "supplier:read")
 public class SupplierJpaEntity extends BaseJpaEntity {
 
     // ---- IDENTIFICATION ----

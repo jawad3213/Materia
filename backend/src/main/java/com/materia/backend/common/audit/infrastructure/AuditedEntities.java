@@ -1,22 +1,20 @@
 package com.materia.backend.common.audit.infrastructure;
 
+import com.materia.backend.common.audit.application.Audited;
+
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Which persistence entities have a change history, under which name, and which document a line belongs to.
- * Entities are named by class, so this shared service does not depend on the business modules.
+ * The history settings of persistence entities, read from the {@link Audited} annotation each context puts on its
+ * own entities: this class names no context's classes or tables.
  */
 public final class AuditedEntities {
 
-    /**
-     * @param type           name of the entity in the history ("PurchaseOrder")
-     * @param codeProperty   property holding the business code shown in summaries, or null
-     * @param parentProperty property referencing the parent document (a line's order), or null
-     * @param parentType     name of that parent
-     */
-    public record Spec(String type, String codeProperty, String parentProperty, String parentType) {
+    /** How an entity is recorded: its history type, the property that names it, and for a line its document. */
+    public record Spec(String type, String codeProperty, String parentProperty, String parentType, String readPermission) {
         boolean isLine() {
             return parentProperty != null;
         }
@@ -26,39 +24,38 @@ public final class AuditedEntities {
     public static final Set<String> IGNORED_PROPERTIES = Set.of(
             "version", "createdAt", "updatedAt", "createdBy", "updatedBy", "passwordHash", "storageKey");
 
-    /** Attachments name their document by type and id; these are the history names of those types. */
-    public static final Map<String, String> ATTACHMENT_OWNERS = Map.of(
-            "PURCHASE_ORDER", "PurchaseOrder",
-            "GOODS_RECEIPT", "GoodsReceipt",
-            "INVOICE", "Invoice",
-            "RETURN_TO_VENDOR", "ReturnToVendor");
-
-    private static final Map<String, Spec> BY_CLASS = Map.ofEntries(
-            Map.entry("PurchaseOrderJpaEntity", new Spec("PurchaseOrder", "orderCode", null, null)),
-            Map.entry("PurchaseOrderLineJpaEntity", new Spec("PurchaseOrderLine", "materialCode", "purchaseOrder", "PurchaseOrder")),
-            Map.entry("RequisitionJpaEntity", new Spec("Requisition", "requisitionCode", null, null)),
-            Map.entry("RequisitionLineJpaEntity", new Spec("RequisitionLine", "materialCode", "requisition", "Requisition")),
-            Map.entry("GoodsReceiptJpaEntity", new Spec("GoodsReceipt", "receiptCode", null, null)),
-            Map.entry("GoodsReceiptLineJpaEntity", new Spec("GoodsReceiptLine", "materialCode", "goodsReceipt", "GoodsReceipt")),
-            Map.entry("InvoiceJpaEntity", new Spec("Invoice", "invoiceCode", null, null)),
-            Map.entry("InvoiceLineJpaEntity", new Spec("InvoiceLine", "materialCode", "invoice", "Invoice")),
-            Map.entry("PaymentJpaEntity", new Spec("Payment", "paymentCode", null, null)),
-            Map.entry("PaymentLineJpaEntity", new Spec("PaymentLine", "invoiceCode", "payment", "Payment")),
-            Map.entry("ReturnToVendorJpaEntity", new Spec("ReturnToVendor", "returnCode", null, null)),
-            Map.entry("ReturnToVendorLineJpaEntity", new Spec("ReturnToVendorLine", "materialCode", "returnToVendor", "ReturnToVendor")),
-            Map.entry("SupplierJpaEntity", new Spec("Supplier", "code", null, null)),
-            Map.entry("MaterialJpaEntity", new Spec("Material", "code", null, null)),
-            Map.entry("CategoryJpaEntity", new Spec("Category", "code", null, null)),
-            Map.entry("UserJpaEntity", new Spec("User", "email", null, null)),
-            Map.entry("EmployeeJpaEntity", new Spec("Employee", "code", null, null)),
-            Map.entry("AttachmentJpaEntity", new Spec("Attachment", "fileName", null, null)),
-            Map.entry("AppSettingJpaEntity", new Spec("Setting", "settingKey", null, null)));
+    private static final Map<Class<?>, Optional<Spec>> CACHE = new ConcurrentHashMap<>();
 
     private AuditedEntities() {
     }
 
-    /** The history settings of a persistence entity class, by its simple name. */
-    public static Optional<Spec> of(String entityClassName) {
-        return Optional.ofNullable(BY_CLASS.get(entityClassName));
+    /** The history settings of a persistence entity class; empty when its changes are not recorded. */
+    public static Optional<Spec> of(Class<?> entityClass) {
+        return CACHE.computeIfAbsent(entityClass, AuditedEntities::read);
+    }
+
+    private static Optional<Spec> read(Class<?> entityClass) {
+        for (Class<?> c = entityClass; c != null && c != Object.class; c = c.getSuperclass()) {
+            Audited audited = c.getAnnotation(Audited.class);
+            if (audited != null) {
+                return Optional.of(new Spec(audited.type(), audited.code(),
+                        audited.parent().isEmpty() ? null : audited.parent(),
+                        audited.parentType().isEmpty() ? null : audited.parentType(),
+                        audited.readPermission().isEmpty() ? null : audited.readPermission()));
+            }
+        }
+        return Optional.empty();
+    }
+
+    /**
+     * The history type of an attachment owner, by naming convention: {@code PURCHASE_ORDER} is {@code PurchaseOrder}.
+     */
+    public static String historyTypeOf(String ownerType) {
+        if (ownerType == null || ownerType.isBlank()) return null;
+        StringBuilder type = new StringBuilder();
+        for (String word : ownerType.toLowerCase().split("_")) {
+            if (!word.isEmpty()) type.append(Character.toUpperCase(word.charAt(0))).append(word.substring(1));
+        }
+        return type.toString();
     }
 }

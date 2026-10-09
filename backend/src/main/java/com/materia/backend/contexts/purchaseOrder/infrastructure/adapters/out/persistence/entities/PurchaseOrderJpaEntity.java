@@ -1,5 +1,6 @@
 package com.materia.backend.contexts.purchaseOrder.infrastructure.adapters.out.persistence.entities;
 
+import com.materia.backend.common.audit.application.Audited;
 import com.materia.backend.common.infrastructure.persistence.BaseJpaEntity;
 import com.materia.backend.contexts.purchaseOrder.domain.enums.DeliveryStatus;
 import com.materia.backend.contexts.purchaseOrder.domain.enums.OrderStatus;
@@ -34,6 +35,7 @@ import java.util.UUID;
         @Index(name = "idx_po_order_date", columnList = "order_date"),
         @Index(name = "idx_po_expected_delivery_date", columnList = "expected_delivery_date")
 })
+@Audited(type = "PurchaseOrder", code = "orderCode", readPermission = "order:read")
 public class PurchaseOrderJpaEntity extends BaseJpaEntity {
 
     @Column(name = "order_code", nullable = false, unique = true, length = 50)

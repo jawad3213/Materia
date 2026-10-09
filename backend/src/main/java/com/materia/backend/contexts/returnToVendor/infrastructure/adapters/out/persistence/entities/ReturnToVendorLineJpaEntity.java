@@ -1,5 +1,6 @@
 package com.materia.backend.contexts.returnToVendor.infrastructure.adapters.out.persistence.entities;
 
+import com.materia.backend.common.audit.application.Audited;
 import com.materia.backend.common.infrastructure.persistence.BaseJpaEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -9,6 +10,7 @@ import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "return_to_vendor_lines")
+@Audited(type = "ReturnToVendorLine", code = "materialCode", parent = "returnToVendor", parentType = "ReturnToVendor")
 public class ReturnToVendorLineJpaEntity extends BaseJpaEntity {
 
     @ManyToOne

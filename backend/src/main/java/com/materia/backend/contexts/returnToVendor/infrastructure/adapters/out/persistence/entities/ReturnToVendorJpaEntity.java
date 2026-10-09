@@ -1,5 +1,6 @@
 package com.materia.backend.contexts.returnToVendor.infrastructure.adapters.out.persistence.entities;
 
+import com.materia.backend.common.audit.application.Audited;
 import com.materia.backend.common.infrastructure.persistence.BaseJpaEntity;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -14,6 +15,7 @@ import java.util.List;
 
 @Entity
 @Table(name = "return_to_vendor")
+@Audited(type = "ReturnToVendor", code = "returnCode", readPermission = "return:read")
 public class ReturnToVendorJpaEntity extends BaseJpaEntity {
 
     @Column(name = "return_code", unique = true, nullable = false, length = 50)
