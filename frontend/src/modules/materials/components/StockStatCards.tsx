@@ -16,7 +16,6 @@ export default function StockStatCards({
   activeFilter,
   onSelectFilter,
   counts,
-  loading = false,
 }: StockStatCardsProps) {
   const cards = [
     {

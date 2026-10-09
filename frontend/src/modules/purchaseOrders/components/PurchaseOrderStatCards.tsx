@@ -22,13 +22,6 @@ export default function PurchaseOrderStatCards({
   onSelectFilter,
   counts,
 }: PurchaseOrderStatCardsProps) {
-  const formatCurrency = (val?: number, curr = "MAD") => {
-    if (val == null) return "0.00 " + curr;
-    return `${new Intl.NumberFormat("en-US", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(val)} ${curr}`;
-  };
 
   const cards = [
     {

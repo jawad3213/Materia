@@ -47,7 +47,7 @@ export default function TransactionOrderHistory() {
       </h3>
       <div className="relative border-l border-dashed border-gray-200 ml-5 dark:border-gray-800">
         <div className="flex flex-col gap-6">
-          {history.map((item, index) => (
+          {history.map((item) => (
             <div key={item.id} className="relative flex items-start pl-8">
               <div className="absolute -left-[20px] top-0 flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400">
                 {item.icon}

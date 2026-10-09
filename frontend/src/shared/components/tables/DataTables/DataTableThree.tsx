@@ -5,7 +5,6 @@ import {
   TableHeader,
   TableRow,
 } from "../../ui/table";
-import Badge from "../../ui/badge/Badge";
 import Checkbox from "../../form/input/Checkbox";
 import { DownloadIcon, TrashBinIcon, PencilIcon } from "../../../icons";
 

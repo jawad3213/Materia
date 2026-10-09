@@ -50,7 +50,7 @@ export default function SupplierListTable() {
 
   // Pagination state
   const [page, setPage] = useState(0);
-  const [size, setSize] = useState(10);
+  const [size] = useState(10);
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
   const [refreshTrigger, setRefreshTrigger] = useState(0);

@@ -16,7 +16,7 @@ import UserRoleBadge from './UserRoleBadge';
 import OffboardUserModal from './OffboardUserModal';
 import { useUsers } from '../hooks/useUsers';
 import { EmploymentStatus } from '../enums/EmploymentStatus';
-import type { UserListItem, UpdateUserRequest, OffboardUserRequest } from '../types';
+import type { UserListItem, OffboardUserRequest } from '../types';
 
 export const UserListTable: React.FC = () => {
   const navigate = useNavigate();
@@ -25,8 +25,6 @@ export const UserListTable: React.FC = () => {
     isLoading,
     error,
     fetchUsers,
-    onboard,
-    update,
     offboard,
     remove,
   } = useUsers();

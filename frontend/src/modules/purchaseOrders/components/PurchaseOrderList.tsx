@@ -15,8 +15,6 @@ import purchaseOrderService from "../services/purchaseOrderService";
 import type {
   PurchaseOrder,
   PurchaseOrderFilterTab,
-  OrderStatus,
-  DeliveryStatus,
 } from "../types";
 import PurchaseOrderStatusBadge, {
   PurchaseOrderDeliveryStatusBadge,

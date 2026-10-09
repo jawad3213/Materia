@@ -7,7 +7,6 @@ import CategoryTreeSelect from "../../categories/components/CategoryTreeSelect";
 import { materialApi } from "../services/materialApi";
 import { supplierApi } from "../../suppliers/services/supplierApi";
 import type { CreateMaterialRequest } from "../types/CreateMaterialRequest";
-import type { CategoryListItem } from "../../categories/types/CategoryListItem";
 import type { SupplierListItem } from "../../suppliers/types/SupplierListItem";
 import type { ErrorResponse } from "../../../shared/types/ErrorResponse";
 

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { currencyApi } from '../api/currencyApi';
-import type { CurrencyInfo, CurrencyCode } from '../types/currency';
+import type { CurrencyInfo } from '../types/currency';
 
 // Default live fallback rates relative to 1 EUR
 const DEFAULT_EUR_RATES: Record<string, number> = {

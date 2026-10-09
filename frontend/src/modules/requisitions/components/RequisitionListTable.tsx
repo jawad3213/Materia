@@ -189,7 +189,7 @@ export default function RequisitionListTable() {
           setRequisitions(data.content || []);
           setTotalPages(data.totalPages || 0);
           setTotalElements(data.totalElements || 0);
-        } catch (searchErr) {
+        } catch {
           // Fallback to client-side filtering if search endpoint has criteria issues
           const allRes = await requisitionApi.getAll();
           let items = allRes.data || [];

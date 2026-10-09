@@ -30,7 +30,7 @@ export default function CategoryList() {
 
   // Pagination state
   const [page, setPage] = useState(0);
-  const [size, setSize] = useState(10);
+  const [size] = useState(10);
 
   useEffect(() => {
     setPage(0);

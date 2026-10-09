@@ -7,7 +7,6 @@ import CustomSelect from "../../materials/components/CustomSelect";
 import CategoryTreeSelect from "./CategoryTreeSelect";
 import { categoryApi } from "../services/categoryApi";
 import type { CreateCategoryRequest } from "../types/CreateCategoryRequest";
-import type { CategoryListItem } from "../types/CategoryListItem";
 import type { ErrorResponse } from "../../../shared/types/ErrorResponse";
 
 // Shared Components
