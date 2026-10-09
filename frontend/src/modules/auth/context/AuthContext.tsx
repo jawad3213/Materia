@@ -19,6 +19,7 @@ export interface AuthContextType {
   logout: () => Promise<void>;
   changePassword: (data: ChangePasswordCredentials) => Promise<string>;
   clearMustChangePassword: () => void;
+  updateUser: (changes: Partial<User>) => void;
   resetPassword: (data: ResetPasswordCredentials) => Promise<string>;
   confirmPasswordReset: (data: ConfirmResetPasswordCredentials) => Promise<string>;
   hasRole: (roles: UserRole | UserRole[]) => boolean;
@@ -171,6 +172,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const updateUser = (changes: Partial<User>) => {
+    if (user) {
+      const updated = { ...user, ...changes };
+      setUser(updated);
+      authService.storeUser(updated);
+    }
+  };
+
   const clearError = () => setError(null);
 
   const hasRole = (roles: UserRole | UserRole[]): boolean => {
@@ -212,6 +221,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     logout,
     changePassword,
     clearMustChangePassword,
+    updateUser,
     resetPassword,
     confirmPasswordReset,
     hasRole,

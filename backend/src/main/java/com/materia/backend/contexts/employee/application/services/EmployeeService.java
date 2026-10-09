@@ -117,6 +117,21 @@ public class EmployeeService implements EmployeeUseCase {
     }
 
     @Override
+    public void syncContactDetailsFromAccount(UUID userId, String firstName, String lastName, String phone) {
+        if (userId == null) return;
+        employeeRepository.findByUserId(userId)
+                .filter(employee -> employee.getStatus() != EmploymentStatus.TERMINATED)
+                .ifPresent(employee -> {
+                    EmployeeFullName fullName = (firstName != null && lastName != null)
+                            ? EmployeeFullName.of(firstName, lastName)
+                            : employee.getFullName();
+                    employee.updateDetails(fullName, phone);
+                    employeeRepository.save(employee);
+                    log.info("[EMPLOYEE-SERVICE] Synced contact details of employee {} from its account", employee.getId());
+                });
+    }
+
+    @Override
     public EmployeeOutput update(UUID id, UpdateEmployeeInput input) {
         if (id == null) {
             throw new IllegalArgumentException("Employee ID cannot be null");

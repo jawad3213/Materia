@@ -30,4 +30,10 @@ public interface EmployeeUseCase {
     EmployeeOutput update(UUID id, UpdateEmployeeInput input);
 
     void delete(UUID id);
+
+    /**
+     * Copies the name and phone a user set on their own account onto the employee linked to that account.
+     * Does nothing when no employee is linked, or when the employee has left (their record is frozen).
+     */
+    void syncContactDetailsFromAccount(UUID userId, String firstName, String lastName, String phone);
 }

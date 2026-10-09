@@ -273,4 +273,41 @@ class EmployeeServiceTest {
     void delete_nullId_isRejected() {
         assertThrows(IllegalArgumentException.class, () -> employeeService.delete(null));
     }
+
+    // ---- Sync from the user's own profile ----
+
+    @Test
+    @DisplayName("sync: the employee linked to an account takes the name and phone set on that account's profile")
+    void syncFromAccount_updatesLinkedEmployee() {
+        UUID userId = UUID.randomUUID();
+        Employee linked = Employee.builder().id(UUID.randomUUID()).code(EmployeeCode.of("EMP-0042"))
+                .fullName(com.materia.backend.contexts.employee.domain.valueObjects.EmployeeFullName.of("Old", "Name"))
+                .email("ada@materia.test").phone("000").userId(userId).hireDate(LocalDate.of(2024, 3, 1)).build();
+        when(employeeRepository.findByUserId(userId)).thenReturn(Optional.of(linked));
+
+        employeeService.syncContactDetailsFromAccount(userId, "Ada", "Lovelace", "+212 600");
+
+        assertEquals("Ada", linked.getFullName().getFirstName());
+        assertEquals("Lovelace", linked.getFullName().getLastName());
+        assertEquals("+212 600", linked.getPhone());
+        verify(employeeRepository).save(linked);
+    }
+
+    @Test
+    @DisplayName("sync: an employee who has left keeps their frozen record, and an account with no employee changes nothing")
+    void syncFromAccount_leavesTerminatedOrMissingAlone() {
+        UUID leaverId = UUID.randomUUID();
+        Employee leaver = Employee.builder().id(UUID.randomUUID()).code(EmployeeCode.of("EMP-0043"))
+                .fullName(com.materia.backend.contexts.employee.domain.valueObjects.EmployeeFullName.of("Old", "Name"))
+                .email("leaver@materia.test").userId(leaverId).status(EmploymentStatus.TERMINATED).build();
+        when(employeeRepository.findByUserId(leaverId)).thenReturn(Optional.of(leaver));
+        UUID noEmployee = UUID.randomUUID();
+        when(employeeRepository.findByUserId(noEmployee)).thenReturn(Optional.empty());
+
+        employeeService.syncContactDetailsFromAccount(leaverId, "New", "Name", "1");
+        employeeService.syncContactDetailsFromAccount(noEmployee, "New", "Name", "1");
+
+        assertEquals("Old", leaver.getFullName().getFirstName());
+        verify(employeeRepository, never()).save(any(Employee.class));
+    }
 }
