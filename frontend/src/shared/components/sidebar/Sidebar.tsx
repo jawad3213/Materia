@@ -17,6 +17,8 @@ import {
   ChevronDownIcon,
   CloseIcon,
   UserCircleIcon,
+  TimeIcon,
+  PlugInIcon,
 } from '../../icons';
 
 interface SubmenuItem {
@@ -172,6 +174,18 @@ const menuSections: MenuSection[] = [
           { title: 'Onboard Employee', path: '/users/create' },
         ],
       },
+      {
+        title: 'Audit Log',
+        icon: TimeIcon,
+        path: '/audit',
+        roles: ['ADMIN'],
+      },
+      {
+        title: 'Settings',
+        icon: PlugInIcon,
+        path: '/settings',
+        roles: ['ADMIN'],
+      },
     ],
   },
 ];
@@ -276,7 +290,7 @@ export const Sidebar: React.FC = () => {
           }`}
         >
           <NavLink
-            to="/"
+            to="/dashboard"
             className="flex items-center gap-3 overflow-hidden"
             onClick={closeMobileSidebar}
           >

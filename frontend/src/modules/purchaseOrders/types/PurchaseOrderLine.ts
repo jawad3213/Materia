@@ -13,6 +13,8 @@ export interface PurchaseOrderLineRequest {
   unitOfMeasure?: string;
   quantity: number;
   unitPrice: number | string;
+  /** VAT rate in percent; omitted, the backend applies its default rate. */
+  taxRate?: number;
   currencyCode?: string;
   supplierId?: string;
   supplierName?: string;
@@ -39,6 +41,9 @@ export interface PurchaseOrderLine {
   quantity: number;
   unitPrice: string | number;
   lineTotal: string | number;
+  /** VAT rate in percent; null on orders created before VAT per line. */
+  taxRate?: number | null;
+  taxAmount?: string | number | null;
   currencyCode: string;
   supplierId?: string | null;
   supplierName?: string | null;

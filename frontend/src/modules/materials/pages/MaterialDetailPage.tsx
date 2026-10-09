@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import HistoryCard from "../../audit/components/HistoryCard";
 import { useParams, Link } from "react-router-dom";
 import PageBreadcrumb from "../../../shared/components/common/PageBreadCrumb";
 import PageMeta from "../../../shared/components/common/PageMeta";
@@ -266,6 +267,8 @@ export default function MaterialDetailPage() {
 
         </div>
       </div>
+
+      <div className="mt-6"><HistoryCard entityType="Material" entityId={material.id} /></div>
 
       {/* 1-Click Reorder Modal */}
       {material && (

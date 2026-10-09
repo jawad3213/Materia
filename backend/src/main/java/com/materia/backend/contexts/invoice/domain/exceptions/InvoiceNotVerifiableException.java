@@ -8,6 +8,6 @@ public class InvoiceNotVerifiableException extends RuntimeException {
     private static final long serialVersionUID = 1L;
     
     public InvoiceNotVerifiableException(String invoiceId, String status) {
-        super("La facture " + invoiceId + " ne peut pas être vérifiée. Statut actuel: " + status);
+        super("Invoice " + invoiceId + " cannot be verified. Current status: " + status);
     }
 }

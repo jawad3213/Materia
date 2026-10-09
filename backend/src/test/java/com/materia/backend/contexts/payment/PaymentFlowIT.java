@@ -77,6 +77,8 @@ class PaymentFlowIT extends AbstractIntegrationTest {
         order.setSupplierName("Acme Supplies");
         order.setOrderedBy("buyer-1");
         order.setCurrencyCode("MAD");
+        // One tax amount for the whole order, no VAT rate per line: this flow is about payments, not VAT.
+        order.setTaxAmount(Money.of("0.00", CurrencyCode.MAD));
         order.setLines(new ArrayList<>(List.of(line)));
         order.setUserId("buyer-1");
         UUID orderId = orders.create(order).getId();

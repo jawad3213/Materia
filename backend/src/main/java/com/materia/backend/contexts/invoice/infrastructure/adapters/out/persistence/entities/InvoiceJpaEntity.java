@@ -245,4 +245,27 @@ public class InvoiceJpaEntity extends BaseJpaEntity {
         line.setInvoice(this);
         this.lines.add(line);
     }
+
+    // Rate copy in the reporting currency, written by DocumentFxJpaStore; read-only here so saving the document
+    // never overwrites it.
+    @Column(name = "fx_rate_to_reporting", precision = 19, scale = 8, insertable = false, updatable = false)
+    private java.math.BigDecimal fxRateToReporting;
+
+    @Column(name = "amount_reporting", precision = 19, scale = 4, insertable = false, updatable = false)
+    private java.math.BigDecimal amountReporting;
+
+    @Column(name = "fx_rate_date", insertable = false, updatable = false)
+    private java.time.LocalDate fxRateDate;
+
+    @Column(name = "fx_rate_source", length = 20, insertable = false, updatable = false)
+    private String fxRateSource;
+
+    @Column(name = "fx_reporting_currency", length = 3, insertable = false, updatable = false)
+    private String fxReportingCurrency;
+
+    public java.math.BigDecimal getFxRateToReporting() { return fxRateToReporting; }
+    public java.math.BigDecimal getAmountReporting() { return amountReporting; }
+    public java.time.LocalDate getFxRateDate() { return fxRateDate; }
+    public String getFxRateSource() { return fxRateSource; }
+    public String getFxReportingCurrency() { return fxReportingCurrency; }
 }

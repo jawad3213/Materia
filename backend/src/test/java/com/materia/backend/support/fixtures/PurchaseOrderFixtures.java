@@ -22,8 +22,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  *
  * Unlike {@code RequisitionFixtures}, the status is reached by driving the real transitions
  * (submit, confirm, assign, receive), so a fixture can never produce an order the system could
- * not reach — e.g. a "ready for receipt" order with no assigned receiver. The one exception is
- * the legacy {@code RECEIVED} status, which no transition produces any more.
+ * not reach — e.g. a "ready for receipt" order with no assigned receiver.
  */
 public final class PurchaseOrderFixtures {
 
@@ -168,11 +167,6 @@ public final class PurchaseOrderFixtures {
                 case REJECTED -> {
                     order.submit(BUYER);
                     order.reject(BUYER, "Supplier cannot deliver");
-                }
-                // Legacy: no transition produces RECEIVED any more; kept so existing rows load.
-                case RECEIVED -> {
-                    readyForReceipt(order);
-                    order.setStatus(OrderStatus.RECEIVED);
                 }
             }
         }

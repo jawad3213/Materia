@@ -1,4 +1,5 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios';
+import type { BackendAuthResponse } from './authPayload';
 
 export const USER_STORAGE_KEY = 'materia_auth_user';
 export const ACCESS_TOKEN_KEY = 'materia_access_token';
@@ -103,18 +104,18 @@ export const clearSessionState = (): void => {
 };
 
 // Single-flight refresh state
-let refreshPromise: Promise<any> | null = null;
+let refreshPromise: Promise<BackendAuthResponse> | null = null;
 
 /**
  * Refresh the access token using either the stored refresh token or the HttpOnly cookie.
  *
  * All callers share a single in-flight request to avoid race conditions.
  */
-export const refreshSession = (): Promise<any> => {
+export const refreshSession = (): Promise<BackendAuthResponse> => {
   if (!refreshPromise) {
     const token = getRefreshToken();
     refreshPromise = axiosClient
-      .post<any>('/auth/refresh', token ? { refreshToken: token } : {})
+      .post<BackendAuthResponse>('/auth/refresh', token ? { refreshToken: token } : {})
       .then((response) => {
         const accessToken = response.data?.accessToken;
         if (!accessToken) {

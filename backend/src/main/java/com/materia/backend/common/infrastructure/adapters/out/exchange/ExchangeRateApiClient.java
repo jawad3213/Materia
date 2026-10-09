@@ -1,6 +1,8 @@
 package com.materia.backend.common.infrastructure.adapters.out.exchange;
 
 import com.materia.backend.common.domain.enums.CurrencyCode;
+import com.materia.backend.common.domain.fx.ExchangeRateFeed;
+import com.materia.backend.common.domain.fx.FxValuation;
 import com.materia.backend.common.domain.exceptions.ExchangeRateException;
 import com.materia.backend.common.domain.services.ExchangeRateService;
 import com.materia.backend.common.domain.valueObjects.ExchangeRate;
@@ -22,7 +24,7 @@ import java.util.Map;
  * Calls public/free exchange rate API with caching and fallback rates.
  */
 @Service
-public class ExchangeRateApiClient implements ExchangeRateService {
+public class ExchangeRateApiClient implements ExchangeRateService, ExchangeRateFeed {
 
     private static final Logger log = LoggerFactory.getLogger(ExchangeRateApiClient.class);
 
@@ -36,6 +38,8 @@ public class ExchangeRateApiClient implements ExchangeRateService {
     private final WebClient webClient;
     private final ExchangeRateCache cache;
     private final ExchangeRateProperties properties;
+    /** Whether the rates cached for a base currency came from the API or from the built-in fallback. */
+    private final Map<CurrencyCode, String> sources = new java.util.concurrent.ConcurrentHashMap<>();
 
     public ExchangeRateApiClient(WebClient.Builder webClientBuilder,
                                  ExchangeRateCache cache,
@@ -120,6 +124,7 @@ public class ExchangeRateApiClient implements ExchangeRateService {
             Map<CurrencyCode, BigDecimal> fetchedRates = fetchLatestFromApi(base);
             if (fetchedRates != null && !fetchedRates.isEmpty()) {
                 cache.put(base, fetchedRates);
+                sources.put(base, FxValuation.LIVE);
                 return fetchedRates;
             }
         } else {
@@ -130,7 +135,14 @@ public class ExchangeRateApiClient implements ExchangeRateService {
         log.warn("Falling back to local static rates for base currency: {}", base);
         Map<CurrencyCode, BigDecimal> fallback = computeFallbackRates(base);
         cache.put(base, fallback);
+        sources.put(base, FxValuation.FALLBACK);
         return fallback;
+    }
+
+    @Override
+    public RateQuote latest(CurrencyCode base) {
+        Map<CurrencyCode, BigDecimal> rates = getLatestRates(base);
+        return new RateQuote(rates, sources.getOrDefault(base, FxValuation.FALLBACK));
     }
 
     /**

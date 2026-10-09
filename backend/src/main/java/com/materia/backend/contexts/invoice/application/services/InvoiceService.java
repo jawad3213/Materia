@@ -1,5 +1,6 @@
 package com.materia.backend.contexts.invoice.application.services;
 
+import com.materia.backend.common.audit.application.AuditContext;
 import com.materia.backend.common.application.AbstractCrudApplicationService;
 import com.materia.backend.contexts.invoice.application.dtos.CreateInvoiceInput;
 import com.materia.backend.contexts.invoice.application.dtos.InvoiceOutput;
@@ -29,6 +30,8 @@ import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import java.math.BigDecimal;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -38,7 +41,12 @@ import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+/**
+ * Reads run in a read-only transaction: invoice lines are lazily loaded and open-in-view is off, so mapping an
+ * invoice outside a transaction fails (as in GoodsReceiptService). Writes declare their own.
+ */
 @Service
+@Transactional(readOnly = true)
 public class InvoiceService extends AbstractCrudApplicationService<
         Invoice, CreateInvoiceInput, UpdateInvoiceInput, InvoiceOutput> implements InvoiceUseCase {
 
@@ -47,6 +55,43 @@ public class InvoiceService extends AbstractCrudApplicationService<
     private final InvoiceCodeGeneratorService codeGenerator;
     private final InvoicedOrders invoicedOrders;
     private final UserDirectory userDirectory;
+
+    private BigDecimal priceTolerancePercent = InvoiceLine.DEFAULT_PRICE_TOLERANCE_PERCENT;
+
+    private com.materia.backend.common.domain.fx.ReportingFx reportingFx;
+
+    private com.materia.backend.contexts.invoice.domain.ports.out.PriceToleranceSetting priceToleranceSetting;
+
+    /** Values committed documents in the reporting currency; absent in unit tests that do not need it. */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setReportingFx(com.materia.backend.common.domain.fx.ReportingFx reportingFx) {
+        this.reportingFx = reportingFx;
+    }
+
+    private void valueInReportingCurrency(UUID id) {
+        if (reportingFx != null && id != null) {
+            reportingFx.valueDocument(com.materia.backend.common.domain.fx.FxDocument.INVOICE, id);
+        }
+    }
+
+    /** The tolerance set on the Settings page, which takes precedence over the configured one. */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setPriceToleranceSetting(com.materia.backend.contexts.invoice.domain.ports.out.PriceToleranceSetting setting) {
+        this.priceToleranceSetting = setting;
+    }
+
+    /** The tolerance in effect now: the Settings page value, else the configured one. */
+    BigDecimal effectivePriceTolerance() {
+        return priceToleranceSetting != null
+                ? priceToleranceSetting.current().orElse(priceTolerancePercent)
+                : priceTolerancePercent;
+    }
+
+    /** How far, in percent, an invoiced unit price may be from the order price before verification is refused. */
+    @Value("${app.invoice.price-tolerance-percent:2}")
+    public void setPriceTolerancePercent(BigDecimal priceTolerancePercent) {
+        this.priceTolerancePercent = priceTolerancePercent != null ? priceTolerancePercent : InvoiceLine.DEFAULT_PRICE_TOLERANCE_PERCENT;
+    }
 
     public InvoiceService(InvoiceRepository invoiceRepository,
                           InvoiceMapper invoiceMapper,
@@ -74,6 +119,7 @@ public class InvoiceService extends AbstractCrudApplicationService<
     }
 
     @Override
+    @Transactional
     public InvoiceOutput update(UUID id, CreateInvoiceInput request) {
         UpdateInvoiceInput updateRequest = new UpdateInvoiceInput();
         updateRequest.setPurchaseOrderId(request.getPurchaseOrderId());
@@ -181,7 +227,10 @@ public class InvoiceService extends AbstractCrudApplicationService<
         matchAgainstOrder(invoice);
         // The name shown on the invoice comes from the verifier's account, never from the request.
         invoice.verify(userId, userDirectory.displayName(userId));
-        return toResponse(saveEntity(invoice));
+        Invoice saved = saveEntity(invoice);
+        // Verified: the invoice is now valued at the rate of its invoice date.
+        valueInReportingCurrency(saved.getId());
+        return toResponse(saved);
     }
 
     @Override
@@ -196,6 +245,7 @@ public class InvoiceService extends AbstractCrudApplicationService<
     @Override
     @Transactional
     public InvoiceOutput cancel(UUID id, String userId, String reason) {
+        AuditContext.because(reason);
         Invoice invoice = getInvoiceById(id);
         invoice.cancel(userId, reason);
         return toResponse(saveEntity(invoice));
@@ -249,8 +299,15 @@ public class InvoiceService extends AbstractCrudApplicationService<
             int receivedQty = received.getOrDefault(key, 0);
             int alreadyInvoiced = invoiced.getOrDefault(key, 0);
             int billable = creditNote ? alreadyInvoiced : receivedQty - alreadyInvoiced;
-            line.recordMatch(orderLine.quantity(), receivedQty, billable, orderLine.unitPrice());
+            if (line.getTaxRate() == null && line.getTaxAmount() == null && orderLine.taxRate() != null) {
+                // No VAT given on the invoice line: it is the order line's rate.
+                line.setTaxRate(orderLine.taxRate());
+                line.recalculateTotals();
+            }
+            line.recordMatch(orderLine.quantity(), receivedQty, billable, orderLine.unitPrice(), effectivePriceTolerance(),
+                    orderLine.taxRate());
         }
+        invoice.recalculateTotals();
         invoice.refreshDiscrepancies();
     }
 

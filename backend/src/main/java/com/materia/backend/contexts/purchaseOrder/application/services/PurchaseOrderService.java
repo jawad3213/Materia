@@ -1,5 +1,6 @@
 package com.materia.backend.contexts.purchaseOrder.application.services;
 
+import com.materia.backend.common.audit.application.AuditContext;
 import com.materia.backend.common.application.AbstractCrudApplicationService;
 import com.materia.backend.contexts.purchaseOrder.application.dtos.CreatePurchaseOrderInput;
 import com.materia.backend.contexts.purchaseOrder.application.dtos.PurchaseOrderOutput;
@@ -29,6 +30,8 @@ import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.beans.factory.annotation.Value;
+import java.math.BigDecimal;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -38,6 +41,8 @@ import java.util.UUID;
  * Application service for purchase orders.
  */
 @Service
+// Reads run in a read-only transaction (open-in-view is off, so lazy data needs one); writes declare their own.
+@Transactional(readOnly = true)
 public class PurchaseOrderService extends AbstractCrudApplicationService<
         PurchaseOrder,
         CreatePurchaseOrderInput,
@@ -52,6 +57,23 @@ public class PurchaseOrderService extends AbstractCrudApplicationService<
     private final PurchaseOrderEventPublisher eventPublisher;
     private final ReceiverDirectory receiverDirectory;
     private final com.materia.backend.contexts.purchaseOrder.domain.ports.out.OnOrderStock onOrderStock;
+
+    private com.materia.backend.common.domain.fx.ReportingFx reportingFx;
+
+    /** Values committed documents in the reporting currency; absent in unit tests that do not need it. */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setReportingFx(com.materia.backend.common.domain.fx.ReportingFx reportingFx) {
+        this.reportingFx = reportingFx;
+    }
+
+    private void valueInReportingCurrency(java.util.UUID id) {
+        if (reportingFx != null && id != null) {
+            reportingFx.valueDocument(com.materia.backend.common.domain.fx.FxDocument.PURCHASE_ORDER, id);
+        }
+    }
+
+
+    private BigDecimal defaultTaxRate = new BigDecimal("20");
 
     public PurchaseOrderService(PurchaseOrderRepository purchaseOrderRepository,
                                 PurchaseOrderMapper purchaseOrderMapper,
@@ -90,6 +112,7 @@ public class PurchaseOrderService extends AbstractCrudApplicationService<
     public PurchaseOrderOutput create(CreatePurchaseOrderInput request) {
         PurchaseOrder purchaseOrder = purchaseOrderMapper.toEntity(request);
         normalizeLines(purchaseOrder.getLines(), purchaseOrder.getCurrencyCode());
+        applyTaxRates(purchaseOrder);
         purchaseOrder.setOrderCode(codeGenerator.generateCode());
         purchaseOrder.recalculateTotals();
 
@@ -113,6 +136,7 @@ public class PurchaseOrderService extends AbstractCrudApplicationService<
     }
 
     @Override
+    @Transactional
     public PurchaseOrderOutput update(UUID id, CreatePurchaseOrderInput request) {
         UpdatePurchaseOrderInput updateRequest = new UpdatePurchaseOrderInput();
         updateRequest.setRequisitionId(request.getRequisitionId());
@@ -161,6 +185,7 @@ public class PurchaseOrderService extends AbstractCrudApplicationService<
         purchaseOrder.setRequisitionId(requisitionId);
         purchaseOrder.setRequisitionCode(requisitionCode);
         normalizeLines(purchaseOrder.getLines(), purchaseOrder.getCurrencyCode());
+        applyTaxRates(purchaseOrder);
         purchaseOrder.recalculateTotals();
         purchaseOrder.setUpdatedAt(LocalDateTime.now());
         purchaseOrder.setUpdatedBy(request.getUserId());
@@ -249,6 +274,8 @@ public class PurchaseOrderService extends AbstractCrudApplicationService<
         PurchaseOrder purchaseOrder = getPurchaseOrderById(id);
         purchaseOrder.confirm(userId);
         PurchaseOrder saved = saveEntity(purchaseOrder);
+        // Confirmed: the order is now valued at the rate of its order date.
+        valueInReportingCurrency(saved.getId());
         eventPublisher.publish(new PurchaseOrderConfirmedEvent(saved.getId(), saved.getOrderCode().getValue(),
                 saved.getSupplierId(), saved.getSupplierName(), userId));
         return toResponse(saved);
@@ -257,6 +284,7 @@ public class PurchaseOrderService extends AbstractCrudApplicationService<
     @Override
     @Transactional
     public PurchaseOrderOutput reject(UUID id, String userId, String reason) {
+        AuditContext.because(reason);
         PurchaseOrder purchaseOrder = getPurchaseOrderById(id);
         purchaseOrder.reject(userId, reason);
         releaseRequisition(purchaseOrder, userId);
@@ -292,6 +320,7 @@ public class PurchaseOrderService extends AbstractCrudApplicationService<
     @Override
     @Transactional
     public PurchaseOrderOutput cancel(UUID id, String userId, String reason) {
+        AuditContext.because(reason);
         PurchaseOrder purchaseOrder = getPurchaseOrderById(id);
         purchaseOrder.cancel(userId, reason);
         releaseRequisition(purchaseOrder, userId);
@@ -315,6 +344,28 @@ public class PurchaseOrderService extends AbstractCrudApplicationService<
         PurchaseOrder purchaseOrder = getPurchaseOrderById(id);
         purchaseOrder.updateDeliveryStatus(purchaseOrderMapper.toDeliveryStatus(deliveryStatus), userId);
         return toResponse(saveEntity(purchaseOrder));
+    }
+
+    /** VAT rate of an order line that does not give one, in percent. */
+    @Value("${app.tax.default-rate:20}")
+    public void setDefaultTaxRate(BigDecimal defaultTaxRate) {
+        this.defaultTaxRate = defaultTaxRate;
+    }
+
+    /**
+     * Gives every line a VAT rate (the default when it has none), so the order's VAT is the sum of its lines'.
+     * A request that only sets the order's tax amount, with no rate on any line, keeps that amount as before.
+     */
+    private void applyTaxRates(PurchaseOrder purchaseOrder) {
+        List<PurchaseOrderLine> lines = purchaseOrder.getLines();
+        if (lines == null || lines.isEmpty()) return;
+        boolean anyRate = lines.stream().anyMatch(l -> l != null && l.getTaxRate() != null);
+        if (!anyRate && purchaseOrder.getTaxAmount() != null) return;
+        for (PurchaseOrderLine line : lines) {
+            if (line == null) continue;
+            if (line.getTaxRate() == null) line.setTaxRate(defaultTaxRate);
+            line.calculateLineTotal();
+        }
     }
 
     /** An order withdrawn before any receipt hands its requisition back so it can be ordered again. */

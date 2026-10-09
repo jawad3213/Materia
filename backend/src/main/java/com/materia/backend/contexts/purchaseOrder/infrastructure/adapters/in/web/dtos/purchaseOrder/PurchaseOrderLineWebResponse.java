@@ -1,5 +1,6 @@
 package com.materia.backend.contexts.purchaseOrder.infrastructure.adapters.in.web.dtos.purchaseOrder;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.UUID;
 
@@ -23,6 +24,8 @@ public class PurchaseOrderLineWebResponse {
     private UUID supplierId;
     private String supplierName;
     private LocalDate expectedDeliveryDate;
+    private BigDecimal taxRate;
+    private String taxAmount;
     private String notes;
 
     public UUID getId() {
@@ -152,4 +155,10 @@ public class PurchaseOrderLineWebResponse {
     public void setNotes(String notes) {
         this.notes = notes;
     }
+
+    public BigDecimal getTaxRate() { return taxRate; }
+    public void setTaxRate(BigDecimal taxRate) { this.taxRate = taxRate; }
+
+    public String getTaxAmount() { return taxAmount; }
+    public void setTaxAmount(String taxAmount) { this.taxAmount = taxAmount; }
 }

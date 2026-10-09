@@ -1,5 +1,6 @@
 package com.materia.backend.contexts.employee.application.services;
 
+import com.materia.backend.common.audit.application.AuditContext;
 import com.materia.backend.contexts.employee.application.dtos.EmployeeOutput;
 import com.materia.backend.contexts.employee.application.dtos.OffboardEmployeeInput;
 import com.materia.backend.contexts.employee.application.mappers.EmployeeDtoMapper;
@@ -44,6 +45,7 @@ public class EmployeeOffboardingService implements EmployeeOffboardingUseCase {
 
     @Override
     public EmployeeOutput offboard(OffboardEmployeeInput input) {
+        AuditContext.because(input.reason());
         if (input == null || input.employeeId() == null) {
             throw new IllegalArgumentException("OffboardEmployeeInput and employeeId are required");
         }

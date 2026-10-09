@@ -1,3 +1,4 @@
+import type { AxiosRequestConfig } from "axios";
 import axiosClient from '../../../shared/api/axiosClient';
 import type {
   CreateRequisitionRequest,
@@ -32,8 +33,8 @@ export const requisitionApi = {
   getAll: () =>
     axiosClient.get<Requisition[]>(BASE_URL),
 
-  update: (id: string, data: UpdateRequisitionRequest) =>
-    axiosClient.put<Requisition>(`${BASE_URL}/${id}`, data),
+  update: (id: string, data: UpdateRequisitionRequest, config?: AxiosRequestConfig) =>
+    axiosClient.put<Requisition>(`${BASE_URL}/${id}`, data, config),
 
   delete: (id: string) =>
     axiosClient.delete<void>(`${BASE_URL}/${id}`),

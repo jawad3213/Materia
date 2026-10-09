@@ -475,7 +475,12 @@ public class PurchaseOrder extends BaseEntity {
             this.totalAmount = total;
             this.currencyCode = orderCurrency.getCode();
 
-            Money tax = resolveAdditionalAmount(this.taxAmount, orderCurrency, "Tax amount");
+            Money tax = lineTaxes(this.lines, orderCurrency);
+            if (tax != null) {
+                this.taxAmount = tax;
+            } else {
+                tax = resolveAdditionalAmount(this.taxAmount, orderCurrency, "Tax amount");
+            }
             Money shipping = resolveAdditionalAmount(this.shippingCost, orderCurrency, "Shipping cost");
 
             this.grandTotal = total.add(tax).add(shipping);
@@ -636,7 +641,7 @@ public class PurchaseOrder extends BaseEntity {
      * order goes back to partially received and the assigned receiver can receive the replacement.
      */
     public void reopenForReplacement(String userId) {
-        if (status != OrderStatus.PARTIALLY_RECEIVED && status != OrderStatus.RECEIVED && status != OrderStatus.COMPLETED) {
+        if (status != OrderStatus.PARTIALLY_RECEIVED && status != OrderStatus.COMPLETED) {
             throw new PurchaseOrderInvalidStatusTransitionException(
                     "Only a received or closed order can be reopened for a replacement delivery");
         }
@@ -649,7 +654,7 @@ public class PurchaseOrder extends BaseEntity {
 
     /** Closes an order; a partially received order is closed short, accepting the remainder will not arrive. */
     public void complete(String userId) {
-        if (status != OrderStatus.PARTIALLY_RECEIVED && status != OrderStatus.RECEIVED) {
+        if (status != OrderStatus.PARTIALLY_RECEIVED) {
             throw new PurchaseOrderInvalidStatusTransitionException(
                     "Only a partially received order can be closed; full receipt completes the order automatically");
         }
@@ -706,10 +711,32 @@ public class PurchaseOrder extends BaseEntity {
         this.totalAmount = total;
         this.currencyCode = orderCurrency.getCode();
 
-        Money tax = resolveAdditionalAmount(this.taxAmount, orderCurrency, "Tax amount");
+        Money tax = lineTaxes(this.lines, orderCurrency);
+        if (tax != null) {
+            this.taxAmount = tax;
+        } else {
+            tax = resolveAdditionalAmount(this.taxAmount, orderCurrency, "Tax amount");
+        }
         Money shipping = resolveAdditionalAmount(this.shippingCost, orderCurrency, "Shipping cost");
 
         this.grandTotal = total.add(tax).add(shipping);
+    }
+
+    /**
+     * The order's VAT as the sum of its lines' VAT, when its lines carry a rate. Null for an order that still carries
+     * one tax amount for all its lines (created before VAT per line, or by a client that sends the total only).
+     */
+    static Money lineTaxes(List<PurchaseOrderLine> lines, CurrencyCode currency) {
+        if (lines == null || lines.stream().noneMatch(l -> l != null && l.getTaxRate() != null)) {
+            return null;
+        }
+        Money tax = Money.zero(currency);
+        for (PurchaseOrderLine line : lines) {
+            if (line != null && line.getTaxAmount() != null) {
+                tax = tax.add(line.getTaxAmount());
+            }
+        }
+        return tax;
     }
 
     private CurrencyCode resolveOrderCurrency() {
@@ -766,7 +793,7 @@ public class PurchaseOrder extends BaseEntity {
     }
 
     public boolean isCompleted() {
-        return status == OrderStatus.COMPLETED || status == OrderStatus.RECEIVED;
+        return status == OrderStatus.COMPLETED;
     }
 
     public int getTotalQuantity() {

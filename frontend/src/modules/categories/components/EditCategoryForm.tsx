@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from "react";
+import ChangeReasonField from "../../audit/components/ChangeReasonField";
+import { withChangeReason } from "../../audit/services/auditService";
 import axios from "axios";
 import { useParams, useNavigate } from "react-router-dom";
 import { CategoryType } from "../enums/CategoryType";
@@ -20,6 +22,7 @@ export default function EditCategoryForm() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
+  const [changeReason, setChangeReason] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
@@ -116,7 +119,7 @@ export default function EditCategoryForm() {
         updatedBy: formData.updatedBy,
       };
       
-      await categoryApi.update(id, requestPayload);
+      await categoryApi.update(id, requestPayload, withChangeReason(changeReason));
       setSubmitMessage({ type: 'success', text: 'Category updated successfully!' });
       
       // Optionally navigate away after a short delay
@@ -276,6 +279,8 @@ export default function EditCategoryForm() {
               </div>
             </div>
           </div>
+
+          <ChangeReasonField value={changeReason} onChange={setChangeReason} className="mt-8" />
 
           <div className="mt-10 flex flex-wrap items-center justify-end gap-3 pt-6 border-t border-gray-200 dark:border-gray-800">
             <Button 

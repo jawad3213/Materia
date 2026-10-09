@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useId, type ReactNode } from "react";
 import { Dropdown } from "../ui/dropdown/Dropdown";
 import Button from "../ui/button/Button";
 
@@ -51,11 +51,13 @@ export function FilterSelect({
   options: { value: string; label: string }[];
   className?: string;
 }) {
+  const id = useId();
   return (
     <div className={className}>
-      <label className="mb-1.5 block text-xs font-medium text-gray-700 dark:text-gray-300">{label}</label>
+      <label htmlFor={id} className="mb-1.5 block text-xs font-medium text-gray-700 dark:text-gray-300">{label}</label>
       <div className="relative">
         <select
+          id={id}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           className="h-10 w-full appearance-none rounded-lg border border-gray-200 bg-transparent px-3 py-2 text-sm text-gray-800 outline-none focus:border-brand-500 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-200"

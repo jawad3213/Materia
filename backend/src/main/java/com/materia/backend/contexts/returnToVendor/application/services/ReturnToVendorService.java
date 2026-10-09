@@ -1,5 +1,6 @@
 package com.materia.backend.contexts.returnToVendor.application.services;
 
+import com.materia.backend.common.audit.application.AuditContext;
 import com.materia.backend.contexts.returnToVendor.application.dtos.CreateReturnToVendorInput;
 import com.materia.backend.contexts.returnToVendor.application.dtos.ReturnToVendorLineInput;
 import com.materia.backend.contexts.returnToVendor.application.dtos.ReturnToVendorOutput;
@@ -167,6 +168,7 @@ public class ReturnToVendorService implements ReturnToVendorUseCase {
     @Transactional
     public ReturnToVendorOutput resolve(UUID id, String userId, ResolutionType resolutionType, String reference,
                                         String supplierResponse) {
+        AuditContext.because(supplierResponse);
         requireUser(userId);
         ReturnToVendor returnToVendor = getReturn(id);
         returnToVendor.resolve(userId, resolutionType, reference, supplierResponse);
@@ -181,6 +183,7 @@ public class ReturnToVendorService implements ReturnToVendorUseCase {
     @Override
     @Transactional
     public ReturnToVendorOutput cancel(UUID id, String userId, String reason) {
+        AuditContext.because(reason);
         requireUser(userId);
         ReturnToVendor returnToVendor = getReturn(id);
         returnToVendor.cancel(userId, reason);

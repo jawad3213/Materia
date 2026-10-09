@@ -10,7 +10,7 @@ public class InvoiceLineValidationException extends RuntimeException {
     private final int lineNumber;
     
     public InvoiceLineValidationException(int lineNumber, String message) {
-        super("Ligne " + lineNumber + " invalide: " + message);
+        super("Line " + lineNumber + " invalid: " + message);
         this.lineNumber = lineNumber;
     }
     

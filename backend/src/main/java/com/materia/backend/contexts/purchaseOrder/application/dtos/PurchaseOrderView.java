@@ -20,6 +20,7 @@ public record PurchaseOrderView(UUID id, String orderCode, String status, boolea
                                 UUID requisitionId, List<Line> lines) {
 
     public record Line(UUID id, Integer lineNumber, UUID materialId, String materialCode, String materialName,
-                       String unitOfMeasure, Money unitPrice, Integer quantity, UUID requisitionLineId) {
+                       String unitOfMeasure, Money unitPrice, Integer quantity, UUID requisitionLineId,
+                       java.math.BigDecimal taxRate) {
     }
 }

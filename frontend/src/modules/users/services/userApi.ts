@@ -1,3 +1,4 @@
+import type { AxiosRequestConfig } from "axios";
 import axiosClient from '../../../shared/api/axiosClient';
 import type {
   UserItem,
@@ -31,8 +32,8 @@ export const userApi = {
   create: (data: CreateUserRequest) =>
     axiosClient.post<UserItem>(BASE_URL, data),
 
-  update: (id: string, data: UpdateUserRequest) =>
-    axiosClient.put<UserItem>(`${BASE_URL}/${id}`, data),
+  update: (id: string, data: UpdateUserRequest, config?: AxiosRequestConfig) =>
+    axiosClient.put<UserItem>(`${BASE_URL}/${id}`, data, config),
 
   delete: (id: string) =>
     axiosClient.delete<void>(`${BASE_URL}/${id}`),

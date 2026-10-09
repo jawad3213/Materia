@@ -69,7 +69,10 @@ class ExceptionMappingGuardTest {
             RequisitionNotFoundException.class,
             RequisitionInvalidStatusTransitionException.class,
             RequisitionNotModifiableException.class,
-            RequisitionNotDeletableException.class
+            RequisitionNotDeletableException.class,
+
+            // Database constraints (a referenced record, a duplicate unique value)
+            org.springframework.dao.DataIntegrityViolationException.class
     );
 
     @Test
@@ -110,5 +113,24 @@ class ExceptionMappingGuardTest {
         Method resolved = resolver.resolveMethodByExceptionType(InvalidCredentialsException.class);
         assertThat(resolved).isNotNull();
         assertThat(resolved.getName()).isEqualTo("handleInvalidCredentialsException");
+    }
+
+    @Test
+    @DisplayName("exception guard: a constraint violation is a 409 that says whether the record is referenced or a duplicate")
+    void dataIntegrityViolation_is409WithAReadableReason() {
+        GlobalExceptionHandler handler = new GlobalExceptionHandler();
+        org.springframework.web.context.request.WebRequest request =
+                new org.springframework.web.context.request.ServletWebRequest(
+                        new org.springframework.mock.web.MockHttpServletRequest("DELETE", "/api/v1/masterdata/suppliers/1"));
+
+        var referenced = handler.handleDataIntegrityViolation(new org.springframework.dao.DataIntegrityViolationException(
+                "x", new RuntimeException("violates foreign key constraint \"fk_orders_supplier\"")), request);
+        assertThat(referenced.getStatusCode().value()).isEqualTo(409);
+        assertThat(referenced.getBody().getErrorCode()).isEqualTo("REFERENCED_RECORD");
+
+        var duplicate = handler.handleDataIntegrityViolation(new org.springframework.dao.DataIntegrityViolationException(
+                "x", new RuntimeException("duplicate key value violates unique constraint \"uk_code\"")), request);
+        assertThat(duplicate.getStatusCode().value()).isEqualTo(409);
+        assertThat(duplicate.getBody().getErrorCode()).isEqualTo("DATA_INTEGRITY_VIOLATION");
     }
 }

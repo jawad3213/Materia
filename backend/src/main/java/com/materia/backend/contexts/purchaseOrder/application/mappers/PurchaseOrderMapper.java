@@ -213,6 +213,7 @@ public class PurchaseOrderMapper implements BaseMapper<PurchaseOrder, CreatePurc
                 .unitOfMeasure(line.getUnitOfMeasure())
                 .quantity(line.getQuantity())
                 .unitPrice(line.getUnitPrice())
+                .taxRate(line.getTaxRate())
                 .currencyCode(resolveLineCurrencyCode(line))
                 .supplierId(line.getSupplierId())
                 .supplierName(line.getSupplierName())
@@ -259,6 +260,8 @@ public class PurchaseOrderMapper implements BaseMapper<PurchaseOrder, CreatePurc
         output.setQuantity(line.getQuantity());
         output.setUnitPrice(line.getUnitPrice());
         output.setLineTotal(line.getLineTotal());
+        output.setTaxRate(line.getTaxRate());
+        output.setTaxAmount(line.getTaxAmount());
         output.setCurrencyCode(line.getCurrencyCode());
         output.setSupplierId(line.getSupplierId());
         output.setSupplierName(line.getSupplierName());

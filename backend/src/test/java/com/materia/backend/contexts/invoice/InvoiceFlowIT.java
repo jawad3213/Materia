@@ -101,7 +101,8 @@ class InvoiceFlowIT extends AbstractIntegrationTest {
         line.setMaterialName("Client-sent name");
         line.setQuantityInvoiced(quantity);
         line.setUnitPrice(Money.of(unitPrice, CurrencyCode.MAD));
-        line.setTaxAmount(Money.of("2.00", CurrencyCode.MAD));
+        // VAT as the order sets it (its lines take the default 20% rate).
+        line.setTaxRate(new BigDecimal("20"));
         CreateInvoiceInput input = new CreateInvoiceInput();
         input.setPurchaseOrderId(order.getId().toString());
         input.setSupplierId(order.getSupplierId().toString());
@@ -126,7 +127,7 @@ class InvoiceFlowIT extends AbstractIntegrationTest {
         assertEquals(InvoiceStatus.DRAFT, created.getStatus());
         assertTrue(created.getInvoiceCode().matches("INV-\\d{4}-\\d+"), created.getInvoiceCode());
         assertEquals(0, new BigDecimal("30.00").compareTo(created.getTotalAmount().getAmount()));
-        assertEquals(0, new BigDecimal("32.00").compareTo(created.getTotalAmountWithTax().getAmount()));
+        assertEquals(0, new BigDecimal("36.00").compareTo(created.getTotalAmountWithTax().getAmount()), "30.00 + 20% VAT");
         assertFalse(created.isHasDiscrepancy());
         InvoiceLineOutput line = created.getLines().get(0);
         assertEquals(10, line.getQuantityOrdered());
@@ -141,14 +142,14 @@ class InvoiceFlowIT extends AbstractIntegrationTest {
         flushAndClear();
         invoices.verify(created.getId(), verifier);
         flushAndClear();
-        InvoiceOutput paid = invoices.pay(created.getId(), verifier, 32.00);
+        InvoiceOutput paid = invoices.pay(created.getId(), verifier, 36.00);
         flushAndClear();
 
         InvoiceOutput reloaded = invoices.getById(paid.getId());
         assertEquals(InvoiceStatus.PAID, reloaded.getStatus());
         assertEquals("Ada Admin", reloaded.getVerifiedByName(), "named from the verifier's account");
         assertEquals("Ada Admin", reloaded.getPaidByName(), "named from the payer's account");
-        assertEquals(0, new BigDecimal("32.00").compareTo(reloaded.getPaidAmount().getAmount()));
+        assertEquals(0, new BigDecimal("36.00").compareTo(reloaded.getPaidAmount().getAmount()));
     }
 
     @Test
@@ -164,18 +165,18 @@ class InvoiceFlowIT extends AbstractIntegrationTest {
 
         InvoiceOutput partly = invoices.pay(invoice.getId(), "admin-1", 20.00);
         flushAndClear();
-        assertEquals(InvoiceStatus.VERIFIED, partly.getStatus(), "12.00 of 32.00 still due");
-        assertThrows(RuntimeException.class, () -> invoices.pay(invoice.getId(), "admin-1", 12.01));
+        assertEquals(InvoiceStatus.VERIFIED, partly.getStatus(), "16.00 of 36.00 still due");
+        assertThrows(RuntimeException.class, () -> invoices.pay(invoice.getId(), "admin-1", 16.01));
         flushAndClear();
         assertThrows(RuntimeException.class, () -> invoices.cancel(invoice.getId(), "admin-1", "Changed our mind"));
         flushAndClear();
 
-        InvoiceOutput settled = invoices.pay(invoice.getId(), "admin-1", 12.00);
+        InvoiceOutput settled = invoices.pay(invoice.getId(), "admin-1", 16.00);
         flushAndClear();
 
         InvoiceOutput reloaded = invoices.getById(settled.getId());
         assertEquals(InvoiceStatus.PAID, reloaded.getStatus());
-        assertEquals(0, new BigDecimal("32.00").compareTo(reloaded.getPaidAmount().getAmount()));
+        assertEquals(0, new BigDecimal("36.00").compareTo(reloaded.getPaidAmount().getAmount()));
         assertNotNull(reloaded.getPaymentDate());
         assertEquals("admin-1", reloaded.getPaidByName(), "an id without an account is shown as itself");
     }
@@ -205,7 +206,8 @@ class InvoiceFlowIT extends AbstractIntegrationTest {
         InvoiceLineOutput line = second.getLines().get(0);
         assertTrue(line.isHasQuantityDiscrepancy());
         assertEquals(2, line.getQuantityDiscrepancy(), "6 received, 4 already billed: 2 billable, 4 billed");
-        assertTrue(second.getDiscrepancySummary().contains("Prix unitaire"), second.getDiscrepancySummary());
+        assertTrue(line.isHasPriceDiscrepancy(), "5.50 against 5.00 is +10%, beyond the 2% tolerance");
+        assertTrue(second.getDiscrepancySummary().contains("Unit price"), second.getDiscrepancySummary());
     }
 
     @Test

@@ -4,6 +4,7 @@ import com.materia.backend.common.application.exceptions.BusinessException;
 import com.materia.backend.common.application.exceptions.NotFoundException;
 import com.materia.backend.common.application.exceptions.ValidationException;
 import com.materia.backend.common.infrastructure.web.ErrorResponse;
+import com.materia.backend.common.attachment.domain.exceptions.AttachmentAccessDeniedException;
 import com.materia.backend.contexts.auth.domain.exceptions.AuthenticationFailedException;
 import com.materia.backend.contexts.auth.domain.exceptions.EmailAlreadyExistsException;
 import com.materia.backend.contexts.auth.domain.exceptions.InvalidTokenException;
@@ -53,6 +54,7 @@ import jakarta.persistence.OptimisticLockException;
 import jakarta.validation.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -506,6 +508,30 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 request,
                 null
         );
+    }
+
+    /** The user may change the document but not this file (only its uploader or an administrator may remove it). */
+    @ExceptionHandler(AttachmentAccessDeniedException.class)
+    public ResponseEntity<ErrorResponse> handleAttachmentAccessDenied(AttachmentAccessDeniedException ex, WebRequest request) {
+        log.warn("Attachment access denied: {}", ex.getMessage());
+        return buildErrorResponse(HttpStatus.FORBIDDEN, "Access Denied", ex.getErrorCode(), ex.getFormattedMessage(),
+                request, null);
+    }
+
+    /**
+     * A database constraint refused the change: most often a delete of a record other documents still reference
+     * (a supplier with orders, a material on order lines), or a duplicate unique value.
+     */
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ErrorResponse> handleDataIntegrityViolation(DataIntegrityViolationException ex, WebRequest request) {
+        String detail = ex.getMostSpecificCause().getMessage();
+        log.warn("Data integrity violation: {}", detail);
+        boolean referenced = detail != null && detail.contains("foreign key");
+        String message = referenced
+                ? "This record is referenced by other documents and cannot be changed or deleted"
+                : "The change conflicts with existing data (a value that must be unique is already used)";
+        return buildErrorResponse(HttpStatus.CONFLICT, "Data Conflict",
+                referenced ? "REFERENCED_RECORD" : "DATA_INTEGRITY_VIOLATION", message, request, null);
     }
 
     @ExceptionHandler(Exception.class)

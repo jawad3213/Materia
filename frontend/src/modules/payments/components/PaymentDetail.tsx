@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import HistoryCard from "../../audit/components/HistoryCard";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import paymentService from "../services/paymentService";
 import { METHODS_NEEDING_REFERENCE, PAYMENT_METHOD_LABELS, type Payment, type PaymentMethod } from "../types/payment.types";
@@ -258,6 +259,8 @@ export default function PaymentDetail() {
               <DetailField label="Updated By">{payment.updatedBy || "—"}</DetailField>
             </DetailGrid>
           </DetailCard>
+
+          <HistoryCard entityType="Payment" entityId={payment.id} />
 
           {(payment.notes || payment.internalNotes) && (
             <DetailCard title="Notes" icon={SectionIcons.note}>

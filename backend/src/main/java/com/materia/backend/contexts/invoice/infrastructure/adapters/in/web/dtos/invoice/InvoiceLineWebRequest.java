@@ -41,6 +41,10 @@ public class InvoiceLineWebRequest {
 
     @Size(max = 1000, message = "Notes must not exceed 1000 characters")
     private String notes;
+    /** VAT rate in percent; when given, the tax is computed from it. */
+    @jakarta.validation.constraints.DecimalMin(value = "0.0", message = "The VAT rate cannot be negative")
+    @jakarta.validation.constraints.DecimalMax(value = "100.0", message = "The VAT rate cannot exceed 100%")
+    private BigDecimal taxRate;
 
     // Getters and Setters
 
@@ -76,4 +80,7 @@ public class InvoiceLineWebRequest {
 
     public String getNotes() { return notes; }
     public void setNotes(String notes) { this.notes = notes; }
+
+    public BigDecimal getTaxRate() { return taxRate; }
+    public void setTaxRate(BigDecimal taxRate) { this.taxRate = taxRate; }
 }

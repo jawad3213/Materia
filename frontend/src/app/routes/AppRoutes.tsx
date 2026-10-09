@@ -17,6 +17,12 @@ import ForgotPasswordPage from '../../modules/auth/pages/ForgotPasswordPage';
 import ResetPasswordPage from '../../modules/auth/pages/ResetPasswordPage';
 import NotFoundPage from '../../shared/pages/NotFoundPage';
 import AppLayout from '../../shared/layout/AppLayout';
+import PublicLayout from '../../modules/landing/layout/PublicLayout';
+import HomePage from '../../modules/landing/pages/HomePage';
+import FeaturesPage from '../../modules/landing/pages/FeaturesPage';
+import SecurityPage from '../../modules/landing/pages/SecurityPage';
+import AuditLogPage from '../../modules/audit/pages/AuditLogPage';
+import SettingsPage from '../../modules/settings/pages/SettingsPage';
 import PrivateRoute from './PrivateRoute';
 import PublicRoute from './PublicRoute';
 import RoleGuard from './RoleGuard';
@@ -24,15 +30,12 @@ import RoleGuard from './RoleGuard';
 export default function AppRoutes() {
   return (
     <Routes>
-      {/* Root redirect: Authenticated users will go to /materials, unauthenticated will be caught by PrivateRoute and redirected to /login */}
-      <Route
-        path="/"
-        element={
-          <PrivateRoute>
-            <Navigate to="/materials" replace />
-          </PrivateRoute>
-        }
-      />
+      {/* Public marketing pages, open to everyone; the header offers sign-in or the dashboard */}
+      <Route element={<PublicLayout />}>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/features" element={<FeaturesPage />} />
+        <Route path="/security" element={<SecurityPage />} />
+      </Route>
 
       {/* Public Auth Routes */}
       <Route
@@ -95,6 +98,24 @@ export default function AppRoutes() {
       >
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/profile" element={<ProfilePage />} />
+        {/* Audit log: who changed what, when and why (log:read; CSV export needs log:export) */}
+        <Route
+          path="/audit"
+          element={
+            <RoleGuard allowedRoles={['ADMIN']}>
+              <AuditLogPage />
+            </RoleGuard>
+          }
+        />
+        {/* Settings (setting:read; changing them needs setting:write) */}
+        <Route
+          path="/settings"
+          element={
+            <RoleGuard allowedRoles={['ADMIN']}>
+              <SettingsPage />
+            </RoleGuard>
+          }
+        />
         
         {/* Materials: Available to all authenticated roles */}
         <Route path="/materials/*" element={<MaterialsRoutes />} />

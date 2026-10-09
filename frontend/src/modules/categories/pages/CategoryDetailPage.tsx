@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import HistoryCard from "../../audit/components/HistoryCard";
 import { useParams, Link } from "react-router-dom";
 import PageBreadcrumb from "../../../shared/components/common/PageBreadCrumb";
 import PageMeta from "../../../shared/components/common/PageMeta";
@@ -247,6 +248,7 @@ export default function CategoryDetailPage() {
           
         </div>
       </div>
+      <div className="mt-6"><HistoryCard entityType="Category" entityId={category.id} /></div>
     </>
   );
 }

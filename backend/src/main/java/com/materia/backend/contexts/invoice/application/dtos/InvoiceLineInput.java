@@ -1,5 +1,6 @@
 package com.materia.backend.contexts.invoice.application.dtos;
 
+import java.math.BigDecimal;
 import com.materia.backend.common.domain.valueObjects.Money;
 
 public class InvoiceLineInput {
@@ -12,6 +13,8 @@ public class InvoiceLineInput {
     private Money unitPrice;
     private Money taxAmount;
     private String notes;
+    /** VAT rate in percent; when given, the tax is computed from it, otherwise taxAmount is taken as invoiced. */
+    private BigDecimal taxRate;
 
     public String getPurchaseOrderLineId() { return purchaseOrderLineId; }
     public void setPurchaseOrderLineId(String purchaseOrderLineId) { this.purchaseOrderLineId = purchaseOrderLineId; }
@@ -39,4 +42,7 @@ public class InvoiceLineInput {
 
     public String getNotes() { return notes; }
     public void setNotes(String notes) { this.notes = notes; }
+
+    public BigDecimal getTaxRate() { return taxRate; }
+    public void setTaxRate(BigDecimal taxRate) { this.taxRate = taxRate; }
 }

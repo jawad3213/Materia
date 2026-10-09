@@ -155,7 +155,7 @@ export default function InvoiceForm() {
           unitOfMeasure: l.unitOfMeasure || undefined,
           quantityInvoiced: l.invoiced,
           unitPrice: l.unitPrice,
-          taxAmount: l.taxAmount,
+          taxRate: l.taxRate,
         })),
       });
       if (submitForVerification) {

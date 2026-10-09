@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import HistoryCard from "../../audit/components/HistoryCard";
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import PageBreadcrumb from '../../../shared/components/common/PageBreadCrumb';
 import PageMeta from '../../../shared/components/common/PageMeta';
@@ -406,6 +407,11 @@ export default function UserDetailPage() {
             </div>
           </div>
         </div>
+      </div>
+      {/* The employee record, then the login account (role, status, sign-in settings) when there is one. */}
+      <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-2">
+        <HistoryCard entityType="Employee" entityId={user.id} />
+        {user.userId && <HistoryCard entityType="User" entityId={user.userId} />}
       </div>
     </>
   );

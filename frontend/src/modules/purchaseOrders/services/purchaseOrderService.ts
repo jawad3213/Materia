@@ -1,3 +1,4 @@
+import type { AxiosRequestConfig } from "axios";
 import axiosClient from '../../../shared/api/axiosClient';
 import type {
   PurchaseOrder,
@@ -32,8 +33,8 @@ export const purchaseOrderService = {
   create: (data: CreatePurchaseOrderRequest) =>
     axiosClient.post<PurchaseOrder>(BASE_URL, data),
 
-  update: (id: string, data: UpdatePurchaseOrderRequest) =>
-    axiosClient.put<PurchaseOrder>(`${BASE_URL}/${id}`, data),
+  update: (id: string, data: UpdatePurchaseOrderRequest, config?: AxiosRequestConfig) =>
+    axiosClient.put<PurchaseOrder>(`${BASE_URL}/${id}`, data, config),
 
   delete: (id: string) =>
     axiosClient.delete<void>(`${BASE_URL}/${id}`),

@@ -115,7 +115,9 @@ public class GatewaySecurityConfig {
                 "Accept",
                 "X-Requested-With",
                 "Cache-Control",
-                "X-Gateway-Trace-Id"
+                "X-Gateway-Trace-Id",
+                // Why a record is being changed; stored with its history (AuditReasonFilter).
+                "X-Change-Reason"
         ));
         configuration.setExposedHeaders(List.of("Authorization", "X-Gateway-Trace-Id"));
         configuration.setAllowCredentials(true);

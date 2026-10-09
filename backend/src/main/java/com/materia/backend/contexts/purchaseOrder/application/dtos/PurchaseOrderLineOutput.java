@@ -1,5 +1,6 @@
 package com.materia.backend.contexts.purchaseOrder.application.dtos;
 
+import java.math.BigDecimal;
 import com.materia.backend.common.application.BaseOutput;
 import com.materia.backend.common.domain.valueObjects.Money;
 
@@ -26,6 +27,8 @@ public class PurchaseOrderLineOutput extends BaseOutput {
     private UUID supplierId;
     private String supplierName;
     private LocalDate expectedDeliveryDate;
+    private BigDecimal taxRate;
+    private Money taxAmount;
     private String notes;
 
     public UUID getId() {
@@ -155,4 +158,10 @@ public class PurchaseOrderLineOutput extends BaseOutput {
     public void setNotes(String notes) {
         this.notes = notes;
     }
+
+    public BigDecimal getTaxRate() { return taxRate; }
+    public void setTaxRate(BigDecimal taxRate) { this.taxRate = taxRate; }
+
+    public Money getTaxAmount() { return taxAmount; }
+    public void setTaxAmount(Money taxAmount) { this.taxAmount = taxAmount; }
 }

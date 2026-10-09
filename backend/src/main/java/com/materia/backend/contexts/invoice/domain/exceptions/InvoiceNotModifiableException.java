@@ -8,6 +8,6 @@ public class InvoiceNotModifiableException extends RuntimeException {
     private static final long serialVersionUID = 1L;
     
     public InvoiceNotModifiableException(String invoiceId, String status) {
-        super("La facture " + invoiceId + " ne peut pas être modifiée. Statut actuel: " + status);
+        super("Invoice " + invoiceId + " cannot be modified. Current status: " + status);
     }
 }

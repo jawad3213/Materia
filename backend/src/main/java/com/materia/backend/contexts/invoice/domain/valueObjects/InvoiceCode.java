@@ -34,10 +34,10 @@ public class InvoiceCode {
 
     public static InvoiceCode fromPrefixYearAndNumber(String prefix, int year, int number) {
         if (prefix == null || prefix.trim().isEmpty()) {
-            throw new IllegalArgumentException("Le préfixe est obligatoire");
+            throw new IllegalArgumentException("The prefix is required");
         }
         if (number < 0 || number > 9999) {
-            throw new IllegalArgumentException("Le numéro doit être entre 0 et 9999");
+            throw new IllegalArgumentException("The number must be between 0 and 9999");
         }
         String id = prefix.trim().toUpperCase() + "-" + year + "-" + String.format("%04d", number);
         return new InvoiceCode(id);
@@ -69,15 +69,15 @@ public class InvoiceCode {
     
     private void validate(String value) {
         if (value == null) {
-            throw new IllegalArgumentException("Le code de facture est obligatoire");
+            throw new IllegalArgumentException("The invoice code is required");
         }
         String trimmed = value.trim();
         if (trimmed.isEmpty()) {
-            throw new IllegalArgumentException("Le code de facture ne peut pas être vide");
+            throw new IllegalArgumentException("The invoice code cannot be empty");
         }
         if (!PATTERN.matcher(trimmed).matches()) {
             throw new IllegalArgumentException(
-                "Format invalide pour le code de facture: '" + value + 
+                "Invalid invoice code format: '" + value + 
                 "'. Format attendu: INV-YYYY-0001 (ex: INV-2026-0001) ou legacy INV-0001"
             );
         }

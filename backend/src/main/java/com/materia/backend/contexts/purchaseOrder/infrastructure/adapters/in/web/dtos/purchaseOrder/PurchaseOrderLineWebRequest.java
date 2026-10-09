@@ -56,6 +56,10 @@ public class PurchaseOrderLineWebRequest {
 
     @Size(max = 1000, message = "Notes must not exceed 1000 characters")
     private String notes;
+    /** VAT rate in percent (20 for 20%); omitted, the default rate applies. */
+    @DecimalMin(value = "0.0", message = "The VAT rate cannot be negative")
+    @jakarta.validation.constraints.DecimalMax(value = "100.0", message = "The VAT rate cannot exceed 100%")
+    private BigDecimal taxRate;
 
     public UUID getId() {
         return id;
@@ -176,4 +180,7 @@ public class PurchaseOrderLineWebRequest {
     public void setNotes(String notes) {
         this.notes = notes;
     }
+
+    public BigDecimal getTaxRate() { return taxRate; }
+    public void setTaxRate(BigDecimal taxRate) { this.taxRate = taxRate; }
 }

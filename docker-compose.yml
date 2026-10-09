@@ -65,6 +65,8 @@ services:
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
       APP_BOOTSTRAP_ADMIN_EMAIL: ${APP_BOOTSTRAP_ADMIN_EMAIL:-}
       APP_BOOTSTRAP_ADMIN_PASSWORD: ${APP_BOOTSTRAP_ADMIN_PASSWORD:-}
+    volumes:
+      - attachments_data:/app/data/attachments
     depends_on:
       postgres:
         condition: service_healthy
@@ -92,6 +94,8 @@ services:
 # ===================================================================
 volumes:
   postgres_data:
+    driver: local
+  attachments_data:
     driver: local
 
 networks:

@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
+import HistoryCard from "../../audit/components/HistoryCard";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import goodsReceiptService from "../services/goodsReceiptService";
 import type { GoodsReceipt } from "../types/goodsReceipt.types";
 import QualityStatusBadge, { ReceiptStatusBadge } from "./QualityStatusBadge";
 import useGoodsReceiptPermissions from "../hooks/useGoodsReceipt";
 import GoodsReceiptReturns from "../../returnToVendor/components/GoodsReceiptReturns";
+import AttachmentsCard from "../../attachments/components/AttachmentsCard";
 import Button from "../../../shared/components/ui/button/Button";
 import { Modal } from "../../../shared/components/ui/modal";
 import Label from "../../../shared/components/form/Label";
@@ -222,6 +224,10 @@ export default function GoodsReceiptDetail() {
           </DetailCard>
 
           <GoodsReceiptReturns receipt={receipt} />
+
+          <AttachmentsCard ownerType="GOODS_RECEIPT" ownerId={receipt.id} defaultCategory="DELIVERY_NOTE" />
+
+          <HistoryCard entityType="GoodsReceipt" entityId={receipt.id} />
 
           <DetailCard title="System Information" icon={SectionIcons.info}>
             <DetailGrid>

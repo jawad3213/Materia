@@ -52,6 +52,7 @@ export function DetailCard({
   tone = "gray",
   aside,
   padded = true,
+  fill = false,
   children,
 }: {
   title?: string;
@@ -59,10 +60,12 @@ export function DetailCard({
   tone?: keyof typeof SECTION_TONES;
   aside?: ReactNode;
   padded?: boolean;
+  /** Stretch to the height of the grid row; the body takes the remaining height. */
+  fill?: boolean;
   children: ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
+    <div className={`rounded-2xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03] ${fill ? "flex h-full flex-col" : ""}`}>
       {title && (
         <div className={`flex items-center justify-between gap-3 border-b border-gray-100 dark:border-gray-800 ${padded ? "mx-6 pb-4 pt-6" : "px-6 py-4"}`}>
           <div className="flex items-center gap-2">
@@ -72,7 +75,7 @@ export function DetailCard({
           {aside}
         </div>
       )}
-      <div className={padded ? "p-6" : ""}>{children}</div>
+      <div className={`${padded ? "p-6" : ""} ${fill ? "flex min-h-0 flex-1 flex-col" : ""}`}>{children}</div>
     </div>
   );
 }

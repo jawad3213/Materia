@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from "react";
+import AttachmentsCard from "../../attachments/components/AttachmentsCard";
+import HistoryCard from "../../audit/components/HistoryCard";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import purchaseOrderService from "../services/purchaseOrderService";
 import type { PurchaseOrder, DeliveryStatus, AssignableReceiver } from "../types";
@@ -468,6 +470,9 @@ export default function PurchaseOrderDetail() {
                       Prix Unitaire
                     </TableCell>
                     <TableCell isHeader className="py-2.5 px-4 text-xs font-semibold text-gray-500 text-right">
+                      TVA
+                    </TableCell>
+                    <TableCell isHeader className="py-2.5 px-4 text-xs font-semibold text-gray-500 text-right">
                       Total Ligne
                     </TableCell>
                   </TableRow>
@@ -489,6 +494,20 @@ export default function PurchaseOrderDetail() {
                       </TableCell>
                       <TableCell className="py-3 px-4 text-xs text-right text-gray-600 dark:text-gray-300">
                         {formatAmount(l.unitPrice, l.currencyCode || order.currencyCode)}
+                      </TableCell>
+                      <TableCell className="py-3 px-4 text-xs text-right text-gray-600 dark:text-gray-300 whitespace-nowrap">
+                        {l.taxRate != null ? (
+                          <>
+                            {Number(l.taxRate)}%
+                            {l.taxAmount != null && (
+                              <span className="block text-[11px] text-gray-400">
+                                {formatAmount(l.taxAmount, l.currencyCode || order.currencyCode)}
+                              </span>
+                            )}
+                          </>
+                        ) : (
+                          "-"
+                        )}
                       </TableCell>
                       <TableCell className="py-3 px-4 text-xs text-right font-bold text-gray-900 dark:text-white">
                         {formatAmount(l.lineTotal, l.currencyCode || order.currencyCode)}
@@ -680,6 +699,9 @@ export default function PurchaseOrderDetail() {
               <div>Dernière modification : {order.updatedBy || "-"} le {order.updatedAt}</div>
             )}
           </div>
+          <AttachmentsCard ownerType="PURCHASE_ORDER" ownerId={order.id} />
+
+          <HistoryCard entityType="PurchaseOrder" entityId={order.id} />
         </div>
       </div>
 

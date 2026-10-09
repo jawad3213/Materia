@@ -1,5 +1,6 @@
 package com.materia.backend.contexts.masterData.application.services;
 
+import com.materia.backend.common.audit.application.AuditContext;
 import com.materia.backend.contexts.masterData.application.dtos.material.CreateMaterialInput;
 import com.materia.backend.contexts.masterData.application.dtos.material.MaterialOutput;
 import com.materia.backend.contexts.masterData.application.dtos.material.UpdateMaterialInput;
@@ -275,6 +276,7 @@ public class MaterialService implements MaterialUseCase {
     @Override
     @Transactional
     public ManualReorderOutput triggerReorder(UUID id, Integer quantity, String reason) {
+        AuditContext.because(reason);
         return triggerReorder(id, quantity, reason, null);
     }
 

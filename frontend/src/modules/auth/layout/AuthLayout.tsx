@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { useTheme } from '../../../shared/context/ThemeContext';
 
 interface AuthLayoutProps {
@@ -13,7 +14,19 @@ export default function AuthLayout({
   const { theme, toggleTheme } = useTheme();
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-white dark:bg-gray-900 transition-colors">
+    <div className="flex h-screen w-full overflow-hidden bg-white dark:bg-gray-900 transition-colors relative">
+      {/* Back to the public home page */}
+      <Link
+        to="/"
+        aria-label="Back to home"
+        title="Back to public home page"
+        className="absolute top-4 left-4 sm:top-6 sm:left-6 z-30 inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white bg-white/90 dark:bg-gray-800/90 backdrop-blur-md rounded-xl border border-gray-200/80 dark:border-gray-700/80 shadow-xs hover:shadow-md hover:bg-gray-50 transition-all group"
+      >
+        <svg className="size-4.5 transition-transform duration-200 group-hover:-translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+        </svg>
+        <span className="font-medium text-xs sm:text-sm">Home</span>
+      </Link>
       {/* Left Column: Form Section */}
       <div
         className="flex flex-col justify-between w-full lg:w-1/2 h-full overflow-y-auto no-scrollbar px-6 sm:px-12 md:px-16 lg:px-12 xl:px-20 py-4 sm:py-6"

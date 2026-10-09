@@ -1,3 +1,4 @@
+import type { AxiosRequestConfig } from "axios";
 import axiosClient from '../../../shared/api/axiosClient';
 import type { CreateMaterialRequest } from '../types/CreateMaterialRequest';
 import type { UpdateMaterialRequest } from '../types/UpdateMaterialRequest';
@@ -24,7 +25,8 @@ export const materialApi = {
     if (Array.isArray(data)) return data;
     return Array.isArray(data?.content) ? data.content : [];
   },
-  update: (id: string, data: UpdateMaterialRequest) => axiosClient.put(`${BASE_URL}/${id}`, data),
+  update: (id: string, data: UpdateMaterialRequest, config?: AxiosRequestConfig) =>
+    axiosClient.put(`${BASE_URL}/${id}`, data, config),
   delete: (id: string) => axiosClient.delete(`${BASE_URL}/${id}`),
   
 // ---- Search ----

@@ -8,7 +8,7 @@ public class InvoicePurchaseOrderMismatchException extends RuntimeException {
     private static final long serialVersionUID = 1L;
     
     public InvoicePurchaseOrderMismatchException(String invoicePO, String expectedPO) {
-        super("La commande de la facture (" + invoicePO + 
-              ") ne correspond pas à la commande attendue (" + expectedPO + ")");
+        super("The invoice purchase order (" + invoicePO + 
+              ") does not match the expected purchase order (" + expectedPO + ")");
     }
 }

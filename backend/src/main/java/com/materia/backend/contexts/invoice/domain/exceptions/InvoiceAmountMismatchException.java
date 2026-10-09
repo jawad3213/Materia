@@ -10,7 +10,7 @@ public class InvoiceAmountMismatchException extends RuntimeException {
     private static final long serialVersionUID = 1L;
     
     public InvoiceAmountMismatchException(String invoiceId, Money calculated, Money provided) {
-        super("Le montant total de la facture " + invoiceId + " est incohérent. " +
-              "Calculé: " + calculated + ", Fourni: " + provided);
+        super("The total amount of invoice " + invoiceId + " is inconsistent. " +
+              "Calculated: " + calculated + ", Fourni: " + provided);
     }
 }

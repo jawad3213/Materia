@@ -73,6 +73,12 @@ public class PurchaseOrderLineJpaEntity extends BaseJpaEntity {
     @Column(name = "notes", length = 1000)
     private String notes;
 
+    @Column(name = "tax_rate", precision = 5, scale = 2)
+    private BigDecimal taxRate;
+
+    @Column(name = "tax_amount", precision = 19, scale = 4)
+    private BigDecimal taxAmount;
+
     public PurchaseOrderJpaEntity getPurchaseOrder() {
         return purchaseOrder;
     }
@@ -200,4 +206,10 @@ public class PurchaseOrderLineJpaEntity extends BaseJpaEntity {
     public void setNotes(String notes) {
         this.notes = notes;
     }
+
+    public BigDecimal getTaxRate() { return taxRate; }
+    public void setTaxRate(BigDecimal taxRate) { this.taxRate = taxRate; }
+
+    public BigDecimal getTaxAmount() { return taxAmount; }
+    public void setTaxAmount(BigDecimal taxAmount) { this.taxAmount = taxAmount; }
 }

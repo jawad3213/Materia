@@ -40,12 +40,6 @@ const orderStatusConfig: Record<
       "bg-sky-50 text-sky-700 dark:bg-sky-500/15 dark:text-sky-400 border border-sky-200/60 dark:border-sky-500/20",
     dotClass: "bg-sky-500 animate-pulse",
   },
-  RECEIVED: {
-    label: "Reçue",
-    badgeClass:
-      "bg-teal-50 text-teal-700 dark:bg-teal-500/15 dark:text-teal-400 border border-teal-200/60 dark:border-teal-500/20",
-    dotClass: "bg-teal-500",
-  },
   PARTIALLY_RECEIVED: {
     label: "Partielle",
     badgeClass:

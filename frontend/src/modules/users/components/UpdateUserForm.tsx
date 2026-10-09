@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import ChangeReasonField from '../../audit/components/ChangeReasonField';
+import { withChangeReason } from '../../audit/services/auditService';
 import { useNavigate } from 'react-router-dom';
 import Input from '../../../shared/components/form/input/InputField';
 import Label from '../../../shared/components/form/Label';
@@ -17,6 +19,7 @@ interface UpdateUserFormProps {
 export default function UpdateUserForm({ id }: UpdateUserFormProps) {
   const navigate = useNavigate();
 
+  const [changeReason, setChangeReason] = useState("");
   const [user, setUser] = useState<UserItem | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -98,7 +101,7 @@ export default function UpdateUserForm({ id }: UpdateUserFormProps) {
         status,
       };
 
-      await userApi.update(id, payload);
+      await userApi.update(id, payload, withChangeReason(changeReason));
       setSuccessMessage('Employee updated successfully! Redirecting...');
       setTimeout(() => {
         navigate('/users');
@@ -372,6 +375,8 @@ export default function UpdateUserForm({ id }: UpdateUserFormProps) {
             </div>
           </div>
         </div>
+
+        <ChangeReasonField value={changeReason} onChange={setChangeReason} className="mt-8" />
 
         {/* Action Buttons */}
         <div className="mt-10 flex flex-wrap items-center justify-end gap-3 pt-6 border-t border-gray-200 dark:border-gray-800">

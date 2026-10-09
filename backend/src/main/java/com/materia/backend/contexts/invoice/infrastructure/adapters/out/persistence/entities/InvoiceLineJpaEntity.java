@@ -130,4 +130,42 @@ public class InvoiceLineJpaEntity extends BaseJpaEntity {
 
     public String getNotes() { return notes; }
     public void setNotes(String notes) { this.notes = notes; }
+
+    // ---- Price match and VAT against the purchase-order line ----
+
+    @Column(name = "order_unit_price", precision = 19, scale = 4)
+    private java.math.BigDecimal orderUnitPrice;
+
+    @Column(name = "price_variance_percent", precision = 9, scale = 2)
+    private java.math.BigDecimal priceVariancePercent;
+
+    @Column(name = "has_price_discrepancy", nullable = false)
+    private boolean hasPriceDiscrepancy;
+
+    @Column(name = "tax_rate", precision = 5, scale = 2)
+    private java.math.BigDecimal taxRate;
+
+    @Column(name = "order_tax_rate", precision = 5, scale = 2)
+    private java.math.BigDecimal orderTaxRate;
+
+    @Column(name = "has_tax_discrepancy", nullable = false)
+    private boolean hasTaxDiscrepancy;
+
+    public java.math.BigDecimal getOrderUnitPrice() { return orderUnitPrice; }
+    public void setOrderUnitPrice(java.math.BigDecimal orderUnitPrice) { this.orderUnitPrice = orderUnitPrice; }
+
+    public java.math.BigDecimal getPriceVariancePercent() { return priceVariancePercent; }
+    public void setPriceVariancePercent(java.math.BigDecimal priceVariancePercent) { this.priceVariancePercent = priceVariancePercent; }
+
+    public boolean isHasPriceDiscrepancy() { return hasPriceDiscrepancy; }
+    public void setHasPriceDiscrepancy(boolean hasPriceDiscrepancy) { this.hasPriceDiscrepancy = hasPriceDiscrepancy; }
+
+    public java.math.BigDecimal getTaxRate() { return taxRate; }
+    public void setTaxRate(java.math.BigDecimal taxRate) { this.taxRate = taxRate; }
+
+    public java.math.BigDecimal getOrderTaxRate() { return orderTaxRate; }
+    public void setOrderTaxRate(java.math.BigDecimal orderTaxRate) { this.orderTaxRate = orderTaxRate; }
+
+    public boolean isHasTaxDiscrepancy() { return hasTaxDiscrepancy; }
+    public void setHasTaxDiscrepancy(boolean hasTaxDiscrepancy) { this.hasTaxDiscrepancy = hasTaxDiscrepancy; }
 }

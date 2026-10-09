@@ -1,3 +1,4 @@
+import type { AxiosRequestConfig } from "axios";
 import axiosClient from '../../../shared/api/axiosClient';
 import type { Category } from '../types/Category';
 import type { CategoryListItem } from '../types/CategoryListItem';
@@ -12,7 +13,8 @@ export const categoryApi = {
   getById: (id: string) => axiosClient.get<Category>(`${BASE_URL}/${id}`),
   getByCode: (code: string) => axiosClient.get<Category>(`${BASE_URL}/code/${code}`),
   getAll: (page = 0, size = 10) => axiosClient.get<CategoryListItem[]>(BASE_URL, { params: { page, size } }),
-  update: (id: string, data: UpdateCategoryRequest) => axiosClient.put<Category>(`${BASE_URL}/${id}`, data),
+  update: (id: string, data: UpdateCategoryRequest, config?: AxiosRequestConfig) =>
+    axiosClient.put<Category>(`${BASE_URL}/${id}`, data, config),
   delete: (id: string) => axiosClient.delete(`${BASE_URL}/${id}`),
   
   // ---- Custom Endpoints ----

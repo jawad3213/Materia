@@ -8,6 +8,6 @@ public class InvoiceAlreadyPaidException extends RuntimeException {
     private static final long serialVersionUID = 1L;
     
     public InvoiceAlreadyPaidException(String invoiceId) {
-        super("La facture " + invoiceId + " a déjà été payée");
+        super("Invoice " + invoiceId + " has already been paid");
     }
 }

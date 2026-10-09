@@ -148,6 +148,8 @@ public class PurchaseOrderPersistenceMapper {
         jpa.setQuantity(domain.getQuantity());
         jpa.setUnitPrice(toAmount(domain.getUnitPrice()));
         jpa.setLineTotal(toAmount(domain.getLineTotal()));
+        jpa.setTaxRate(domain.getTaxRate());
+        jpa.setTaxAmount(toAmount(domain.getTaxAmount()));
         jpa.setCurrencyCode(domain.getCurrencyCode());
         jpa.setSupplierId(domain.getSupplierId());
         jpa.setSupplierName(domain.getSupplierName());
@@ -180,6 +182,8 @@ public class PurchaseOrderPersistenceMapper {
         String resolvedCurrencyCode = resolveCurrencyCode(jpa.getCurrencyCode(), defaultCurrencyCode);
         domain.setUnitPrice(toMoney(jpa.getUnitPrice(), resolvedCurrencyCode));
         domain.setLineTotal(toMoney(jpa.getLineTotal(), resolvedCurrencyCode));
+        domain.setTaxRate(jpa.getTaxRate());
+        domain.setTaxAmount(toMoney(jpa.getTaxAmount(), resolvedCurrencyCode));
         domain.setCurrencyCode(resolvedCurrencyCode);
         domain.setSupplierId(jpa.getSupplierId());
         domain.setSupplierName(jpa.getSupplierName());

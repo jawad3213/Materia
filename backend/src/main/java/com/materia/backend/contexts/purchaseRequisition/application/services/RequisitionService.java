@@ -1,5 +1,6 @@
 package com.materia.backend.contexts.purchaseRequisition.application.services;
 
+import com.materia.backend.common.audit.application.AuditContext;
 import com.materia.backend.common.application.PageResponse;
 import com.materia.backend.common.application.exceptions.NotFoundException;
 import com.materia.backend.common.application.exceptions.ValidationException;
@@ -252,6 +253,7 @@ public class RequisitionService implements RequisitionUseCase, ReplenishmentUseC
     @Override
     @Transactional
     public RequisitionOutput approve(UUID id, String approverId, String approverName, String notes) {
+        AuditContext.because(notes);
         Requisition requisition = getEntityById(id);
         requisition.approve(approverId, nameOf(approverId, approverName), notes);
         return mapper.toResponse(requisitionRepository.save(requisition));
@@ -260,6 +262,7 @@ public class RequisitionService implements RequisitionUseCase, ReplenishmentUseC
     @Override
     @Transactional
     public RequisitionOutput reject(UUID id, String approverId, String approverName, String reason) {
+        AuditContext.because(reason);
         Requisition requisition = getEntityById(id);
         requisition.reject(approverId, nameOf(approverId, approverName), reason);
         return mapper.toResponse(requisitionRepository.save(requisition));
@@ -284,6 +287,7 @@ public class RequisitionService implements RequisitionUseCase, ReplenishmentUseC
     @Override
     @Transactional
     public RequisitionOutput cancel(UUID id, String userId, String reason) {
+        AuditContext.because(reason);
         Requisition requisition = getEntityById(id);
         requisition.cancel(userId, reason);
         return mapper.toResponse(requisitionRepository.save(requisition));

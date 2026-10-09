@@ -26,6 +26,12 @@ public class InvoiceLineWebResponse {
     
     private boolean hasQuantityDiscrepancy;
     private String discrepancyNotes;
+    private BigDecimal orderUnitPrice;
+    private BigDecimal priceVariancePercent;
+    private boolean hasPriceDiscrepancy;
+    private BigDecimal taxRate;
+    private BigDecimal orderTaxRate;
+    private boolean hasTaxDiscrepancy;
     private String notes;
 
     // Getters and Setters
@@ -86,4 +92,22 @@ public class InvoiceLineWebResponse {
 
     public String getNotes() { return notes; }
     public void setNotes(String notes) { this.notes = notes; }
+
+    public BigDecimal getOrderUnitPrice() { return orderUnitPrice; }
+    public void setOrderUnitPrice(BigDecimal orderUnitPrice) { this.orderUnitPrice = orderUnitPrice; }
+
+    public BigDecimal getPriceVariancePercent() { return priceVariancePercent; }
+    public void setPriceVariancePercent(BigDecimal priceVariancePercent) { this.priceVariancePercent = priceVariancePercent; }
+
+    public boolean isHasPriceDiscrepancy() { return hasPriceDiscrepancy; }
+    public void setHasPriceDiscrepancy(boolean hasPriceDiscrepancy) { this.hasPriceDiscrepancy = hasPriceDiscrepancy; }
+
+    public BigDecimal getTaxRate() { return taxRate; }
+    public void setTaxRate(BigDecimal taxRate) { this.taxRate = taxRate; }
+
+    public BigDecimal getOrderTaxRate() { return orderTaxRate; }
+    public void setOrderTaxRate(BigDecimal orderTaxRate) { this.orderTaxRate = orderTaxRate; }
+
+    public boolean isHasTaxDiscrepancy() { return hasTaxDiscrepancy; }
+    public void setHasTaxDiscrepancy(boolean hasTaxDiscrepancy) { this.hasTaxDiscrepancy = hasTaxDiscrepancy; }
 }

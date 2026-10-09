@@ -37,3 +37,5 @@ build/
 # no account: the first administrator is created at start-up (AdminAccountBootstrap).
 src/main/resources/META-INF/
 
+### Local attachment files ###
+data/attachments/

@@ -1,4 +1,4 @@
-import { lineError, lineTotal, lineWarnings, formatAmount, type InvoiceLineDraft } from "../utils/invoiceLine";
+import { lineError, lineTax, lineTotal, lineWarnings, formatAmount, type InvoiceLineDraft } from "../utils/invoiceLine";
 import Label from "../../../shared/components/form/Label";
 import Input from "../../../shared/components/form/input/InputField";
 
@@ -39,8 +39,16 @@ export default function InvoiceLine({
           <Input type="number" min="0" step={0.01} value={line.unitPrice} onChange={(e) => onChange({ ...line, unitPrice: toNumber(e.target.value) })} />
         </div>
         <div>
-          <Label>Tax Amount</Label>
-          <Input type="number" min="0" step={0.01} value={line.taxAmount} onChange={(e) => onChange({ ...line, taxAmount: toNumber(e.target.value) })} />
+          <Label>VAT %</Label>
+          <Input
+            type="number"
+            min="0"
+            max="100"
+            step={0.01}
+            value={line.taxRate}
+            onChange={(e) => onChange({ ...line, taxRate: toNumber(e.target.value) })}
+            hint={`${formatAmount(lineTax(line), currency)} VAT`}
+          />
         </div>
         <div>
           <Label>Line Total excl. Tax</Label>

@@ -3,6 +3,8 @@ package com.materia.backend.contexts.invoice.domain.entities;
 import com.materia.backend.common.domain.BaseEntity;
 import com.materia.backend.common.domain.valueObjects.Money;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -40,6 +42,22 @@ public class InvoiceLine extends BaseEntity {
     // ---- ÉCARTS ----
     private boolean hasQuantityDiscrepancy;
     private String discrepancyNotes;
+
+    // ---- PRICE MATCH ----
+    /** Unit price of the purchase-order line the invoice line was matched against. */
+    private Money orderUnitPrice;
+    /** How far the invoiced unit price is from the order price, in percent (positive when billed higher). */
+    private BigDecimal priceVariancePercent;
+    /** The invoiced unit price is outside the tolerance around the order price. */
+    private boolean hasPriceDiscrepancy;
+
+    // ---- VAT ----
+    /** VAT rate in percent; when given, the line's tax is computed from it. */
+    private BigDecimal taxRate;
+    /** VAT rate of the purchase-order line it was matched against. */
+    private BigDecimal orderTaxRate;
+    /** The line's VAT is not what the order line's rate gives. */
+    private boolean hasTaxDiscrepancy;
     
     // ---- DIVERS ----
     private String notes;
@@ -72,6 +90,10 @@ public class InvoiceLine extends BaseEntity {
         this.currencyCode = builder.currencyCode;
         this.hasQuantityDiscrepancy = builder.hasQuantityDiscrepancy;
         this.discrepancyNotes = builder.discrepancyNotes;
+        this.orderUnitPrice = builder.orderUnitPrice;
+        this.priceVariancePercent = builder.priceVariancePercent;
+        this.hasPriceDiscrepancy = builder.hasPriceDiscrepancy;
+        this.taxRate = builder.taxRate;
         this.notes = builder.notes;
         
         if (builder.createdAt != null) this.setCreatedAt(builder.createdAt);
@@ -109,6 +131,10 @@ public class InvoiceLine extends BaseEntity {
         private String currencyCode;
         private boolean hasQuantityDiscrepancy;
         private String discrepancyNotes;
+        private Money orderUnitPrice;
+        private BigDecimal priceVariancePercent;
+        private boolean hasPriceDiscrepancy;
+        private BigDecimal taxRate;
         private String notes;
         private String createdBy;
         private LocalDateTime createdAt;
@@ -132,6 +158,10 @@ public class InvoiceLine extends BaseEntity {
         public Builder currencyCode(String currencyCode) { this.currencyCode = currencyCode; return this; }
         public Builder hasQuantityDiscrepancy(boolean hasQuantityDiscrepancy) { this.hasQuantityDiscrepancy = hasQuantityDiscrepancy; return this; }
         public Builder discrepancyNotes(String discrepancyNotes) { this.discrepancyNotes = discrepancyNotes; return this; }
+        public Builder orderUnitPrice(Money orderUnitPrice) { this.orderUnitPrice = orderUnitPrice; return this; }
+        public Builder priceVariancePercent(BigDecimal priceVariancePercent) { this.priceVariancePercent = priceVariancePercent; return this; }
+        public Builder hasPriceDiscrepancy(boolean hasPriceDiscrepancy) { this.hasPriceDiscrepancy = hasPriceDiscrepancy; return this; }
+        public Builder taxRate(BigDecimal taxRate) { this.taxRate = taxRate; return this; }
         public Builder notes(String notes) { this.notes = notes; return this; }
         public Builder createdBy(String createdBy) { this.createdBy = createdBy; return this; }
         public Builder createdAt(LocalDateTime createdAt) { this.createdAt = createdAt; return this; }
@@ -151,13 +181,13 @@ public class InvoiceLine extends BaseEntity {
         
         private void validateRequiredFields() {
             if (this.materialCode == null || this.materialCode.trim().isEmpty()) {
-                throw new IllegalArgumentException("Le code du matériau est obligatoire");
+                throw new IllegalArgumentException("The material code is required");
             }
             if (this.quantityInvoiced == null || this.quantityInvoiced <= 0) {
-                throw new IllegalArgumentException("La quantité facturée doit être positive");
+                throw new IllegalArgumentException("The invoiced quantity must be positive");
             }
             if (this.unitPrice == null) {
-                throw new IllegalArgumentException("Le prix unitaire est obligatoire");
+                throw new IllegalArgumentException("The unit price is required");
             }
         }
         
@@ -171,6 +201,9 @@ public class InvoiceLine extends BaseEntity {
         private void calculateTotals() {
             if (unitPrice != null && quantityInvoiced != null) {
                 this.lineTotal = unitPrice.multiply(quantityInvoiced);
+                if (taxRate != null) {
+                    this.taxAmount = taxOn(lineTotal, taxRate);
+                }
                 if (taxAmount != null) {
                     this.lineTotalWithTax = lineTotal.add(taxAmount);
                 } else {
@@ -185,13 +218,16 @@ public class InvoiceLine extends BaseEntity {
     // ============================================================
     
     public boolean hasDiscrepancy() {
-        return hasQuantityDiscrepancy;
+        return hasQuantityDiscrepancy || hasPriceDiscrepancy || hasTaxDiscrepancy;
     }
 
     /** Line total = unit price × invoiced quantity; total with tax adds the tax amount when present. */
     public void recalculateTotals() {
         if (unitPrice != null && quantityInvoiced != null) {
             this.lineTotal = unitPrice.multiply(quantityInvoiced);
+            if (taxRate != null) {
+                this.taxAmount = taxOn(lineTotal, taxRate);
+            }
             this.lineTotalWithTax = taxAmount != null ? lineTotal.add(taxAmount) : lineTotal;
         }
     }
@@ -206,6 +242,23 @@ public class InvoiceLine extends BaseEntity {
      * @param orderUnitPrice the purchase-order unit price, or null when unknown
      */
     public void recordMatch(int ordered, int received, int billable, Money orderUnitPrice) {
+        recordMatch(ordered, received, billable, orderUnitPrice, DEFAULT_PRICE_TOLERANCE_PERCENT);
+    }
+
+    /**
+     * Same as {@link #recordMatch(int, int, int, Money)}, with the price tolerance: an invoiced unit price more than
+     * {@code tolerancePercent} percent away from the order price (either way) is a price discrepancy.
+     */
+    public void recordMatch(int ordered, int received, int billable, Money orderUnitPrice, BigDecimal tolerancePercent) {
+        recordMatch(ordered, received, billable, orderUnitPrice, tolerancePercent, null);
+    }
+
+    /**
+     * Same as {@link #recordMatch(int, int, int, Money, BigDecimal)}, with the VAT rate of the order line: the line's
+     * tax must be what that rate gives on the line total (to the cent), or it is a tax discrepancy.
+     */
+    public void recordMatch(int ordered, int received, int billable, Money orderUnitPrice, BigDecimal tolerancePercent,
+                            BigDecimal orderTaxRate) {
         this.quantityOrdered = ordered;
         this.quantityReceived = received;
         int invoiced = quantityInvoiced != null ? quantityInvoiced : 0;
@@ -215,19 +268,58 @@ public class InvoiceLine extends BaseEntity {
 
         StringBuilder notes = new StringBuilder();
         if (excess > 0) {
-            notes.append("Quantité facturée (").append(invoiced).append(") supérieure à la quantité facturable (")
+            notes.append("Invoiced quantity (").append(invoiced).append(") exceeds the billable quantity (")
                     .append(Math.max(0, billable)).append(").");
         }
-        if (orderUnitPrice != null && unitPrice != null && invoiced > 0
-                && unitPrice.getAmount().compareTo(orderUnitPrice.getAmount()) != 0) {
-            if (notes.length() > 0) notes.append(" ");
-            notes.append("Prix unitaire (").append(unitPrice.getAmount().stripTrailingZeros().toPlainString())
-                    .append(") différent de la commande (")
-                    .append(orderUnitPrice.getAmount().stripTrailingZeros().toPlainString()).append(").");
+
+        this.orderUnitPrice = orderUnitPrice;
+        this.priceVariancePercent = null;
+        this.hasPriceDiscrepancy = false;
+        if (orderUnitPrice != null && unitPrice != null && orderUnitPrice.getAmount().signum() > 0) {
+            BigDecimal variance = unitPrice.getAmount().subtract(orderUnitPrice.getAmount())
+                    .multiply(BigDecimal.valueOf(100))
+                    .divide(orderUnitPrice.getAmount(), 2, RoundingMode.HALF_UP);
+            this.priceVariancePercent = variance;
+            BigDecimal tolerance = tolerancePercent != null ? tolerancePercent.abs() : DEFAULT_PRICE_TOLERANCE_PERCENT;
+            this.hasPriceDiscrepancy = invoiced > 0 && variance.abs().compareTo(tolerance) > 0;
+            if (hasPriceDiscrepancy) {
+                if (notes.length() > 0) notes.append(" ");
+                notes.append("Unit price (").append(unitPrice.getAmount().stripTrailingZeros().toPlainString())
+                        .append(") differs from the order price (")
+                        .append(orderUnitPrice.getAmount().stripTrailingZeros().toPlainString()).append(") by ")
+                        .append(variance.signum() > 0 ? "+" : "").append(variance.stripTrailingZeros().toPlainString())
+                        .append("%, beyond the ").append(tolerance.stripTrailingZeros().toPlainString()).append("% tolerance.");
+            }
+        }
+
+        this.orderTaxRate = orderTaxRate;
+        this.hasTaxDiscrepancy = false;
+        if (orderTaxRate != null && lineTotal != null && invoiced > 0) {
+            Money expected = taxOn(lineTotal, orderTaxRate);
+            BigDecimal actual = taxAmount != null ? taxAmount.getAmount() : BigDecimal.ZERO;
+            if (actual.subtract(expected.getAmount()).abs().compareTo(TAX_TOLERANCE) > 0) {
+                this.hasTaxDiscrepancy = true;
+                if (notes.length() > 0) notes.append(" ");
+                notes.append("VAT (").append(actual.stripTrailingZeros().toPlainString())
+                        .append(") differs from the order VAT at ").append(orderTaxRate.stripTrailingZeros().toPlainString())
+                        .append("% (").append(expected.getAmount().stripTrailingZeros().toPlainString()).append(").");
+            }
         }
         this.discrepancyNotes = notes.length() > 0 ? notes.toString() : null;
     }
-    
+
+    /** Rounding difference accepted between an invoice line's VAT and the VAT its order line's rate gives. */
+    private static final BigDecimal TAX_TOLERANCE = new BigDecimal("0.01");
+
+    /** The VAT on a line total at a rate in percent, rounded to the cent. */
+    public static Money taxOn(Money lineTotal, BigDecimal ratePercent) {
+        BigDecimal tax = lineTotal.getAmount().multiply(ratePercent).divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+        return Money.of(tax, lineTotal.getCurrency());
+    }
+
+    /** Price difference accepted between an invoice line and its order line when none is configured. */
+    public static final BigDecimal DEFAULT_PRICE_TOLERANCE_PERCENT = new BigDecimal("2");
+
     // ============================================================
     // EQUALS & HASHCODE
     // ============================================================
@@ -313,4 +405,22 @@ public class InvoiceLine extends BaseEntity {
     
     public String getNotes() { return notes; }
     public void setNotes(String notes) { this.notes = notes; }
+
+    public Money getOrderUnitPrice() { return orderUnitPrice; }
+    public void setOrderUnitPrice(Money orderUnitPrice) { this.orderUnitPrice = orderUnitPrice; }
+
+    public BigDecimal getPriceVariancePercent() { return priceVariancePercent; }
+    public void setPriceVariancePercent(BigDecimal priceVariancePercent) { this.priceVariancePercent = priceVariancePercent; }
+
+    public boolean isHasPriceDiscrepancy() { return hasPriceDiscrepancy; }
+    public void setHasPriceDiscrepancy(boolean hasPriceDiscrepancy) { this.hasPriceDiscrepancy = hasPriceDiscrepancy; }
+
+    public BigDecimal getTaxRate() { return taxRate; }
+    public void setTaxRate(BigDecimal taxRate) { this.taxRate = taxRate; }
+
+    public BigDecimal getOrderTaxRate() { return orderTaxRate; }
+    public void setOrderTaxRate(BigDecimal orderTaxRate) { this.orderTaxRate = orderTaxRate; }
+
+    public boolean isHasTaxDiscrepancy() { return hasTaxDiscrepancy; }
+    public void setHasTaxDiscrepancy(boolean hasTaxDiscrepancy) { this.hasTaxDiscrepancy = hasTaxDiscrepancy; }
 }

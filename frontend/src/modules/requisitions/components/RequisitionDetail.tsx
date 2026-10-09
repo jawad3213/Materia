@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import HistoryCard from "../../audit/components/HistoryCard";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { requisitionApi } from "../services/requisitionApi";
 import purchaseOrderService from "../../purchaseOrders/services/purchaseOrderService";
@@ -1162,6 +1163,8 @@ export default function RequisitionDetail() {
           </Table>
         </div>
       </div>
+
+      <HistoryCard entityType="Requisition" entityId={requisition.id} />
 
       {/* Approval / Rejection Modal */}
       {modalState.isOpen && (

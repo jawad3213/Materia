@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import ChangeReasonField from "../../audit/components/ChangeReasonField";
+import { withChangeReason } from "../../audit/services/auditService";
+import { useParams } from "react-router-dom";
 import axios from "axios";
 import { supplierApi } from "../services/supplierApi";
 import type { UpdateSupplierRequest } from "../types/UpdateSupplierRequest";
@@ -16,7 +18,7 @@ import { EnvelopeIcon } from "../../../shared/icons";
 
 export default function UpdateSupplierForm() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
+  const [changeReason, setChangeReason] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -146,7 +148,7 @@ export default function UpdateSupplierForm() {
       };
       
       if (id) {
-        await supplierApi.update(id, requestPayload);
+        await supplierApi.update(id, requestPayload, withChangeReason(changeReason));
         setSubmitMessage({ type: 'success', text: 'Supplier updated successfully!' });
       }
       
@@ -414,6 +416,8 @@ export default function UpdateSupplierForm() {
               </div>
             </div>
           </div>
+
+          <ChangeReasonField value={changeReason} onChange={setChangeReason} className="mt-8" />
 
           {/* Action Buttons */}
           <div className="mt-10 flex flex-wrap items-center justify-end gap-3 pt-6 border-t border-gray-200 dark:border-gray-800">

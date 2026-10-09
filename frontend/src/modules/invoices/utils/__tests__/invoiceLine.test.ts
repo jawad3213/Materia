@@ -73,7 +73,8 @@ const draft = (overrides: Partial<InvoiceLineDraft> = {}): InvoiceLineDraft => (
   orderPrice: 5,
   invoiced: 8,
   unitPrice: 5,
-  taxAmount: 0,
+  taxRate: 20,
+  orderTaxRate: 20,
   ...overrides,
 });
 
@@ -115,7 +116,7 @@ describe("toInvoiceDrafts", () => {
 describe("totals", () => {
   it("rule: line total is quantity × unit price, rounded to cents; invoice totals add tax", () => {
     expect(lineTotal({ invoiced: 3, unitPrice: 0.1 })).toBe(0.3);
-    expect(invoiceTotals([draft({ invoiced: 2, unitPrice: 5, taxAmount: 2 }), draft({ invoiced: 1, unitPrice: 2.5, taxAmount: 0.5 })])).toEqual({
+    expect(invoiceTotals([draft({ invoiced: 2, unitPrice: 5, taxRate: 20 }), draft({ invoiced: 1, unitPrice: 2.5, taxRate: 20 })])).toEqual({
       totalAmount: 12.5,
       totalTaxAmount: 2.5,
       totalAmountWithTax: 15,
@@ -131,7 +132,8 @@ describe("lineError", () => {
     expect(lineError(draft({ invoiced: Number.NaN }))).toMatch(/quantity/);
     expect(lineError(draft({ invoiced: 2.5 }))).toMatch(/whole/);
     expect(lineError(draft({ unitPrice: -0.01 }))).toMatch(/price/);
-    expect(lineError(draft({ taxAmount: -1 }))).toMatch(/tax/);
+    expect(lineError(draft({ taxRate: -1 }))).toMatch(/VAT/);
+    expect(lineError(draft({ taxRate: 120 }))).toMatch(/VAT/);
   });
 });
 
@@ -148,6 +150,8 @@ describe("lineWarnings (three-way match)", () => {
   it("rule: a unit price different from the order is flagged, but not on a line billed at zero", () => {
     expect(lineWarnings(draft({ unitPrice: 5.5 }))[0]).toMatch(/Unit price/);
     expect(lineWarnings(draft({ unitPrice: 5.5, invoiced: 0 }))).toEqual([]);
+    expect(lineWarnings(draft({ taxRate: 10 }))[0]).toMatch(/VAT rate differs/);
+    expect(lineWarnings(draft({ taxRate: 10, orderTaxRate: null }))).toEqual([]);
   });
 });
 

@@ -1,6 +1,6 @@
 {
   "$comment": "Single source of truth for which actions each role may perform in each status. Both the backend tests (support/ActionMatrix) and the frontend screen-rule tests (src/test/actionMatrix.ts) assert against this file, so the screens and the API cannot disagree without a test failing (spec 002, research R8, SC-002a). Change who may do what here first.",
-  "version": 3,
+  "version": 4,
   "roles": {
     "ADMIN": {
       "passesEveryPermissionCheck": true,
@@ -40,7 +40,6 @@
       "CONFIRMED",
       "READY_FOR_RECEIPT",
       "PARTIALLY_RECEIVED",
-      "RECEIVED",
       "COMPLETED",
       "CANCELLED",
       "REJECTED"
@@ -104,10 +103,8 @@
       "closeShort": {
         "permission": "order:write",
         "statuses": [
-          "PARTIALLY_RECEIVED",
-          "RECEIVED"
-        ],
-        "note": "RECEIVED is a legacy status that no transition produces any more; such orders can still be closed."
+          "PARTIALLY_RECEIVED"
+        ]
       },
       "cancel": {
         "permission": "order:cancel",

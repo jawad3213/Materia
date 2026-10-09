@@ -21,7 +21,7 @@ public class PurchaseOrderLookupService implements PurchaseOrderLookupUseCase {
             EnumSet.of(OrderStatus.READY_FOR_RECEIPT, OrderStatus.PARTIALLY_RECEIVED);
 
     private static final Set<OrderStatus> GOODS_RECEIVED =
-            EnumSet.of(OrderStatus.PARTIALLY_RECEIVED, OrderStatus.RECEIVED, OrderStatus.COMPLETED);
+            EnumSet.of(OrderStatus.PARTIALLY_RECEIVED, OrderStatus.COMPLETED);
 
     private final PurchaseOrderRepository purchaseOrderRepository;
 
@@ -53,7 +53,7 @@ public class PurchaseOrderLookupService implements PurchaseOrderLookupUseCase {
                         .map(line -> new PurchaseOrderView.Line(line.getId(), line.getLineNumber(),
                                 line.getMaterialId(), line.getMaterialCode(), line.getMaterialName(),
                                 line.getUnitOfMeasure(), line.getUnitPrice(), line.getQuantity(),
-                                line.getRequisitionLineId()))
+                                line.getRequisitionLineId(), line.getTaxRate()))
                         .toList());
     }
 }

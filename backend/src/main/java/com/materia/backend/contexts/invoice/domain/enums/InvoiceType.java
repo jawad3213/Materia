@@ -22,13 +22,13 @@ public enum InvoiceType {
     
     public static InvoiceType fromCode(String code) {
         if (code == null || code.isEmpty()) {
-            throw new IllegalArgumentException("Le code est obligatoire");
+            throw new IllegalArgumentException("The code is required");
         }
         for (InvoiceType type : values()) {
             if (type.code.equals(code)) {
                 return type;
             }
         }
-        throw new IllegalArgumentException("Type inconnu : " + code);
+        throw new IllegalArgumentException("Unknown type: " + code);
     }
 }

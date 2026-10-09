@@ -5,6 +5,7 @@ import type { Invoice } from "../types/invoice.types";
 import InvoiceStatusBadge, { InvoiceTypeBadge } from "./InvoiceStatusBadge";
 import InvoiceVerification from "./InvoiceVerification";
 import InvoicePaymentHistory from "./InvoicePaymentHistory";
+import AttachmentsCard from "../../attachments/components/AttachmentsCard";
 import useInvoicePermissions from "../hooks/useInvoice";
 import { formatAmount, isOverdue, isPartiallyPaid, outstandingAmount } from "../utils/invoiceLine";
 import Button from "../../../shared/components/ui/button/Button";
@@ -25,6 +26,7 @@ import {
 import { InitialsAvatar } from "../../../shared/components/page/ListParts";
 import { SectionIcons } from "../../../shared/components/page/pageIcons";
 import { getApiErrorMessage } from "../../../shared/utils/apiError";
+import HistoryCard from "../../audit/components/HistoryCard";
 
 type Feedback = { type: "success" | "error"; text: string };
 
@@ -226,6 +228,10 @@ export default function InvoiceDetail() {
               <DetailField label="Last Paid On">{invoice.paidAt ? new Date(invoice.paidAt).toLocaleString() : "—"}</DetailField>
             </DetailGrid>
           </DetailCard>
+
+          <AttachmentsCard ownerType="INVOICE" ownerId={invoice.id} defaultCategory="SUPPLIER_INVOICE" />
+
+          <HistoryCard entityType="Invoice" entityId={invoice.id} />
 
           {(invoice.notes || invoice.internalNotes) && (
             <DetailCard title="Notes" icon={SectionIcons.note}>

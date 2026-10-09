@@ -19,8 +19,9 @@ public interface InvoicedOrders {
                           String currencyCode, List<OrderedLine> lines) {
     }
 
+    /** @param taxRate the order line's VAT rate in percent; null when it has none */
     record OrderedLine(UUID id, String materialCode, String materialName, String unitOfMeasure, Integer quantity,
-                       Money unitPrice) {
+                       Money unitPrice, java.math.BigDecimal taxRate) {
     }
 
     record ReceivedLine(String purchaseOrderLineId, Integer quantityReceived, Integer quantityAccepted,

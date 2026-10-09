@@ -1,5 +1,6 @@
 package com.materia.backend.contexts.goodsReceipt.application.services;
 
+import com.materia.backend.common.audit.application.AuditContext;
 import com.materia.backend.contexts.goodsReceipt.application.dtos.CreateGoodsReceiptInput;
 import com.materia.backend.contexts.goodsReceipt.application.dtos.GoodsReceiptLineInput;
 import com.materia.backend.contexts.goodsReceipt.application.dtos.GoodsReceiptOutput;
@@ -291,6 +292,7 @@ public class GoodsReceiptService implements GoodsReceiptUseCase {
     @Override
     @Transactional
     public GoodsReceiptOutput cancel(UUID id, String userId, String reason) {
+        AuditContext.because(reason);
         GoodsReceipt goodsReceipt = getGoodsReceiptById(id);
         validateAssignedReceiver(goodsReceipt, userId);
         goodsReceipt.cancel(userId, reason);

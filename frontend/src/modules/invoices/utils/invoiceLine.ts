@@ -17,13 +17,19 @@ export interface InvoiceLineDraft {
   orderPrice: number;
   invoiced: number;
   unitPrice: number;
-  taxAmount: number;
+  /** VAT rate invoiced, in percent; starts at the order line's rate. */
+  taxRate: number;
+  /** VAT rate of the order line, or null on orders created before VAT per line. */
+  orderTaxRate: number | null;
 }
+
+/** VAT rate of an invoice line whose order line has none (orders created before VAT per line). */
+export const DEFAULT_INVOICE_VAT_RATE = 20;
 
 const VALIDATED_RECEIPT_STATUSES = ["COMPLETED", "PARTIAL"];
 
 /** Purchase orders that have received goods and so can be invoiced. */
-export const INVOICEABLE_ORDER_STATUSES = ["PARTIALLY_RECEIVED", "RECEIVED", "COMPLETED"];
+export const INVOICEABLE_ORDER_STATUSES = ["PARTIALLY_RECEIVED", "COMPLETED"];
 
 function acceptedOn(receipts: GoodsReceipt[], purchaseOrderLineId: string): number {
   return receipts
@@ -54,6 +60,7 @@ export function toInvoiceDrafts(order: PurchaseOrder, receipts: GoodsReceipt[], 
     const received = acceptedOn(receipts, line.id);
     const alreadyInvoiced = invoicedOn(invoices, line.id);
     const orderPrice = parseAmount(line.unitPrice);
+    const orderTaxRate = line.taxRate != null ? Number(line.taxRate) : null;
     return {
       purchaseOrderLineId: line.id,
       materialCode: line.materialCode,
@@ -65,7 +72,8 @@ export function toInvoiceDrafts(order: PurchaseOrder, receipts: GoodsReceipt[], 
       orderPrice,
       invoiced: Math.max(0, received - alreadyInvoiced),
       unitPrice: orderPrice,
-      taxAmount: 0,
+      taxRate: orderTaxRate ?? DEFAULT_INVOICE_VAT_RATE,
+      orderTaxRate,
     };
   });
 }
@@ -76,9 +84,14 @@ export function lineTotal(line: Pick<InvoiceLineDraft, "invoiced" | "unitPrice">
   return round2(line.invoiced * line.unitPrice);
 }
 
+/** The VAT of a line at its rate, rounded to the cent like the backend. */
+export function lineTax(line: Pick<InvoiceLineDraft, "invoiced" | "unitPrice" | "taxRate">): number {
+  return round2((lineTotal(line) * (line.taxRate || 0)) / 100);
+}
+
 export function invoiceTotals(lines: InvoiceLineDraft[]) {
   const totalAmount = round2(lines.reduce((sum, l) => sum + lineTotal(l), 0));
-  const totalTaxAmount = round2(lines.reduce((sum, l) => sum + l.taxAmount, 0));
+  const totalTaxAmount = round2(lines.reduce((sum, l) => sum + lineTax(l), 0));
   return { totalAmount, totalTaxAmount, totalAmountWithTax: round2(totalAmount + totalTaxAmount) };
 }
 
@@ -87,7 +100,7 @@ export function lineError(line: InvoiceLineDraft): string | null {
   if (!Number.isFinite(line.invoiced) || line.invoiced < 0) return "The invoiced quantity cannot be negative.";
   if (!Number.isInteger(line.invoiced)) return "The invoiced quantity must be a whole number.";
   if (!Number.isFinite(line.unitPrice) || line.unitPrice < 0) return "The unit price cannot be negative.";
-  if (!Number.isFinite(line.taxAmount) || line.taxAmount < 0) return "The tax amount cannot be negative.";
+  if (!Number.isFinite(line.taxRate) || line.taxRate < 0 || line.taxRate > 100) return "The VAT rate must be between 0 and 100%.";
   return null;
 }
 
@@ -105,6 +118,9 @@ export function lineWarnings(line: InvoiceLineDraft): string[] {
   }
   if (line.invoiced > 0 && round2(line.unitPrice) !== round2(line.orderPrice)) {
     warnings.push(`Unit price differs from the purchase order (${line.orderPrice}).`);
+  }
+  if (line.invoiced > 0 && line.orderTaxRate != null && round2(line.taxRate) !== round2(line.orderTaxRate)) {
+    warnings.push(`VAT rate differs from the purchase order (${line.orderTaxRate}%): the invoice cannot be verified.`);
   }
   return warnings;
 }

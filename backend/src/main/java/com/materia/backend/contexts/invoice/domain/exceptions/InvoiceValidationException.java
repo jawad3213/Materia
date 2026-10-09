@@ -11,7 +11,7 @@ public class InvoiceValidationException extends RuntimeException {
     private final String errorMessage;
     
     public InvoiceValidationException(String field, String errorMessage) {
-        super("Validation échouée pour le champ '" + field + "': " + errorMessage);
+        super("Validation failed for field '" + field + "': " + errorMessage);
         this.field = field;
         this.errorMessage = errorMessage;
     }

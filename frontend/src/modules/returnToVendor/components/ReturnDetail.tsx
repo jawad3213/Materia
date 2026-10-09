@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
+import HistoryCard from "../../audit/components/HistoryCard";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import returnToVendorService from "../services/returnToVendorService";
 import { RESOLUTION_TYPE_LABELS, type ResolutionType, type ReturnToVendor } from "../types/returnToVendor.types";
 import ReturnStatusBadge, { ResolutionBadge } from "./ReturnStatusBadge";
 import useReturnToVendorPermissions from "../hooks/useReturnToVendor";
+import AttachmentsCard from "../../attachments/components/AttachmentsCard";
 import { formatAmount } from "../../invoices/utils/invoiceLine";
 import Button from "../../../shared/components/ui/button/Button";
 import Badge from "../../../shared/components/ui/badge/Badge";
@@ -287,6 +289,10 @@ export default function ReturnDetail() {
               </p>
             )}
           </DetailCard>
+
+          <AttachmentsCard ownerType="RETURN_TO_VENDOR" ownerId={rtv.id} defaultCategory="QUALITY_PHOTO" />
+
+          <HistoryCard entityType="ReturnToVendor" entityId={rtv.id} />
 
           <DetailCard title="System Information" icon={SectionIcons.info}>
             <DetailGrid>

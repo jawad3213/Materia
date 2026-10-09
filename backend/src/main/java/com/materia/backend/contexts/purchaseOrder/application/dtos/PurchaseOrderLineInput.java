@@ -1,5 +1,6 @@
 package com.materia.backend.contexts.purchaseOrder.application.dtos;
 
+import java.math.BigDecimal;
 import com.materia.backend.common.application.BaseInput;
 import com.materia.backend.common.domain.valueObjects.Money;
 
@@ -26,6 +27,8 @@ public class PurchaseOrderLineInput extends BaseInput {
     private String supplierName;
     private LocalDate expectedDeliveryDate;
     private String notes;
+    /** VAT rate in percent; when absent, the default rate applies (app.tax.default-rate). */
+    private BigDecimal taxRate;
 
     public UUID getId() {
         return id;
@@ -146,4 +149,7 @@ public class PurchaseOrderLineInput extends BaseInput {
     public void setNotes(String notes) {
         this.notes = notes;
     }
+
+    public BigDecimal getTaxRate() { return taxRate; }
+    public void setTaxRate(BigDecimal taxRate) { this.taxRate = taxRate; }
 }

@@ -249,4 +249,26 @@ class InvoiceServiceMatchTest {
         verify(invoices, times(1)).deleteById(deleted.capture());
         assertEquals(draft.getId(), deleted.getValue());
     }
+
+    @Test
+    @DisplayName("VAT: an invoice line without VAT takes its order line's rate; another rate blocks verification")
+    void vat_againstTheOrderLine() {
+        order.getLines().get(0).setTaxRate(new java.math.BigDecimal("20"));
+
+        InvoiceOutput inherited = service.create(input(InvoiceType.STANDARD, 4));
+        assertEquals(0, new java.math.BigDecimal("20").compareTo(inherited.getLines().get(0).getTaxRate()));
+        assertEquals(0, new java.math.BigDecimal("4.00").compareTo(inherited.getLines().get(0).getTaxAmount().getAmount()),
+                "4 x 5.00 at 20%");
+        assertFalse(inherited.getLines().get(0).isHasTaxDiscrepancy());
+
+        Invoice reduced = existing(InvoiceType.STANDARD, 4);
+        reduced.getLines().get(0).setTaxRate(new java.math.BigDecimal("7"));
+        reduced.getLines().get(0).recalculateTotals();
+        reduced.submit("buyer-1");
+        when(invoices.findById(reduced.getId())).thenReturn(Optional.of(reduced));
+
+        InvoiceRuleViolationException ex = assertThrows(InvoiceRuleViolationException.class,
+                () -> service.verify(reduced.getId(), "admin-1"));
+        assertTrue(ex.getMessage().contains("VAT"), ex.getMessage());
+    }
 }

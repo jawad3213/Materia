@@ -9,6 +9,8 @@ import org.springframework.context.annotation.DependsOn;
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.orm.jpa.JpaTransactionManager;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.boot.autoconfigure.orm.jpa.HibernatePropertiesCustomizer;
 import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
 import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -130,7 +132,8 @@ public class DatabaseConfig {
     @Bean
     @Primary
     @DependsOn("flyway")
-    public LocalContainerEntityManagerFactoryBean entityManagerFactory(DataSource dataSource) {
+    public LocalContainerEntityManagerFactoryBean entityManagerFactory(
+            DataSource dataSource, ObjectProvider<HibernatePropertiesCustomizer> hibernateCustomizers) {
         LocalContainerEntityManagerFactoryBean emf = new LocalContainerEntityManagerFactoryBean();
 
         emf.setDataSource(dataSource);
@@ -169,6 +172,10 @@ public class DatabaseConfig {
         // Timeouts
         properties.put("jakarta.persistence.query.timeout", 30000);
         properties.put("hibernate.jdbc.timeout", 30);
+
+        // This factory replaces Spring Boot's, so apply the customizers Boot would have applied
+        // (the change history registers its Hibernate listeners this way).
+        hibernateCustomizers.orderedStream().forEach(customizer -> customizer.customize(properties));
 
         emf.setJpaPropertyMap(properties);
 

@@ -172,6 +172,12 @@ public class InvoicePersistenceMapper {
         entity.setHasQuantityDiscrepancy(domain.isHasQuantityDiscrepancy());
         entity.setDiscrepancyNotes(domain.getDiscrepancyNotes());
         entity.setNotes(domain.getNotes());
+        entity.setOrderUnitPrice(domain.getOrderUnitPrice() != null ? domain.getOrderUnitPrice().getAmount() : null);
+        entity.setPriceVariancePercent(domain.getPriceVariancePercent());
+        entity.setHasPriceDiscrepancy(domain.isHasPriceDiscrepancy());
+        entity.setTaxRate(domain.getTaxRate());
+        entity.setOrderTaxRate(domain.getOrderTaxRate());
+        entity.setHasTaxDiscrepancy(domain.isHasTaxDiscrepancy());
         return entity;
     }
 
@@ -205,6 +211,14 @@ public class InvoicePersistenceMapper {
         domain.setQuantityDiscrepancy(entity.getQuantityDiscrepancy());
         domain.setHasQuantityDiscrepancy(entity.isHasQuantityDiscrepancy());
         domain.setDiscrepancyNotes(entity.getDiscrepancyNotes());
+        domain.setOrderUnitPrice(entity.getOrderUnitPrice() != null
+                ? Money.of(entity.getOrderUnitPrice(), CurrencyCode.valueOf(entity.getCurrencyCode())) : null);
+        domain.setPriceVariancePercent(entity.getPriceVariancePercent());
+        domain.setHasPriceDiscrepancy(entity.isHasPriceDiscrepancy());
+        // Set after building: the stored tax amount stays as recorded rather than being computed again.
+        domain.setTaxRate(entity.getTaxRate());
+        domain.setOrderTaxRate(entity.getOrderTaxRate());
+        domain.setHasTaxDiscrepancy(entity.isHasTaxDiscrepancy());
         return domain;
     }
 }

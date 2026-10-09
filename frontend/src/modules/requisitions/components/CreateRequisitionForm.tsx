@@ -1,4 +1,6 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
+import ChangeReasonField from "../../audit/components/ChangeReasonField";
+import { withChangeReason } from "../../audit/services/auditService";
 import useAuth from "../../auth/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { requisitionApi } from "../services/requisitionApi";
@@ -67,6 +69,7 @@ export default function CreateRequisitionForm({ requisitionId }: CreateRequisiti
   const { user } = useAuth();
   const navigate = useNavigate();
   const isEditMode = Boolean(requisitionId);
+  const [changeReason, setChangeReason] = useState("");
   const [isLoadingExisting, setIsLoadingExisting] = useState(false);
   const [existingStatus, setExistingStatus] = useState<string | null>(null);
   const isReadOnly = Boolean(
@@ -104,7 +107,7 @@ export default function CreateRequisitionForm({ requisitionId }: CreateRequisiti
   });
 
   // Live currency converter hook
-  const { convertToTarget, isLoadingRates, rates } = useCurrencyConverter(formData.currencyCode);
+  const { convertToTarget, rates } = useCurrencyConverter(formData.currencyCode);
 
   // Dynamic lines state
   const [lines, setLines] = useState<LocalLineItem[]>([
@@ -551,7 +554,7 @@ export default function CreateRequisitionForm({ requisitionId }: CreateRequisiti
           updatedBy: effectiveRequester,
           lines: payload.lines,
         };
-        const res = await requisitionApi.update(requisitionId, updatePayload);
+        const res = await requisitionApi.update(requisitionId, updatePayload, withChangeReason(changeReason));
         const code = res.data?.requisitionCode || "";
         setSubmitMessage({
           type: "success",
@@ -1163,6 +1166,8 @@ export default function CreateRequisitionForm({ requisitionId }: CreateRequisiti
               </div>
             </div>
           </div>
+
+          {isEditMode && <ChangeReasonField value={changeReason} onChange={setChangeReason} className="mt-6" />}
 
           {/* Form Actions Footer */}
           <div className="flex flex-wrap items-center justify-between gap-3 pt-6 border-t border-gray-100 dark:border-white/[0.07]">

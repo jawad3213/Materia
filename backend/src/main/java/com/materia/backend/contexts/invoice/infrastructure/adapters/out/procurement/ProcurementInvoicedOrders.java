@@ -43,7 +43,7 @@ public class ProcurementInvoicedOrders implements InvoicedOrders {
                 order.supplierName(), order.currencyCode(),
                 order.lines().stream()
                         .map(line -> new OrderedLine(line.id(), line.materialCode(), line.materialName(),
-                                line.unitOfMeasure(), line.quantity(), line.unitPrice()))
+                                line.unitOfMeasure(), line.quantity(), line.unitPrice(), line.taxRate()))
                         .toList());
     }
 }

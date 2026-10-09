@@ -1,5 +1,6 @@
 package com.materia.backend.contexts.payment.application.services;
 
+import com.materia.backend.common.audit.application.AuditContext;
 import com.materia.backend.common.application.AbstractCrudApplicationService;
 import com.materia.backend.contexts.payment.application.dtos.CreatePaymentInput;
 import com.materia.backend.contexts.payment.application.dtos.PaymentOutput;
@@ -33,7 +34,12 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
+/**
+ * Reads run in a read-only transaction: payment lines are lazily loaded and open-in-view is off, so mapping a
+ * payment outside a transaction fails (as in GoodsReceiptService). Writes declare their own.
+ */
 @Service
+@Transactional(readOnly = true)
 public class PaymentService extends AbstractCrudApplicationService<
         Payment, CreatePaymentInput, UpdatePaymentInput, PaymentOutput> implements PaymentUseCase {
 
@@ -41,6 +47,20 @@ public class PaymentService extends AbstractCrudApplicationService<
     private final PaymentMapper paymentMapper;
     private final PaymentCodeGeneratorService codeGeneratorService;
     private final PayableInvoices payableInvoices;
+
+    private com.materia.backend.common.domain.fx.ReportingFx reportingFx;
+
+    /** Values committed documents in the reporting currency; absent in unit tests that do not need it. */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setReportingFx(com.materia.backend.common.domain.fx.ReportingFx reportingFx) {
+        this.reportingFx = reportingFx;
+    }
+
+    private void valueInReportingCurrency(UUID id) {
+        if (reportingFx != null && id != null) {
+            reportingFx.valueDocument(com.materia.backend.common.domain.fx.FxDocument.PAYMENT, id);
+        }
+    }
 
     public PaymentService(PaymentPort paymentPort, PaymentMapper paymentMapper, PaymentCodeGeneratorService codeGeneratorService,
                           PayableInvoices payableInvoices) {
@@ -64,6 +84,7 @@ public class PaymentService extends AbstractCrudApplicationService<
     }
 
     @Override
+    @Transactional
     public PaymentOutput update(UUID id, CreatePaymentInput request) {
         UpdatePaymentInput updateRequest = new UpdatePaymentInput();
         updateRequest.setNotes(request.getNotes());
@@ -154,12 +175,16 @@ public class PaymentService extends AbstractCrudApplicationService<
         for (PaymentLine line : payment.getLines()) {
             payableInvoices.recordPayment(line.getInvoiceId(), userId, line.getAmount().getAmount());
         }
-        return toResponse(saveEntity(payment));
+        Payment saved = saveEntity(payment);
+        // Executed: the payment is now valued at the rate of its execution date.
+        valueInReportingCurrency(saved.getId());
+        return toResponse(saved);
     }
 
     @Override
     @Transactional
     public PaymentOutput cancel(UUID id, String userId, String reason) {
+        AuditContext.because(reason);
         Payment payment = getPaymentById(id);
         payment.cancel(userId, reason);
         return toResponse(saveEntity(payment));

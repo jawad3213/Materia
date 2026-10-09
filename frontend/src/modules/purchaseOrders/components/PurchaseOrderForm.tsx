@@ -1,4 +1,7 @@
 import React, { useState, useEffect } from "react";
+import { DEFAULT_VAT_RATE, effectiveVatRate, lineVat } from "../utils/vat";
+import ChangeReasonField from "../../audit/components/ChangeReasonField";
+import { withChangeReason } from "../../audit/services/auditService";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import purchaseOrderService from "../services/purchaseOrderService";
 import { supplierApi } from "../../suppliers/services/supplierApi";
@@ -27,6 +30,7 @@ export default function PurchaseOrderForm({ purchaseOrderId }: PurchaseOrderForm
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const isEdit = !!purchaseOrderId;
+  const [changeReason, setChangeReason] = useState("");
   const fromRequisitionId = isEdit
     ? null
     : searchParams.get("fromRequisition") || searchParams.get("requisitionId");
@@ -58,7 +62,6 @@ export default function PurchaseOrderForm({ purchaseOrderId }: PurchaseOrderForm
   const [deliveryTerms, setDeliveryTerms] = useState("Livraison sur site DAP");
   const [incoterm, setIncoterm] = useState("DAP");
   const [currencyCode, setCurrencyCode] = useState("MAD");
-  const [taxAmount, setTaxAmount] = useState<number>(0);
   const [shippingCost, setShippingCost] = useState<number>(0);
   const [notes, setNotes] = useState("");
   const [internalNotes, setInternalNotes] = useState("");
@@ -72,6 +75,7 @@ export default function PurchaseOrderForm({ purchaseOrderId }: PurchaseOrderForm
       materialName: "",
       quantity: 1,
       unitPrice: 0,
+      taxRate: DEFAULT_VAT_RATE,
       currencyCode: "MAD",
     },
   ]);
@@ -104,6 +108,7 @@ export default function PurchaseOrderForm({ purchaseOrderId }: PurchaseOrderForm
         unitOfMeasure: l.unitOfMeasure || "U",
         quantity: Number(l.quantity) || 1,
         unitPrice: Number(l.unitPrice) || 0,
+        taxRate: DEFAULT_VAT_RATE,
         currencyCode: l.currencyCode || req.currencyCode || "MAD",
         expectedDeliveryDate: l.requiredDate || req.requiredDate || "",
         notes: l.notes || "",
@@ -137,10 +142,12 @@ export default function PurchaseOrderForm({ purchaseOrderId }: PurchaseOrderForm
     setDeliveryTerms(order.deliveryTerms || "");
     setIncoterm(order.incoterm || "");
     setCurrencyCode(order.currencyCode);
-    setTaxAmount(parseAmount(order.taxAmount));
     setShippingCost(parseAmount(order.shippingCost));
     setNotes(order.notes || "");
     setInternalNotes(order.internalNotes || "");
+    // Orders created before VAT per line carry one tax amount: their lines take its effective rate.
+    const orderSubtotal = order.lines.reduce((acc, l) => acc + (Number(l.quantity) || 0) * parseAmount(l.unitPrice), 0);
+    const legacyRate = effectiveVatRate(order.taxAmount == null ? null : parseAmount(order.taxAmount), orderSubtotal);
     setLines(
       order.lines.map((l, idx) => ({
         tempId: l.id || `line-${idx + 1}`,
@@ -154,6 +161,7 @@ export default function PurchaseOrderForm({ purchaseOrderId }: PurchaseOrderForm
         unitOfMeasure: l.unitOfMeasure || "U",
         quantity: Number(l.quantity) || 1,
         unitPrice: parseAmount(l.unitPrice),
+        taxRate: l.taxRate != null ? Number(l.taxRate) : legacyRate,
         currencyCode: l.currencyCode || order.currencyCode,
         expectedDeliveryDate: l.expectedDeliveryDate || "",
         notes: l.notes || "",
@@ -274,6 +282,7 @@ export default function PurchaseOrderForm({ purchaseOrderId }: PurchaseOrderForm
         materialName: "",
         quantity: 1,
         unitPrice: 0,
+        taxRate: DEFAULT_VAT_RATE,
         currencyCode,
       },
     ]);
@@ -328,7 +337,13 @@ export default function PurchaseOrderForm({ purchaseOrderId }: PurchaseOrderForm
     return acc + q * p;
   }, 0);
 
-  const grandTotal = subtotal + Number(taxAmount || 0) + Number(shippingCost || 0);
+  // The order's VAT is the sum of its lines' VAT; the backend computes the same total.
+  const vatTotal = lines.reduce(
+    (acc, l) => acc + lineVat(Number(l.quantity) || 0, Number(l.unitPrice) || 0, Number(l.taxRate ?? DEFAULT_VAT_RATE)),
+    0
+  );
+
+  const grandTotal = subtotal + vatTotal + Number(shippingCost || 0);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -358,6 +373,11 @@ export default function PurchaseOrderForm({ purchaseOrderId }: PurchaseOrderForm
         setError(`Le prix unitaire de la ligne #${i + 1} est invalide.`);
         return;
       }
+      const rate = Number(l.taxRate ?? DEFAULT_VAT_RATE);
+      if (Number.isNaN(rate) || rate < 0 || rate > 100) {
+        setError(`Le taux de TVA de la ligne #${i + 1} doit être compris entre 0 et 100 %.`);
+        return;
+      }
     }
 
     try {
@@ -375,7 +395,6 @@ export default function PurchaseOrderForm({ purchaseOrderId }: PurchaseOrderForm
         deliveryTerms: deliveryTerms || undefined,
         incoterm: incoterm || undefined,
         currencyCode,
-        taxAmount: Number(taxAmount) || 0,
         shippingCost: Number(shippingCost) || 0,
         orderedBy: user?.id || "CURRENT_USER",
         orderedByName: user?.name || user?.email || "Acheteur",
@@ -390,6 +409,7 @@ export default function PurchaseOrderForm({ purchaseOrderId }: PurchaseOrderForm
           unitOfMeasure: l.unitOfMeasure || undefined,
           quantity: Number(l.quantity),
           unitPrice: Number(l.unitPrice),
+          taxRate: Number(l.taxRate ?? DEFAULT_VAT_RATE),
           currencyCode,
           expectedDeliveryDate: l.expectedDeliveryDate || expectedDeliveryDate || undefined,
           notes: l.notes || undefined,
@@ -405,7 +425,7 @@ export default function PurchaseOrderForm({ purchaseOrderId }: PurchaseOrderForm
           requisitionCode: undefined,
           lines: payload.lines.map((l, idx) => ({ ...l, id: lines[idx].id || undefined })),
           updatedBy: user?.id || "CURRENT_USER",
-        });
+        }, withChangeReason(changeReason));
         navigate(`/purchase-orders/${res.data.id}`);
         return;
       }
@@ -645,6 +665,7 @@ export default function PurchaseOrderForm({ purchaseOrderId }: PurchaseOrderForm
                   <th className="py-2 px-2 w-48">Code</th>
                   <th className="py-2 px-2 w-28 text-right">Quantité</th>
                   <th className="py-2 px-2 w-32 text-right">Prix Unitaire</th>
+                  <th className="py-2 px-2 w-24 text-right">TVA %</th>
                   <th className="py-2 px-2 text-right">Total Ligne</th>
                   <th className="py-2 pl-2 w-10"></th>
                 </tr>
@@ -722,9 +743,27 @@ export default function PurchaseOrderForm({ purchaseOrderId }: PurchaseOrderForm
                         />
                       </td>
 
+                      {/* VAT rate */}
+                      <td className="py-2 px-2">
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          step="0.01"
+                          value={l.taxRate ?? DEFAULT_VAT_RATE}
+                          onChange={(e) =>
+                            handleLineChange(l.tempId, "taxRate", parseFloat(e.target.value) || 0)
+                          }
+                          className="w-full rounded-lg border border-gray-200 dark:border-white/[0.1] bg-white dark:bg-gray-800 p-2 text-xs text-right text-gray-800 dark:text-white focus:border-brand-500 focus:outline-none"
+                        />
+                      </td>
+
                       {/* Line Total */}
                       <td className="py-2 px-2 text-right font-bold text-gray-900 dark:text-white">
                         {lineTotal.toFixed(2)} {currencyCode}
+                        <span className="block text-[11px] font-normal text-gray-500 dark:text-gray-400">
+                          + {lineVat(Number(l.quantity) || 0, Number(l.unitPrice) || 0, Number(l.taxRate ?? DEFAULT_VAT_RATE)).toFixed(2)} TVA
+                        </span>
                       </td>
 
                       {/* Remove Button */}
@@ -758,15 +797,10 @@ export default function PurchaseOrderForm({ purchaseOrderId }: PurchaseOrderForm
             </div>
 
             <div className="flex items-center justify-between w-64 text-gray-600 dark:text-gray-400">
-              <span>TVA / Taxes :</span>
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={taxAmount}
-                onChange={(e) => setTaxAmount(parseFloat(e.target.value) || 0)}
-                className="w-24 rounded-lg border border-gray-200 dark:border-white/[0.1] bg-white dark:bg-gray-800 p-1 text-xs text-right text-gray-800 dark:text-white"
-              />
+              <span>TVA (somme des lignes) :</span>
+              <span className="font-semibold text-gray-800 dark:text-gray-200">
+                {vatTotal.toFixed(2)} {currencyCode}
+              </span>
             </div>
 
             <div className="flex items-center justify-between w-64 text-gray-600 dark:text-gray-400">
@@ -827,6 +861,8 @@ export default function PurchaseOrderForm({ purchaseOrderId }: PurchaseOrderForm
             </div>
           </div>
         </div>
+
+        {isEdit && <ChangeReasonField value={changeReason} onChange={setChangeReason} />}
 
         {/* Submit Actions */}
         <div className="flex items-center justify-end gap-3 pt-2">

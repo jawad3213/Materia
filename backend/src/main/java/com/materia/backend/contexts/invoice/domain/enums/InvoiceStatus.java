@@ -34,14 +34,14 @@ public enum InvoiceStatus {
     
     public static InvoiceStatus fromCode(String code) {
         if (code == null || code.isEmpty()) {
-            throw new IllegalArgumentException("Le code est obligatoire");
+            throw new IllegalArgumentException("The code is required");
         }
         for (InvoiceStatus status : values()) {
             if (status.code.equals(code)) {
                 return status;
             }
         }
-        throw new IllegalArgumentException("Statut inconnu : " + code);
+        throw new IllegalArgumentException("Unknown status: " + code);
     }
     
     public static List<String> getCodes() {

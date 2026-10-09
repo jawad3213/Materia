@@ -4,6 +4,8 @@ import com.materia.backend.contexts.purchaseOrder.domain.exceptions.PurchaseOrde
 import com.materia.backend.common.domain.valueObjects.Money;
 import com.materia.backend.common.domain.enums.CurrencyCode;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.UUID;
 
@@ -40,6 +42,10 @@ public class PurchaseOrderLine {
     
     private Money unitPrice;
     private Money lineTotal;
+    /** VAT rate in percent (20 for 20%); null when the order still carries one tax amount for all its lines. */
+    private BigDecimal taxRate;
+    /** VAT of the line: line total x rate, computed with the total. */
+    private Money taxAmount;
     private String currencyCode;
     
     // ============================================================
@@ -88,6 +94,8 @@ public class PurchaseOrderLine {
         
         this.unitPrice = builder.unitPrice;
         this.lineTotal = builder.lineTotal;
+        this.taxRate = builder.taxRate;
+        this.taxAmount = builder.taxAmount;
         this.currencyCode = builder.currencyCode;
         
         this.supplierId = builder.supplierId;
@@ -121,6 +129,8 @@ public class PurchaseOrderLine {
         
         private Money unitPrice;
         private Money lineTotal;
+        private BigDecimal taxRate;
+        private Money taxAmount;
         private String currencyCode;
         
         private UUID supplierId;
@@ -180,6 +190,11 @@ public class PurchaseOrderLine {
             return this;
         }
         
+        public Builder taxRate(BigDecimal taxRate) {
+            this.taxRate = taxRate;
+            return this;
+        }
+
         public Builder lineTotal(Money lineTotal) {
             this.lineTotal = lineTotal;
             return this;
@@ -241,6 +256,8 @@ public class PurchaseOrderLine {
             if (unitPrice != null && quantity != null) {
                 this.lineTotal = unitPrice.multiply(quantity);
             }
+            validateTaxRate(taxRate);
+            this.taxAmount = taxOn(lineTotal, taxRate);
         }
     }
     
@@ -252,6 +269,39 @@ public class PurchaseOrderLine {
         if (unitPrice != null && quantity != null) {
             this.lineTotal = unitPrice.multiply(quantity);
         }
+        this.taxAmount = taxOn(lineTotal, taxRate);
+    }
+
+    /** The VAT on a line total at a rate in percent, rounded to the cent; null without a rate. */
+    public static Money taxOn(Money lineTotal, BigDecimal ratePercent) {
+        if (lineTotal == null || ratePercent == null) return null;
+        BigDecimal tax = lineTotal.getAmount().multiply(ratePercent)
+                .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+        return Money.of(tax, lineTotal.getCurrency());
+    }
+
+    /** A VAT rate is a percentage between 0 and 100. */
+    public static void validateTaxRate(BigDecimal ratePercent) {
+        if (ratePercent != null && (ratePercent.signum() < 0 || ratePercent.compareTo(BigDecimal.valueOf(100)) > 0)) {
+            throw new PurchaseOrderInvalidLineException("The VAT rate must be between 0 and 100 percent");
+        }
+    }
+
+    public BigDecimal getTaxRate() {
+        return taxRate;
+    }
+
+    public void setTaxRate(BigDecimal taxRate) {
+        validateTaxRate(taxRate);
+        this.taxRate = taxRate;
+    }
+
+    public Money getTaxAmount() {
+        return taxAmount;
+    }
+
+    public void setTaxAmount(Money taxAmount) {
+        this.taxAmount = taxAmount;
     }
     
     // ============================================================

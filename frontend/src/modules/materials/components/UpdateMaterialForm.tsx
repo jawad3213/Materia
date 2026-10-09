@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from "react";
+import ChangeReasonField from "../../audit/components/ChangeReasonField";
+import { withChangeReason } from "../../audit/services/auditService";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { MaterialStatus, MaterialType, UnitOfMeasure, CurrencyCode } from "../enums";
@@ -23,6 +25,7 @@ interface Props {
 
 export default function UpdateMaterialForm({ id }: Props) {
   const navigate = useNavigate();
+  const [changeReason, setChangeReason] = useState("");
   const [keywords, setKeywords] = useState<string[]>([]);
   const [keywordInput, setKeywordInput] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -193,7 +196,7 @@ export default function UpdateMaterialForm({ id }: Props) {
         costPrice: Number(formData.costPrice) || 0,
       };
 
-      await materialApi.update(id, requestPayload);
+      await materialApi.update(id, requestPayload, withChangeReason(changeReason));
       setSubmitMessage({ type: "success", text: "Material updated successfully!" });
 
       // Navigate back to list after a short delay
@@ -497,6 +500,8 @@ export default function UpdateMaterialForm({ id }: Props) {
               </div>
             </div>
           </div>
+
+          <ChangeReasonField value={changeReason} onChange={setChangeReason} className="mt-8" />
 
           {/* Action Buttons */}
           <div className="mt-10 flex flex-wrap items-center justify-end gap-3 pt-6 border-t border-gray-200 dark:border-gray-800">

@@ -43,6 +43,17 @@ export interface InvoiceLine {
   currencyCode?: string | null;
   hasQuantityDiscrepancy: boolean;
   discrepancyNotes?: string | null;
+  /** Unit price of the matched purchase-order line. */
+  orderUnitPrice?: number | null;
+  /** Invoiced price against the order price, in percent (positive when billed higher). */
+  priceVariancePercent?: number | null;
+  /** The variance is beyond the tolerance: the invoice cannot be verified. */
+  hasPriceDiscrepancy?: boolean;
+  /** VAT rate invoiced, and the rate of the order line it was matched against (percent). */
+  taxRate?: number | null;
+  orderTaxRate?: number | null;
+  /** The VAT is not what the order line rate gives: the invoice cannot be verified. */
+  hasTaxDiscrepancy?: boolean;
   notes?: string | null;
 }
 
@@ -92,6 +103,8 @@ export interface InvoiceLineRequest {
   unitOfMeasure?: string;
   quantityInvoiced: number;
   unitPrice: number;
+  /** VAT rate in percent; the backend computes the tax from it. */
+  taxRate?: number;
   taxAmount?: number;
   notes?: string;
 }

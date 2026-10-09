@@ -1,3 +1,4 @@
+import type { AxiosRequestConfig } from "axios";
 import axiosClient from '../../../shared/api/axiosClient';
 import type { Supplier } from '../types/Supplier';
 import type { SupplierListItem } from '../types/SupplierListItem';
@@ -18,7 +19,8 @@ export const supplierApi = {
   getAllList: (page = 0, size = 10) =>
     axiosClient.get<{ content: SupplierListItem[]; totalPages: number; totalElements: number; pageNumber: number; pageSize: number; last: boolean }>(`${BASE_URL}/list`, { params: { page, size } }),
   getAllUnpaginated: (params?: SupplierFilterRequest) => axiosClient.get<SupplierListItem[]>(BASE_URL, { params }),
-  update: (id: string, data: UpdateSupplierRequest) => axiosClient.put<Supplier>(`${BASE_URL}/${id}`, data),
+  update: (id: string, data: UpdateSupplierRequest, config?: AxiosRequestConfig) =>
+    axiosClient.put<Supplier>(`${BASE_URL}/${id}`, data, config),
   delete: (id: string) => axiosClient.delete(`${BASE_URL}/${id}`),
   
   // ---- Custom Endpoints ----

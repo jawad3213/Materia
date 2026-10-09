@@ -23,7 +23,6 @@ const statusOptions = [
   { value: "SUBMITTED", label: "Soumise (SUBMITTED)" },
   { value: "CONFIRMED", label: "Confirmée (CONFIRMED)" },
   { value: "READY_FOR_RECEIPT", label: "Prête pour réception" },
-  { value: "RECEIVED", label: "Reçue (RECEIVED)" },
   { value: "PARTIALLY_RECEIVED", label: "Partiellement reçue" },
   { value: "COMPLETED", label: "Terminée (COMPLETED)" },
   { value: "CANCELLED", label: "Annulée (CANCELLED)" },

@@ -143,7 +143,8 @@ public class InvoiceWebMapper implements BaseWebMapper<
         }
 
         InvoiceLineWebResponse response = new InvoiceLineWebResponse();
-        BeanUtils.copyProperties(appLine, response, "unitPrice", "lineTotal", "taxAmount", "lineTotalWithTax");
+        BeanUtils.copyProperties(appLine, response, "unitPrice", "lineTotal", "taxAmount", "lineTotalWithTax", "orderUnitPrice");
+        response.setOrderUnitPrice(formatMoney(appLine.getOrderUnitPrice()));
         response.setUnitPrice(formatMoney(appLine.getUnitPrice()));
         response.setLineTotal(formatMoney(appLine.getLineTotal()));
         response.setTaxAmount(formatMoney(appLine.getTaxAmount()));
