@@ -44,7 +44,9 @@ class OutboxIT extends AbstractIntegrationTest {
 
         transactions.executeWithoutResult(status -> events.publishEvent(event));
 
-        List<OutboxMessageJpaEntity> stored = outbox.findAll();
+        // Other tests commit events too: look for this one rather than counting the table.
+        List<OutboxMessageJpaEntity> stored = outbox.findAll().stream()
+                .filter(m -> event.getEventId().equals(m.getEventId())).toList();
         assertEquals(1, stored.size());
         OutboxMessageJpaEntity message = stored.get(0);
         assertEquals(event.getEventId(), message.getEventId());
@@ -56,11 +58,12 @@ class OutboxIT extends AbstractIntegrationTest {
     @Test
     @DisplayName("outbox: an event raised in a rolled-back transaction is not stored")
     void rolledBackEventIsNotStored() {
+        PurchaseOrderDeliveredEvent event = delivered();
         transactions.executeWithoutResult(status -> {
-            events.publishEvent(delivered());
+            events.publishEvent(event);
             status.setRollbackOnly();
         });
 
-        assertTrue(outbox.findAll().isEmpty());
+        assertTrue(outbox.findAll().stream().noneMatch(m -> event.getEventId().equals(m.getEventId())));
     }
 }
