@@ -43,7 +43,7 @@ public class OutboxRecorder {
                 event.getOccurredOn()));
     }
 
-    static String sourceContextOf(DomainEvent event) {
+    public static String sourceContextOf(DomainEvent event) {
         Matcher matcher = CONTEXT_PACKAGE.matcher(event.getClass().getName());
         return matcher.matches() ? matcher.group(1) : "common";
     }

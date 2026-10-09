@@ -6,7 +6,6 @@ import com.materia.backend.contexts.purchaseOrder.domain.events.PurchaseOrderSub
 import com.materia.backend.contexts.purchaseOrder.domain.ports.out.PurchaseOrderEventPublisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
@@ -15,7 +14,6 @@ import org.springframework.stereotype.Component;
  * Active when app.messaging.type=spring (or when not explicitly set).
  */
 @Component
-@ConditionalOnProperty(name = "app.messaging.type", havingValue = "spring", matchIfMissing = true)
 public class PurchaseOrderSpringEventPublisher implements PurchaseOrderEventPublisher {
 
     private static final Logger log = LoggerFactory.getLogger(PurchaseOrderSpringEventPublisher.class);
