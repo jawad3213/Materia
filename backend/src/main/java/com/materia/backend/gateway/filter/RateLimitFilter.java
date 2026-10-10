@@ -42,7 +42,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
                                     FilterChain filterChain) throws ServletException, IOException {
 
         String uri = request.getRequestURI();
-        String clientIp = extractClientIp(request);
+        String clientIp = ClientIp.from(request);
 
         // Credential endpoints are unauthenticated, so skipping them (as every other
         // public route does) would leave password guessing completely unthrottled.
@@ -88,13 +88,5 @@ public class RateLimitFilter extends OncePerRequestFilter {
         return uri.equals("/api/v1/auth/login")
                 || uri.equals("/api/v1/auth/forgot-password")
                 || uri.equals("/api/v1/auth/reset-password");
-    }
-
-    private String extractClientIp(HttpServletRequest request) {
-        String xfHeader = request.getHeader("X-Forwarded-For");
-        if (xfHeader != null && !xfHeader.isBlank()) {
-            return xfHeader.split(",")[0].trim();
-        }
-        return request.getRemoteAddr();
     }
 }

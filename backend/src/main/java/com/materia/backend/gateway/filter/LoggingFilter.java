@@ -50,7 +50,7 @@ public class LoggingFilter extends OncePerRequestFilter {
 
         String method = request.getMethod();
         String uri = request.getRequestURI();
-        String clientIp = extractClientIp(request);
+        String clientIp = ClientIp.from(request);
 
         log.info("[GATEWAY-REQ] [{}] {} {} from IP={}", traceId, method, uri, clientIp);
 
@@ -62,13 +62,5 @@ public class LoggingFilter extends OncePerRequestFilter {
             log.info("[GATEWAY-RES] [{}] {} {} -> Status={} ({} ms)", traceId, method, uri, status, duration);
             MDC.remove(TRACE_MDC_KEY);
         }
-    }
-
-    private String extractClientIp(HttpServletRequest request) {
-        String xfHeader = request.getHeader("X-Forwarded-For");
-        if (xfHeader != null && !xfHeader.isBlank()) {
-            return xfHeader.split(",")[0].trim();
-        }
-        return request.getRemoteAddr();
     }
 }

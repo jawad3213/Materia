@@ -63,6 +63,14 @@ public class GatewaySecurityConfig {
     @Value("${app.cors.allowed-origins}")
     private List<String> allowedOrigins;
 
+    /**
+     * The actuator's own port when the deployment gives it one (management.server.port), else -1. That port is
+     * not published outside the host: Prometheus scrapes it and the container health check calls it, without a
+     * token. On the application port the actuator stays as protected as any other route.
+     */
+    @Value("${management.server.port:-1}")
+    private int managementPort;
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
@@ -83,6 +91,8 @@ public class GatewaySecurityConfig {
                 // Endpoint authorization rules
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(publicEndpoints).permitAll()
+                        .requestMatchers(request -> managementPort > 0 && request.getLocalPort() == managementPort)
+                        .permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .anyRequest().authenticated()
                 )
