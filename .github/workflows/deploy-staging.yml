@@ -1,11 +1,17 @@
 name: Deploy to Staging
 
+# Runs when the CI workflow succeeded on staging or develop: CI has tested, scanned and pushed the images tagged with the commit
+# SHA, and this deploys exactly those. Run it by hand to redeploy a commit (e.g. to roll back).
 on:
-  push:
-    branches:
-      - staging
-      - develop
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [staging, develop]
   workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Commit SHA whose images to deploy (default: the latest commit of this branch)"
+        required: false
 
 permissions:
   id-token: write # GitHub OIDC -> AWS deploy role
@@ -13,7 +19,12 @@ permissions:
 
 jobs:
   deploy:
+    # After CI: only a successful run for a push (pull requests never deploy).
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
     uses: ./.github/workflows/deploy-ec2.yml
     with:
       environment: staging
       github_environment: staging
+      image_tag: ${{ github.event.workflow_run.head_sha || inputs.image_tag || github.sha }}

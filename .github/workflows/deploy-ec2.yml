@@ -1,6 +1,7 @@
 name: Deploy to EC2 (reusable)
 
-# Build -> push images to ECR -> deploy on the EC2 host through SSM Run Command.
+# Deploy images already built, scanned and pushed to ECR by the CI workflow (ci.yml) on the EC2 host,
+# through SSM Run Command. Nothing is rebuilt here: what runs is exactly what CI tested.
 # AWS access is keyless: the job exchanges its GitHub OIDC token for the
 # environment's deploy role (aws/modules/github_deploy_role).
 #
@@ -17,6 +18,10 @@ on:
         required: true
       github_environment:
         description: "GitHub environment holding the deploy variables (staging / production)"
+        type: string
+        required: true
+      image_tag:
+        description: "Image tag pushed by CI: the commit SHA it built"
         type: string
         required: true
 
@@ -38,40 +43,13 @@ jobs:
       cancel-in-progress: false
     env:
       ENVIRONMENT: ${{ inputs.environment }}
-      AWS_REGION: ${{ vars.AWS_REGION || 'eu-west-3' }}
-      IMAGE_TAG: ${{ github.sha }}
+      AWS_REGION: ${{ vars.AWS_REGION || secrets.AWS_REGION || 'eu-west-3' }}
+      IMAGE_TAG: ${{ inputs.image_tag }}
     steps:
-      - name: Checkout
+      - name: Checkout the deployed commit
         uses: actions/checkout@v4
-
-      # ---------------------------------------------------------------
-      # Build and test
-      # ---------------------------------------------------------------
-      - name: Set up Java 21
-        uses: actions/setup-java@v4
         with:
-          distribution: temurin
-          java-version: "21"
-          cache: maven
-
-      - name: Build backend (tests included)
-        working-directory: backend
-        run: |
-          chmod +x mvnw
-          ./mvnw -B clean verify
-
-      - name: Set up Node.js 20
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-
-      - name: Test frontend
-        working-directory: frontend
-        run: |
-          npm ci
-          npm test -- --run
+          ref: ${{ inputs.image_tag }}
 
       # ---------------------------------------------------------------
       # AWS (OIDC) and images
@@ -79,7 +57,7 @@ jobs:
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN || secrets.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
           role-session-name: gh-${{ github.run_id }}-${{ inputs.environment }}
 
@@ -87,17 +65,17 @@ jobs:
         id: ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build and push images
+      - name: Check the images exist in ECR
         env:
           REGISTRY: ${{ steps.ecr.outputs.registry }}
         run: |
-          BACKEND="$REGISTRY/$PROJECT-$ENVIRONMENT-backend:$IMAGE_TAG"
-          FRONTEND="$REGISTRY/$PROJECT-$ENVIRONMENT-frontend:$IMAGE_TAG"
-          docker build -t "$BACKEND" backend/
-          # nginx in the frontend image proxies /api to the backend, so the API is same-origin.
-          docker build --build-arg VITE_API_BASE_URL=/api/v1 -t "$FRONTEND" frontend/
-          docker push "$BACKEND"
-          docker push "$FRONTEND"
+          for SERVICE in backend frontend; do
+            REPOSITORY="$PROJECT-$ENVIRONMENT-$SERVICE"
+            if ! aws ecr describe-images --repository-name "$REPOSITORY" --image-ids imageTag="$IMAGE_TAG" >/dev/null; then
+              echo "::error::$REPOSITORY:$IMAGE_TAG is not in ECR. Images are pushed by the CI workflow: let it finish on this commit first."
+              exit 1
+            fi
+          done
 
       # ---------------------------------------------------------------
       # Deploy through SSM Run Command (no SSH, no open port)

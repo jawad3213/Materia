@@ -1,0 +1,9 @@
+# Accepted vulnerabilities for the CI scans (Trivy). Every entry needs a reason and an expiry date:
+# after the date the pipeline fails again, so an exception cannot be forgotten.
+
+# spring-webmvc / spring-webflux 6.2.19 (CRITICAL). Fixed only in Spring Framework 7.0.9, i.e. a Spring Boot 4
+# migration (Jakarta EE 11, Hibernate 7, Spring Security 7...), planned as its own project. Spring Boot 3.5 is the
+# latest line that can run this code today, and every patch on its line is applied (backend/pom.xml).
+CVE-2026-47884 exp:2027-01-10
+CVE-2026-47890 exp:2027-01-10
+CVE-2026-47892 exp:2027-01-10

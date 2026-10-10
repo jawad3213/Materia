@@ -1,0 +1,455 @@
+name: CI
+
+# One pipeline, one stage after the other; a stage runs only when the previous one passed:
+#
+#   1 Setup environment -> 2 Lint -> 3 Unit tests -> 4 Integration tests -> 5 SonarQube
+#     -> 6 Dependency scan -> 7 Build images -> 8 Push to Amazon ECR
+#
+# Every job starts with its own checkout (each runs on a fresh machine). Pull requests run stages 1-7;
+# images are pushed to ECR only for pushes to main (production) and staging / develop (staging).
+# Deployment (deploy-prod.yml / deploy-staging.yml) starts when this workflow succeeds and deploys
+# the images pushed here, tagged with the commit SHA.
+
+on:
+  push:
+    branches: [main, staging, develop]
+  pull_request:
+    branches: [main, staging, develop]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  # A new commit on a pull request cancels the run of the previous one; branch runs always finish.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+env:
+  JAVA_VERSION: "21"
+  NODE_VERSION: "22"
+  PROJECT: materia
+  TRIVY_VERSION: v0.58.1
+  MAVEN_ARGS: -B --no-transfer-progress # read by Maven 3.9+ (the wrapper) on every mvnw call
+
+jobs:
+  # ------------------------------------------------------------------------------------------
+  # 1. Setup environment: decide what this run targets
+  # ------------------------------------------------------------------------------------------
+  setup:
+    name: 1 · Setup environment
+    runs-on: ubuntu-latest
+    outputs:
+      image_tag: ${{ steps.target.outputs.image_tag }}
+      environment: ${{ steps.target.outputs.environment }}
+      github_environment: ${{ steps.target.outputs.github_environment }}
+      push_images: ${{ steps.target.outputs.push_images }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Decide the target environment
+        id: target
+        run: |
+          IMAGE_TAG="${GITHUB_SHA}"
+          ENVIRONMENT=""; GITHUB_ENV_NAME=""; PUSH=false
+          if [ "$GITHUB_EVENT_NAME" != "pull_request" ]; then
+            case "$GITHUB_REF_NAME" in
+              main)            ENVIRONMENT=prod;    GITHUB_ENV_NAME=production; PUSH=true ;;
+              staging|develop) ENVIRONMENT=staging; GITHUB_ENV_NAME=staging;    PUSH=true ;;
+            esac
+          fi
+          {
+            echo "image_tag=$IMAGE_TAG"
+            echo "environment=$ENVIRONMENT"
+            echo "github_environment=$GITHUB_ENV_NAME"
+            echo "push_images=$PUSH"
+          } >> "$GITHUB_OUTPUT"
+          {
+            echo "### CI target"
+            echo "| | |"
+            echo "|---|---|"
+            echo "| Ref | \`$GITHUB_REF_NAME\` ($GITHUB_EVENT_NAME) |"
+            echo "| Image tag | \`$IMAGE_TAG\` |"
+            echo "| Push to ECR | $PUSH ${ENVIRONMENT:+(→ $ENVIRONMENT)} |"
+            echo "| Java / Node | $JAVA_VERSION / $NODE_VERSION |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # ------------------------------------------------------------------------------------------
+  # 2. Lint
+  # ------------------------------------------------------------------------------------------
+  lint:
+    name: 2 · Lint
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: maven
+
+      - name: Set up Node ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Backend lint (Checkstyle)
+        working-directory: backend
+        run: |
+          chmod +x mvnw
+          ./mvnw checkstyle:check
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Frontend type check
+        working-directory: frontend
+        run: npm run typecheck
+
+      - name: Frontend lint (ESLint, no new errors)
+        working-directory: frontend
+        run: npm run lint:ci
+
+  # ------------------------------------------------------------------------------------------
+  # 3. Unit tests (backend *Test, frontend Vitest)
+  # ------------------------------------------------------------------------------------------
+  unit-tests:
+    name: 3 · Unit tests
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: maven
+
+      - name: Set up Node ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Backend unit tests
+        working-directory: backend
+        # Every test except the *IT classes, which need a database (stage 4).
+        run: |
+          chmod +x mvnw
+          ./mvnw test -Dtest='!*IT' -Dsurefire.failIfNoSpecifiedTests=false \
+            -Djacoco.destFile=target/jacoco-unit.exec
+
+      - name: Frontend unit tests (with coverage)
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run test:coverage
+
+      - name: Keep compiled classes and coverage for SonarQube
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-coverage
+          retention-days: 3
+          path: |
+            backend/target/classes
+            backend/target/test-classes
+            backend/target/jacoco-unit.exec
+            frontend/coverage/lcov.info
+
+      - name: Upload unit test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-reports
+          retention-days: 14
+          path: backend/target/surefire-reports/
+
+  # ------------------------------------------------------------------------------------------
+  # 4. Integration tests (backend *IT against PostgreSQL in Docker, via Testcontainers)
+  # ------------------------------------------------------------------------------------------
+  integration-tests:
+    name: 4 · Integration tests
+    needs: unit-tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: maven
+
+      - name: Check Docker (Testcontainers needs it)
+        run: docker info --format 'Docker {{.ServerVersion}}'
+
+      - name: Backend integration tests
+        working-directory: backend
+        run: |
+          chmod +x mvnw
+          ./mvnw test -Dtest='*IT' -Dsurefire.failIfNoSpecifiedTests=false \
+            -Djacoco.destFile=target/jacoco-it.exec
+
+      - name: Keep coverage for SonarQube
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-coverage
+          retention-days: 3
+          path: backend/target/jacoco-it.exec
+
+      - name: Upload integration test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-test-reports
+          retention-days: 14
+          path: backend/target/surefire-reports/
+
+  # ------------------------------------------------------------------------------------------
+  # 5. SonarQube: coverage gate (JaCoCo, unit + integration) and code analysis with its quality gate
+  # ------------------------------------------------------------------------------------------
+  sonarqube:
+    name: 5 · SonarQube
+    needs: integration-tests
+    runs-on: ubuntu-latest
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL || secrets.SONAR_HOST_URL }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # full history: SonarQube attributes new code and blames lines
+
+      - name: Set up Java ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: maven
+
+      - name: Get compiled classes and unit-test coverage
+        uses: actions/download-artifact@v4
+        with:
+          name: unit-coverage # backend/target/... and frontend/coverage/..., relative to the repository root
+
+      - name: Get integration-test coverage
+        uses: actions/download-artifact@v4
+        with:
+          name: integration-coverage
+          path: backend/target
+
+      - name: Coverage gate (80% of branches, unit + integration tests)
+        working-directory: backend
+        run: |
+          chmod +x mvnw
+          ./mvnw jacoco:merge@merge-ci jacoco:report jacoco:check@check
+          ./mvnw -q dependency:copy-dependencies -DoutputDirectory=target/dependency -DincludeScope=compile
+
+      - name: SonarQube analysis
+        if: env.SONAR_TOKEN != '' && env.SONAR_HOST_URL != ''
+        uses: SonarSource/sonarqube-scan-action@v5
+        with:
+          args: >
+            -Dsonar.projectKey=${{ vars.SONAR_PROJECT_KEY || 'materia' }}
+            ${{ vars.SONAR_ORGANIZATION && format('-Dsonar.organization={0}', vars.SONAR_ORGANIZATION) || '' }}
+
+      - name: SonarQube not configured
+        if: env.SONAR_TOKEN == '' || env.SONAR_HOST_URL == ''
+        run: |
+          echo "::warning title=SonarQube skipped::Set the SONAR_TOKEN secret and the SONAR_HOST_URL variable to run the analysis and its quality gate (the coverage gate above still ran)."
+          echo "### ⚠️ SonarQube analysis skipped: SONAR_TOKEN / SONAR_HOST_URL not set" >> "$GITHUB_STEP_SUMMARY"
+
+  # ------------------------------------------------------------------------------------------
+  # 6. Dependency scan: known vulnerabilities in what actually ships
+  # ------------------------------------------------------------------------------------------
+  dependency-scan:
+    name: 6 · Dependency scan
+    needs: sonarqube
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: maven
+
+      - name: Build the backend JAR (the libraries it bundles are what gets scanned)
+        working-directory: backend
+        run: |
+          chmod +x mvnw
+          ./mvnw -q package -DskipTests
+
+      # Both scans fail on HIGH/CRITICAL vulnerabilities that have a fix, except those accepted with a reason
+      # and an expiry date in .trivyignore.
+      # The lockfiles: frontend/package-lock.json (and any other lockfile in the repository).
+      - name: Scan lockfiles (Trivy)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          version: ${{ env.TRIVY_VERSION }}
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln
+          skip-dirs: frontend/node_modules,backend/target
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          trivyignores: .trivyignore
+          exit-code: "1"
+          format: table
+
+      # The libraries bundled in the JAR, transitive ones included (which pom.xml alone does not show).
+      # A filesystem scan only reads lockfiles; a rootfs scan opens the JAR.
+      - name: Scan the backend JAR (Trivy)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          version: ${{ env.TRIVY_VERSION }}
+          scan-type: rootfs
+          scan-ref: backend/target
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          trivyignores: .trivyignore
+          exit-code: "1"
+          format: table
+
+      - name: Keep the scanned JAR for the image
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-jar
+          retention-days: 3
+          path: backend/target/*.jar
+
+  # ------------------------------------------------------------------------------------------
+  # 7. Build images (and scan them, OS packages included)
+  # ------------------------------------------------------------------------------------------
+  build-images:
+    name: 7 · Build images
+    needs: [setup, dependency-scan]
+    runs-on: ubuntu-latest
+    env:
+      IMAGE_TAG: ${{ needs.setup.outputs.image_tag }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Get the backend JAR
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-jar
+          path: backend/target
+
+      - name: Build backend image
+        run: docker build --pull -t "$PROJECT-backend:$IMAGE_TAG" backend/
+
+      - name: Build frontend image
+        # nginx in the frontend image proxies /api to the backend, so the API is same-origin.
+        run: docker build --pull --build-arg VITE_API_BASE_URL=/api/v1 -t "$PROJECT-frontend:$IMAGE_TAG" frontend/
+
+      - name: Scan backend image (Trivy)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          version: ${{ env.TRIVY_VERSION }}
+          scan-type: image
+          image-ref: ${{ env.PROJECT }}-backend:${{ env.IMAGE_TAG }}
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          trivyignores: .trivyignore
+          exit-code: "1"
+
+      - name: Scan frontend image (Trivy)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          version: ${{ env.TRIVY_VERSION }}
+          scan-type: image
+          image-ref: ${{ env.PROJECT }}-frontend:${{ env.IMAGE_TAG }}
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          trivyignores: .trivyignore
+          exit-code: "1"
+
+      - name: Save images for the push stage
+        if: needs.setup.outputs.push_images == 'true'
+        run: docker save "$PROJECT-backend:$IMAGE_TAG" "$PROJECT-frontend:$IMAGE_TAG" | gzip -1 > images.tar.gz
+
+      - name: Hand the images to the push stage
+        if: needs.setup.outputs.push_images == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: images
+          retention-days: 1
+          compression-level: 0 # already gzip-compressed
+          path: images.tar.gz
+
+  # ------------------------------------------------------------------------------------------
+  # 8. Push the images to Amazon ECR (pushes to main / staging / develop only)
+  # ------------------------------------------------------------------------------------------
+  push-ecr:
+    name: 8 · Push images to Amazon ECR
+    needs: [setup, build-images]
+    if: needs.setup.outputs.push_images == 'true'
+    runs-on: ubuntu-latest
+    # The AWS role trusts only jobs running in this GitHub environment (aws/modules/github_deploy_role).
+    environment: ${{ needs.setup.outputs.github_environment }}
+    permissions:
+      contents: read
+      id-token: write # GitHub OIDC -> AWS role, no stored AWS keys
+    env:
+      IMAGE_TAG: ${{ needs.setup.outputs.image_tag }}
+      ENVIRONMENT: ${{ needs.setup.outputs.environment }}
+      AWS_REGION: ${{ vars.AWS_REGION || secrets.AWS_REGION || 'eu-west-3' }}
+    steps:
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN || secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: gh-ci-${{ github.run_id }}
+
+      - name: Log in to Amazon ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Get the images
+        uses: actions/download-artifact@v4
+        with:
+          name: images
+
+      - name: Push to ECR
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+        run: |
+          gunzip -c images.tar.gz | docker load
+          for SERVICE in backend frontend; do
+            REPOSITORY="$PROJECT-$ENVIRONMENT-$SERVICE"
+            TARGET="$REGISTRY/$REPOSITORY:$IMAGE_TAG"
+            # Tags are immutable in ECR: a re-run of the same commit finds its image already there.
+            if aws ecr describe-images --repository-name "$REPOSITORY" --image-ids imageTag="$IMAGE_TAG" >/dev/null 2>&1; then
+              echo "$TARGET already pushed"
+            else
+              docker tag "$PROJECT-$SERVICE:$IMAGE_TAG" "$TARGET"
+              docker push "$TARGET"
+            fi
+            echo "- \`$TARGET\`" >> "$GITHUB_STEP_SUMMARY"
+          done
