@@ -6,9 +6,9 @@ name: CI
 #     -> 6 Dependency scan -> 7 Build images -> 8 Push to Amazon ECR
 #
 # Every job starts with its own checkout (each runs on a fresh machine). Pull requests run stages 1-7;
-# images are pushed to ECR only for pushes to main (production) and staging / develop (staging).
-# Deployment (deploy-prod.yml / deploy-staging.yml) starts when this workflow succeeds and deploys
-# the images pushed here, tagged with the commit SHA.
+# pushes to main, staging and develop also push the images, tagged with the commit SHA, to the STAGING
+# registry. Then the CD takes over: cd-staging.yml (deploy, performance and security tests, approval)
+# and, for main, cd-production.yml, which promotes those same images to production. Nothing is rebuilt.
 
 on:
   push:
@@ -55,8 +55,8 @@ jobs:
           ENVIRONMENT=""; GITHUB_ENV_NAME=""; PUSH=false
           if [ "$GITHUB_EVENT_NAME" != "pull_request" ]; then
             case "$GITHUB_REF_NAME" in
-              main)            ENVIRONMENT=prod;    GITHUB_ENV_NAME=production; PUSH=true ;;
-              staging|develop) ENVIRONMENT=staging; GITHUB_ENV_NAME=staging;    PUSH=true ;;
+              # Every release enters through staging; production only gets images staging validated.
+              main|staging|develop) ENVIRONMENT=staging; GITHUB_ENV_NAME=staging; PUSH=true ;;
             esac
           fi
           {
@@ -117,6 +117,24 @@ jobs:
       - name: Frontend lint (ESLint, no new errors)
         working-directory: frontend
         run: npm run lint:ci
+
+      # Infrastructure: Terraform format and validity of every root, and the shell scripts the CD runs
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.10.5"
+          terraform_wrapper: false
+
+      - name: Infrastructure lint (Terraform, shellcheck)
+        run: |
+          terraform fmt -check -recursive aws
+          for ROOT in aws/bootstrap aws/environments/staging aws/environments/prod; do
+            echo "::group::terraform validate $ROOT"
+            terraform -chdir="$ROOT" init -backend=false -input=false >/dev/null
+            terraform -chdir="$ROOT" validate
+            echo "::endgroup::"
+          done
+          shellcheck aws/deploy/*.sh .github/scripts/*.sh
 
   # ------------------------------------------------------------------------------------------
   # 3. Unit tests (backend *Test, frontend Vitest)

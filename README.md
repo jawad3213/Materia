@@ -334,9 +334,10 @@ materia/
 ├── 📂 .github/                          # Intégration et Déploiement Continus (CI/CD)
 │   ├── WORKFLOWS.md                     # Documentation détaillée des pipelines CI/CD
 │   └── workflows/
-│       ├── deploy-staging.yml           # Déploiement automatisé sur Staging
-│       ├── deploy-prod.yml              # Déploiement automatisé sur Production
-│       └── terraform-ci.yml             # Validation et vérification des plans Terraform
+│       ├── ci.yml                       # CI : lint, tests, SonarQube, scans, images -> ECR
+│       ├── cd-staging.yml               # CD Staging : déploiement, tests de performance et de sécurité, approbation
+│       ├── cd-production.yml            # CD Production : même image, smoke test, monitoring, rollback
+│       └── deploy-ec2.yml               # Déploiement sur EC2 via SSM (appelé par les deux CD)
 │
 ├── 📂 scripts/                           # Scripts d'automatisation DevOps et outillage
 │

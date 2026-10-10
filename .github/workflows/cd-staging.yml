@@ -1,12 +1,21 @@
-name: Deploy to Staging
+name: CD Staging
 
-# Runs when the CI workflow succeeded on staging or develop: CI has tested, scanned and pushed the images tagged with the commit
-# SHA, and this deploys exactly those. Run it by hand to redeploy a commit (e.g. to roll back).
+# Continuous deployment to staging, after CI pushed the commit's images to the staging registry:
+#
+#   1 Deploy to EC2 -> 2 Performance test -> 3 Security tests (auth + OWASP ZAP) -> 4 Approval for production
+#
+# Stage 4 exists for main only: a reviewer of the "production-approval" GitHub environment approves (or rejects)
+# the release, and the approval starts CD Production (cd-production.yml) with the very same images and commit.
+# Commits of staging / develop stop after stage 3. Run it by hand to redeploy a commit (e.g. to roll staging back).
+#
+# GitHub environment "staging": variables AWS_DEPLOY_ROLE_ARN, APP_URL (AWS_REGION optional);
+# secrets TEST_EMAIL / TEST_PASSWORD (a staging account that can read the main screens) and, optionally,
+# RESTRICTED_EMAIL / RESTRICTED_PASSWORD (an account without admin rights).
 on:
   workflow_run:
     workflows: [CI]
     types: [completed]
-    branches: [staging, develop]
+    branches: [main, staging, develop]
   workflow_dispatch:
     inputs:
       image_tag:
@@ -14,17 +23,178 @@ on:
         required: false
 
 permissions:
-  id-token: write # GitHub OIDC -> AWS deploy role
   contents: read
 
+concurrency:
+  group: cd-staging
+  cancel-in-progress: false
+
+env:
+  NODE_VERSION: "22"
+  K6_VERSION: "1.8.0"
+  ZAP_VERSION: "2.17.0"
+
 jobs:
+  # ------------------------------------------------------------------------------------------
+  # 1. Deploy the images on the staging EC2 instance
+  # ------------------------------------------------------------------------------------------
   deploy:
+    name: 1 · Deploy
     # After CI: only a successful run for a push (pull requests never deploy).
     if: >-
       github.event_name == 'workflow_dispatch' ||
       (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
+    permissions:
+      contents: read
+      id-token: write # GitHub OIDC -> AWS deploy role
     uses: ./.github/workflows/deploy-ec2.yml
     with:
       environment: staging
       github_environment: staging
       image_tag: ${{ github.event.workflow_run.head_sha || inputs.image_tag || github.sha }}
+
+  # ------------------------------------------------------------------------------------------
+  # 2. Performance test (k6): the release must hold the load within the latency and error budgets
+  # ------------------------------------------------------------------------------------------
+  performance:
+    name: 2 · Performance test
+    needs: deploy
+    runs-on: ubuntu-latest
+    environment: staging
+    env:
+      BASE_URL: ${{ vars.APP_URL }}
+    steps:
+      - name: Checkout the deployed commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || inputs.image_tag || github.sha }}
+
+      - name: Check the configuration
+        env:
+          TEST_EMAIL: ${{ secrets.TEST_EMAIL }}
+        run: |
+          [ -n "$BASE_URL" ] || { echo "::error::Set the APP_URL variable of the staging environment"; exit 1; }
+          [ -n "$TEST_EMAIL" ] || { echo "::error::Set the TEST_EMAIL / TEST_PASSWORD secrets of the staging environment"; exit 1; }
+
+      - name: Run k6
+        env:
+          TEST_EMAIL: ${{ secrets.TEST_EMAIL }}
+          TEST_PASSWORD: ${{ secrets.TEST_PASSWORD }}
+        run: |
+          mkdir -p tests/performance/results
+          docker run --rm --user "$(id -u):$(id -g)" \
+            -v "$PWD/tests/performance:/scripts" -w /scripts \
+            -e BASE_URL -e TEST_EMAIL -e TEST_PASSWORD -e VUS="${{ vars.PERF_VUS || '20' }}" -e DURATION="${{ vars.PERF_DURATION || '2m' }}" \
+            "grafana/k6:$K6_VERSION" run --quiet load-test.js
+        # The summary is written even when a threshold fails
+      - name: Publish the results
+        if: always()
+        run: |
+          if [ -f tests/performance/results/summary.md ]; then
+            cat tests/performance/results/summary.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Keep the results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-results
+          path: tests/performance/results/
+          if-no-files-found: ignore
+
+  # ------------------------------------------------------------------------------------------
+  # 3. Security tests of the API: authentication / authorization checks, then an OWASP ZAP scan
+  # ------------------------------------------------------------------------------------------
+  security:
+    name: 3 · Security tests
+    # After the performance test, so that neither disturbs the other's figures
+    needs: performance
+    runs-on: ubuntu-latest
+    environment: staging
+    env:
+      BASE_URL: ${{ vars.APP_URL }}
+    steps:
+      - name: Checkout the deployed commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || inputs.image_tag || github.sha }}
+
+      - name: Set up Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      # Sessions, forged tokens, enumeration, cookie flags, CORS, headers, brute-force throttling
+      - name: Authentication and authorization tests
+        env:
+          TEST_EMAIL: ${{ secrets.TEST_EMAIL }}
+          TEST_PASSWORD: ${{ secrets.TEST_PASSWORD }}
+          RESTRICTED_EMAIL: ${{ secrets.RESTRICTED_EMAIL }}
+          RESTRICTED_PASSWORD: ${{ secrets.RESTRICTED_PASSWORD }}
+        run: node tests/security/auth-security.mjs
+
+      # Every operation of the OpenAPI description, attacked without a session (injections, XSS, path
+      # traversal...). Rules marked FAIL in rules.tsv stop the release; the others are reported.
+      - name: OWASP ZAP API scan
+        if: success() || failure()
+        run: |
+          mkdir -p zap && cp tests/security/zap/rules.tsv zap/ && chmod -R 777 zap
+          docker run --rm -v "$PWD/zap:/zap/wrk:rw" "ghcr.io/zaproxy/zaproxy:$ZAP_VERSION" \
+            zap-api-scan.py -t "$BASE_URL/v3/api-docs" -f openapi -c rules.tsv -I -T 20 \
+            -r report.html -w report.md -J report.json
+
+      - name: Publish the ZAP report
+        if: always()
+        run: |
+          if [ -f zap/report.md ]; then
+            { echo "## OWASP ZAP API scan"; echo; sed 's/^#/###/' zap/report.md; } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Keep the reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-reports
+          path: zap/report.*
+          if-no-files-found: ignore
+
+  # ------------------------------------------------------------------------------------------
+  # 4. Manual approval to promote this release to production (main only)
+  # ------------------------------------------------------------------------------------------
+  approve-production:
+    name: 4 · Approval for production
+    needs: [deploy, security]
+    if: github.ref_name == 'main' && (github.event.workflow_run.head_branch == 'main' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    # Required reviewers are set on this environment: the job waits here until one of them approves.
+    environment: production-approval
+    steps:
+      - name: Record the approval
+        env:
+          IMAGE_TAG: ${{ github.event.workflow_run.head_sha || inputs.image_tag || github.sha }}
+          BACKEND_IMAGE: ${{ needs.deploy.outputs.backend_image }}
+          FRONTEND_IMAGE: ${{ needs.deploy.outputs.frontend_image }}
+        run: |
+          {
+            echo "### Approved for production: \`${IMAGE_TAG:0:12}\`"
+            echo "Validated in staging (performance and security tests passed):"
+            echo "- backend: \`$BACKEND_IMAGE\`"
+            echo "- frontend: \`$FRONTEND_IMAGE\`"
+            echo
+            echo "**CD Production** starts now and deploys these same images."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # ------------------------------------------------------------------------------------------
+  # Approved: CD Production (promote, deploy, smoke test, monitoring) with this release
+  # ------------------------------------------------------------------------------------------
+  production:
+    name: CD Production
+    needs: approve-production
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/cd-production.yml
+    with:
+      image_tag: ${{ github.event.workflow_run.head_sha || inputs.image_tag || github.sha }}
+      approved: true
+    secrets: inherit

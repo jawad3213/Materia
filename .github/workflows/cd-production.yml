@@ -1,30 +1,248 @@
-name: Deploy to Production
+name: CD Production
 
-# Runs when the CI workflow succeeded on main: CI has tested, scanned and pushed the images tagged with the commit
-# SHA, and this deploys exactly those. Run it by hand to redeploy a commit (e.g. to roll back).
+# Continuous deployment to production. CD Staging calls it once a release of main passed staging and a
+# reviewer approved it there (stage 4), with that release's commit SHA:
+#
+#   1 Promote the images -> 2 Deploy to EC2 -> 3 Smoke test -> 4 Monitoring (Prometheus) -> rollback on failure
+#
+# 1 copies the images validated in staging, unchanged (same digest), into the production registry: production
+#   runs exactly what staging tested. Nothing is rebuilt.
+# 3 checks the public entry points right after the deploy; 4 watches the release in Prometheus for a few
+#   minutes (targets up, no critical alert, 5xx ratio). If 2, 3 or 4 fails, the previous release is redeployed.
+#
+# Run it by hand to redeploy an earlier release (a rollback): give its commit SHA; that run needs its own approval.
+#
+# GitHub environment "production": variables AWS_DEPLOY_ROLE_ARN, APP_URL (AWS_REGION optional); secrets
+# SMOKE_EMAIL / SMOKE_PASSWORD optional (an account the smoke test signs in with).
 on:
-  workflow_run:
-    workflows: [CI]
-    types: [completed]
-    branches: [main]
+  workflow_call:
+    inputs:
+      image_tag:
+        description: "Commit SHA of the release validated in staging"
+        type: string
+        required: true
+      approved:
+        description: "The release was approved in CD Staging"
+        type: boolean
+        default: false
   workflow_dispatch:
     inputs:
       image_tag:
-        description: "Commit SHA whose images to deploy (default: the latest commit of this branch)"
-        required: false
+        description: "Commit SHA of the release to deploy (it must have been through staging)"
+        required: true
 
 permissions:
-  id-token: write # GitHub OIDC -> AWS deploy role
   contents: read
+  id-token: write
+
+env:
+  PROJECT: materia
+  NODE_VERSION: "22"
+  IMAGE_TAG: ${{ inputs.image_tag }}
 
 jobs:
+  # ------------------------------------------------------------------------------------------
+  # A hand-started run did not go through the staging approval: it needs its own
+  # ------------------------------------------------------------------------------------------
+  approve:
+    name: Approval (manual run)
+    if: ${{ !inputs.approved }}
+    runs-on: ubuntu-latest
+    environment: production-approval
+    steps:
+      - run: echo "### Manual production deploy of \`${IMAGE_TAG:0:12}\` approved" >> "$GITHUB_STEP_SUMMARY"
+
+  # ------------------------------------------------------------------------------------------
+  # 1. Promote: copy the staging images to the production registry, digest unchanged
+  # ------------------------------------------------------------------------------------------
+  promote:
+    name: 1 · Promote the staging images
+    needs: approve
+    # Approved in CD Staging, or by the approval job of a hand-started run
+    if: always() && (inputs.approved || needs.approve.result == 'success')
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+      id-token: write
+    outputs:
+      backend_image: ${{ steps.copy.outputs.backend_image }}
+      frontend_image: ${{ steps.copy.outputs.frontend_image }}
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION || 'eu-west-3' }}
+    steps:
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN || secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: gh-${{ github.run_id }}-promote
+
+      - name: Log in to Amazon ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Copy the images
+        id: copy
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+        run: |
+          digest() { aws ecr describe-images --repository-name "$1" --image-ids imageTag="$IMAGE_TAG" \
+                       --query 'imageDetails[0].imageDigest' --output text 2>/dev/null || true; }
+          echo "### Promoted \`${IMAGE_TAG:0:12}\` from staging" >> "$GITHUB_STEP_SUMMARY"
+          for SERVICE in backend frontend; do
+            SOURCE="$PROJECT-staging-$SERVICE"
+            TARGET="$PROJECT-prod-$SERVICE"
+            SOURCE_DIGEST=$(digest "$SOURCE")
+            case "$SOURCE_DIGEST" in sha256:*) ;; *)
+              echo "::error::$SOURCE:$IMAGE_TAG is not in the staging registry: only releases that went through staging can be deployed"
+              exit 1 ;;
+            esac
+            TARGET_DIGEST=$(digest "$TARGET")
+            if [ "$TARGET_DIGEST" = "$SOURCE_DIGEST" ]; then
+              echo "$TARGET:$IMAGE_TAG already promoted"
+            elif [ -n "$TARGET_DIGEST" ] && [ "$TARGET_DIGEST" != "None" ]; then
+              echo "::error::$TARGET:$IMAGE_TAG exists with another digest ($TARGET_DIGEST); tags are immutable"
+              exit 1
+            else
+              # Copies the manifest as it is: the production image has the staging image's digest
+              docker buildx imagetools create --tag "$REGISTRY/$TARGET:$IMAGE_TAG" "$REGISTRY/$SOURCE@$SOURCE_DIGEST"
+              TARGET_DIGEST=$(digest "$TARGET")
+            fi
+            if [ "$TARGET_DIGEST" != "$SOURCE_DIGEST" ]; then
+              echo "::error::$TARGET has digest $TARGET_DIGEST, staging has $SOURCE_DIGEST"
+              exit 1
+            fi
+            echo "${SERVICE}_image=$REGISTRY/$TARGET@$SOURCE_DIGEST" >> "$GITHUB_OUTPUT"
+            echo "- $SERVICE: \`$SOURCE_DIGEST\`" >> "$GITHUB_STEP_SUMMARY"
+          done
+
+  # ------------------------------------------------------------------------------------------
+  # 2. Deploy the promoted images on the production EC2 instance
+  # ------------------------------------------------------------------------------------------
   deploy:
-    # After CI: only a successful run for a push (pull requests never deploy).
-    if: >-
-      github.event_name == 'workflow_dispatch' ||
-      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
+    name: 2 · Deploy
+    needs: promote
+    if: always() && needs.promote.result == 'success'
+    permissions:
+      contents: read
+      id-token: write
     uses: ./.github/workflows/deploy-ec2.yml
     with:
       environment: prod
       github_environment: production
-      image_tag: ${{ github.event.workflow_run.head_sha || inputs.image_tag || github.sha }}
+      image_tag: ${{ inputs.image_tag }}
+
+  # ------------------------------------------------------------------------------------------
+  # 3. Smoke test: the release is up and answers through the public URL
+  # ------------------------------------------------------------------------------------------
+  smoke:
+    name: 3 · Smoke test
+    needs: [promote, deploy]
+    if: always() && needs.deploy.result == 'success'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout the deployed commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.IMAGE_TAG }}
+
+      - name: Set up Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: The running images are the ones staging validated
+        env:
+          PROMOTED_BACKEND: ${{ needs.promote.outputs.backend_image }}
+          PROMOTED_FRONTEND: ${{ needs.promote.outputs.frontend_image }}
+          RUNNING_BACKEND: ${{ needs.deploy.outputs.backend_image }}
+          RUNNING_FRONTEND: ${{ needs.deploy.outputs.frontend_image }}
+        run: |
+          same() { # <service> <promoted repository@digest> <running repository@digest>
+            if [ -z "$3" ] || [ "${2#*@}" != "${3#*@}" ]; then
+              echo "::error::$1 runs ${3:-an unknown image}, expected $2"
+              exit 1
+            fi
+            echo "$1: ${3#*@}"
+          }
+          same backend "$PROMOTED_BACKEND" "$RUNNING_BACKEND"
+          same frontend "$PROMOTED_FRONTEND" "$RUNNING_FRONTEND"
+
+      - name: Smoke test
+        env:
+          BASE_URL: ${{ vars.APP_URL }}
+          SMOKE_EMAIL: ${{ secrets.SMOKE_EMAIL }}
+          SMOKE_PASSWORD: ${{ secrets.SMOKE_PASSWORD }}
+        run: |
+          [ -n "$BASE_URL" ] || { echo "::error::Set the APP_URL variable of the production environment"; exit 1; }
+          node tests/smoke/smoke-test.mjs
+
+  # ------------------------------------------------------------------------------------------
+  # 4. Monitoring: watch the release in Prometheus before calling it done
+  # ------------------------------------------------------------------------------------------
+  monitoring:
+    name: 4 · Monitoring (Prometheus)
+    needs: smoke
+    if: always() && needs.smoke.result == 'success'
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION || 'eu-west-3' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.IMAGE_TAG }}
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN || secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: gh-${{ github.run_id }}-monitoring
+
+      - name: Watch the release
+        run: |
+          ID=$(aws ec2 describe-instances \
+            --filters "Name=tag:Project,Values=$PROJECT" "Name=tag:Environment,Values=prod" \
+                      "Name=tag:Role,Values=app" "Name=instance-state-name,Values=running" \
+            --query 'Reservations[].Instances[0].InstanceId' --output text)
+          jq -n --arg observe "${{ vars.MONITORING_OBSERVE_SECONDS || '300' }}" '{
+            commands: ["OBSERVE_SECONDS=\($observe) /opt/materia/check-monitoring.sh"],
+            executionTimeout: ["1200"]
+          }' > ssm-params.json
+          STATUS=0
+          bash .github/scripts/ssm-run.sh "$ID" "materia prod monitoring ${IMAGE_TAG:0:12}" ssm-params.json monitoring.txt || STATUS=$?
+          {
+            echo "## Monitoring after the deploy"
+            echo
+            echo '```'
+            grep -E '^\[monitoring|^MONITORING' monitoring.txt || true
+            echo '```'
+            echo "Dashboards: Grafana through the SSM port forward (terraform output grafana_port_forward_command)."
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit "$STATUS"
+
+  # ------------------------------------------------------------------------------------------
+  # The release failed after reaching the instance: put the previous one back
+  # ------------------------------------------------------------------------------------------
+  # (A deploy whose health check fails is already rolled back on the instance by deploy.sh.)
+  rollback:
+    name: Roll back to the previous release
+    needs: [deploy, smoke, monitoring]
+    if: >-
+      always() && needs.deploy.outputs.previous_tag != '' &&
+      (needs.smoke.result == 'failure' || needs.monitoring.result == 'failure')
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/deploy-ec2.yml
+    with:
+      environment: prod
+      github_environment: production
+      image_tag: ${{ needs.deploy.outputs.previous_tag }}
