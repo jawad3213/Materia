@@ -26,6 +26,9 @@ github_oidc_provider_arn = "arn:aws:iam::<account-id>:oidc-provider/token.action
 github_repository        = "jawad3213/materia"
 github_environment       = "production"
 
+# Production deploys the images validated in staging, copied unchanged from staging's repositories.
+promote_from_environment = "staging"
+
 # Application
 spring_profile        = "prod"
 app_url               = "" # e.g. "https://app.example.com" once DNS and TLS are in place

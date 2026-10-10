@@ -6,9 +6,13 @@
 # Optional:             APP_DIR (default /opt/materia)
 #
 # 1. writes .env from Parameter Store (/$PROJECT/$ENVIRONMENT/app/*)
-# 2. pulls the images tagged IMAGE_TAG and restarts the stack
+# 2. pulls the images tagged IMAGE_TAG and restarts the stack, with
+#    the monitoring (Prometheus, Grafana) configuration in ./monitoring
 # 3. waits for the backend health check; on failure rolls back to the
 #    previously deployed tag and exits non-zero
+# 4. prints the lines the deploy workflow reads:
+#      DEPLOYED_IMAGE <service> <repository@digest>
+#      PREVIOUS_TAG <tag deployed before this one>
 # ===================================================================
 set -euo pipefail
 
@@ -39,6 +43,13 @@ write_env() {
     rm -f "$tmp"
     log "No parameters found under $PARAM_PATH"
     exit 1
+  fi
+
+  # Grafana's admin password: from Parameter Store when Terraform created it, else one generated on this host
+  if ! grep -q '^GRAFANA_ADMIN_PASSWORD=' "$tmp"; then
+    [ -s .grafana-admin-password ] || openssl rand -hex 24 >.grafana-admin-password
+    printf 'GRAFANA_ADMIN_PASSWORD=%s\n' "$(cat .grafana-admin-password)" >>"$tmp"
+    log "GRAFANA_ADMIN_PASSWORD is not in Parameter Store: using the one in $APP_DIR/.grafana-admin-password"
   fi
 
   {
@@ -73,12 +84,29 @@ start() {
   write_env "$tag"
   docker compose pull --quiet
   docker compose up -d --remove-orphans
+  # Configuration files are mounted, not baked in: make the running monitoring read the ones just shipped
+  docker compose kill -s SIGHUP prometheus >/dev/null 2>&1 || true
+  docker compose restart grafana >/dev/null 2>&1 || true
+}
+
+report_images() {
+  local service id image
+  for service in backend frontend; do
+    id="$(docker compose ps -q "$service")"
+    [ -n "$id" ] || continue
+    image="$(docker inspect --format '{{.Image}}' "$id")"
+    echo "DEPLOYED_IMAGE $service $(docker image inspect --format '{{index .RepoDigests 0}}' "$image" 2>/dev/null || echo unknown)"
+  done
 }
 
 [ -f .bootstrapped ] || { log "Host bootstrap has not finished yet"; exit 1; }
 
 # Attachment files: owned by the backend container user (uid 10001, see backend/Dockerfile)
 install -d -m 750 -o 10001 -g 10001 /data/attachments
+# Monitoring data, owned by the users the images run as (Prometheus: nobody, Grafana: 472)
+install -d -m 750 -o 65534 -g 65534 /data/prometheus
+install -d -m 750 -o 472 -g 0 /data/grafana
+[ -f monitoring/prometheus/prometheus.yml ] || { log "Monitoring configuration missing in $APP_DIR/monitoring"; exit 1; }
 
 log "Logging in to $REGISTRY"
 aws ecr get-login-password --region "$AWS_REGION" | docker login --username AWS --password-stdin "$REGISTRY" >/dev/null
@@ -89,8 +117,13 @@ start "$IMAGE_TAG"
 
 if wait_healthy; then
   echo "$IMAGE_TAG" >.deployed-tag
+  if [ -n "$PREVIOUS_TAG" ] && [ "$PREVIOUS_TAG" != "$IMAGE_TAG" ]; then
+    echo "$PREVIOUS_TAG" >.previous-tag
+  fi
   docker image prune -af --filter "until=168h" >/dev/null || true
   docker compose ps
+  report_images
+  echo "PREVIOUS_TAG $(cat .previous-tag 2>/dev/null || true)"
   log "Deploy of $IMAGE_TAG succeeded"
   exit 0
 fi

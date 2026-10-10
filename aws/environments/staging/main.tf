@@ -8,8 +8,16 @@
 #     reads its .env from Parameter Store /<project>/<env>/app/*
 # ===================================================================
 
+data "aws_caller_identity" "current" {}
+
 locals {
   name = "${var.project}-${var.environment}"
+
+  # Repositories whose images this environment promotes (prod: staging's), same account and region
+  promotion_source_repository_arns = var.promote_from_environment == "" ? [] : [
+    for service in ["backend", "frontend"] :
+    "arn:aws:ecr:${var.aws_region}:${data.aws_caller_identity.current.account_id}:repository/${var.project}-${var.promote_from_environment}-${service}"
+  ]
 
   tags = {
     Project     = var.project
@@ -49,6 +57,7 @@ locals {
     APP_RESET_PASSWORD_URL                  = "${local.app_url}/reset-password"
     APP_AUTH_REFRESH_COOKIE_SECURE          = tostring(var.refresh_cookie_secure)
     JAVA_TOOL_OPTIONS                       = "-XX:MaxRAMPercentage=60"
+    GATEWAY_RATE_LIMIT_MAX_RPM              = tostring(var.api_rate_limit_per_minute)
   }
 }
 
@@ -103,6 +112,12 @@ resource "random_bytes" "jwt_refresh" {
   length = 64
 }
 
+# Grafana's admin account (aws/deploy/docker-compose.yml); Grafana is reached through an SSM port forward only.
+resource "random_password" "grafana_admin" {
+  length  = 32
+  special = false
+}
+
 # First administrator, created by the backend while the users table is empty (AdminAccountBootstrap) and
 # asked for a new password at the first sign-in. The special characters are the policy's that survive a
 # docker compose .env file unquoted.
@@ -129,9 +144,10 @@ module "app_parameters" {
   parameters = merge(local.default_app_config, local.bootstrap_admin.config, var.app_config)
   secure_parameters = merge(
     {
-      POSTGRES_PASSWORD  = random_password.postgres.result
-      JWT_ACCESS_SECRET  = random_bytes.jwt_access.base64
-      JWT_REFRESH_SECRET = random_bytes.jwt_refresh.base64
+      POSTGRES_PASSWORD      = random_password.postgres.result
+      JWT_ACCESS_SECRET      = random_bytes.jwt_access.base64
+      JWT_REFRESH_SECRET     = random_bytes.jwt_refresh.base64
+      GRAFANA_ADMIN_PASSWORD = random_password.grafana_admin.result
     },
     local.bootstrap_admin.secrets,
     var.extra_secrets,
@@ -175,11 +191,12 @@ module "ec2" {
 module "github_deploy_role" {
   source = "../../modules/github_deploy_role"
 
-  name                = local.name
-  oidc_provider_arn   = var.github_oidc_provider_arn
-  github_repository   = var.github_repository
-  github_environment  = var.github_environment
-  ecr_repository_arns = module.ecr.repository_arns
-  instance_arn        = module.ec2.instance_arn
-  tags                = local.tags
+  name                 = local.name
+  oidc_provider_arn    = var.github_oidc_provider_arn
+  github_repository    = var.github_repository
+  github_environment   = var.github_environment
+  ecr_repository_arns  = module.ecr.repository_arns
+  pull_repository_arns = local.promotion_source_repository_arns
+  instance_arn         = module.ec2.instance_arn
+  tags                 = local.tags
 }

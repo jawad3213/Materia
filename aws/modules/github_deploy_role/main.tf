@@ -4,6 +4,8 @@
 # Only jobs of the given repository running in the given GitHub
 # environment can assume it. It may:
 # - push images to this environment's ECR repositories
+# - read the images of the repositories it promotes from (prod: the
+#   staging images, copied unchanged once staging has validated them)
 # - run the deploy script on this environment's instance with
 #   SSM Run Command (AWS-RunShellScript) and read the result
 # ===================================================================
@@ -62,6 +64,20 @@ data "aws_iam_policy_document" "deploy" {
       "ecr:UploadLayerPart",
     ]
     resources = var.ecr_repository_arns
+  }
+
+  dynamic "statement" {
+    for_each = length(var.pull_repository_arns) > 0 ? [1] : []
+    content {
+      sid = "EcrPullForPromotion"
+      actions = [
+        "ecr:BatchCheckLayerAvailability",
+        "ecr:BatchGetImage",
+        "ecr:DescribeImages",
+        "ecr:GetDownloadUrlForLayer",
+      ]
+      resources = var.pull_repository_arns
+    }
   }
 
   statement {

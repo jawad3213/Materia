@@ -161,6 +161,18 @@ variable "bootstrap_admin_email" {
   default     = ""
 }
 
+variable "api_rate_limit_per_minute" {
+  description = "API requests allowed per client address and minute (logins have their own, smaller quota). Staging raises it so the CD performance test is not throttled."
+  type        = number
+  default     = 120
+}
+
+variable "promote_from_environment" {
+  description = "Environment whose images this one deploys unchanged (prod: \"staging\"); empty = none. Gives the deploy role read access to those repositories."
+  type        = string
+  default     = ""
+}
+
 variable "extra_secrets" {
   description = "Extra secrets (environment variable => value), e.g. SPRING_MAIL_PASSWORD, EXCHANGE_API_KEY. Stored as SecureString."
   type        = map(string)

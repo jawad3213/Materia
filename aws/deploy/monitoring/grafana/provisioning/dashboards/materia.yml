@@ -1,0 +1,12 @@
+# Dashboards shipped with the application (aws/deploy/monitoring/grafana/dashboards). They are replaced on every
+# deploy: save a changed copy under another name to keep it.
+apiVersion: 1
+
+providers:
+  - name: materia
+    folder: Materia
+    type: file
+    disableDeletion: true
+    allowUiUpdates: false
+    options:
+      path: /etc/grafana/dashboards

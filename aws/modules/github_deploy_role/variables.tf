@@ -28,6 +28,12 @@ variable "ecr_repository_arns" {
   type        = list(string)
 }
 
+variable "pull_repository_arns" {
+  description = "Repositories the workflow may only read, to promote their images (prod: the staging repositories)."
+  type        = list(string)
+  default     = []
+}
+
 variable "instance_arn" {
   description = "Instance the workflow may run the deploy command on."
   type        = string

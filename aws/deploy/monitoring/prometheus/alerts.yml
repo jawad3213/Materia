@@ -1,0 +1,99 @@
+# ===================================================================
+# Alert rules. "critical" alerts are also checked by the production
+# deploy (monitoring stage): a release that fires one is rolled back.
+# Firing alerts show in Grafana and at http://localhost:9090/alerts
+# (through the SSM port forward, see aws/README.md).
+# ===================================================================
+groups:
+  - name: availability
+    rules:
+      - alert: TargetDown
+        expr: up == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.job }} is not answering Prometheus"
+
+      - alert: PostgresDown
+        expr: pg_up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "PostgreSQL is unreachable from its exporter"
+
+  - name: backend
+    rules:
+      - alert: BackendHighErrorRate
+        expr: |
+          sum(rate(http_server_requests_seconds_count{job="backend", uri!~"/actuator.*", status=~"5.."}[5m]))
+            /
+          sum(rate(http_server_requests_seconds_count{job="backend", uri!~"/actuator.*"}[5m]))
+            > 0.05
+        for: 3m
+        labels:
+          severity: critical
+        annotations:
+          summary: "More than 5% of API requests fail with a 5xx ({{ $value | humanizePercentage }})"
+
+      - alert: BackendSlowResponses
+        expr: |
+          histogram_quantile(0.95,
+            sum by (le) (rate(http_server_requests_seconds_bucket{job="backend", uri!~"/actuator.*"}[5m]))
+          ) > 1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "API p95 latency above 1s ({{ $value | humanizeDuration }})"
+
+      - alert: JvmHeapAlmostFull
+        expr: |
+          sum(jvm_memory_used_bytes{job="backend", area="heap"})
+            /
+          sum(jvm_memory_max_bytes{job="backend", area="heap"} > 0)
+            > 0.9
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Backend heap above 90% for 10 minutes"
+
+      - alert: DatabasePoolExhausted
+        expr: max(hikaricp_connections_pending{job="backend"}) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Requests are waiting for a database connection"
+
+  - name: host
+    rules:
+      - alert: HostDiskAlmostFull
+        expr: |
+          node_filesystem_avail_bytes{job="node", mountpoint=~"/|/data", fstype!~"tmpfs|overlay"}
+            /
+          node_filesystem_size_bytes{job="node", mountpoint=~"/|/data", fstype!~"tmpfs|overlay"}
+            < 0.10
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Less than 10% free on {{ $labels.mountpoint }}"
+
+      - alert: HostLowMemory
+        expr: node_memory_MemAvailable_bytes{job="node"} / node_memory_MemTotal_bytes{job="node"} < 0.10
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Less than 10% of the memory is available"
+
+      - alert: HostHighCpu
+        expr: 1 - avg(rate(node_cpu_seconds_total{job="node", mode="idle"}[5m])) > 0.9
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "CPU above 90% for 15 minutes"

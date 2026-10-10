@@ -4,8 +4,10 @@
 # written by deploy.sh from Parameter Store (/<project>/<env>/app/*)
 # plus REGISTRY, PROJECT, ENVIRONMENT and IMAGE_TAG.
 #
-# Only the frontend publishes a port: its nginx serves the SPA and
-# proxies /api to the backend. Backend and PostgreSQL stay internal.
+# Only the frontend publishes a port to the network: its nginx serves
+# the SPA and proxies /api to the backend. Backend and PostgreSQL stay
+# internal. Grafana and Prometheus listen on the host's loopback only:
+# reach them through an SSM port forward (see aws/README.md).
 # ===================================================================
 name: materia
 
@@ -42,6 +44,10 @@ services:
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
       APP_ATTACHMENTS_DIR: /data/attachments
+      # Actuator on its own port, reachable only inside the compose network: health checks and Prometheus
+      MANAGEMENT_SERVER_PORT: "8081"
+      MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,info,prometheus
+      MANAGEMENT_METRICS_TAGS_ENVIRONMENT: ${ENVIRONMENT}
     volumes:
       # Attachment files, on the same snapshotted EBS volume as the database
       - /data/attachments:/data/attachments
@@ -49,7 +55,7 @@ services:
       postgres:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health/readiness | grep -q UP"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8081/actuator/health/readiness | grep -q UP"]
       interval: 15s
       timeout: 5s
       retries: 20
@@ -65,6 +71,75 @@ services:
     depends_on:
       backend:
         condition: service_started
+    logging: *logging
+    networks: [internal]
+
+  # -----------------------------------------------------------------
+  # Monitoring: Prometheus scrapes, Grafana shows
+  # (configuration in ./monitoring, shipped with every deploy)
+  # -----------------------------------------------------------------
+  prometheus:
+    image: prom/prometheus:v3.14.0
+    restart: always
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=15d
+      - --storage.tsdb.retention.size=4GB
+    volumes:
+      - ./monitoring/prometheus:/etc/prometheus:ro
+      - /data/prometheus:/prometheus
+    ports:
+      - "127.0.0.1:9090:9090"
+    mem_limit: 768m
+    logging: *logging
+    networks: [internal]
+
+  grafana:
+    image: grafana/grafana:13.2.0
+    restart: always
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /etc/grafana/dashboards/materia.json
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/etc/grafana/dashboards:ro
+      - /data/grafana:/var/lib/grafana
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on: [prometheus]
+    mem_limit: 256m
+    logging: *logging
+    networks: [internal]
+
+  node-exporter:
+    image: prom/node-exporter:v1.12.0
+    restart: always
+    command:
+      - --path.rootfs=/host
+    pid: host
+    volumes:
+      - /:/host:ro,rslave
+    mem_limit: 64m
+    logging: *logging
+    networks: [internal]
+
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.20.0
+    restart: always
+    environment:
+      DATA_SOURCE_URI: postgres:5432/${POSTGRES_DB}?sslmode=disable
+      DATA_SOURCE_USER: ${POSTGRES_USER}
+      DATA_SOURCE_PASS: ${POSTGRES_PASSWORD}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    mem_limit: 64m
     logging: *logging
     networks: [internal]
 

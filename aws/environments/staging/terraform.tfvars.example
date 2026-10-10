@@ -29,6 +29,10 @@ github_environment       = "staging"
 spring_profile        = "staging"
 app_url               = "" # empty = http://<elastic ip>; set once a domain points here
 refresh_cookie_secure = false
+
+# The CD performance test sends a few thousand requests a minute from one GitHub runner: raise the per-client
+# quota here (prod keeps the default of 120).
+api_rate_limit_per_minute = 6000
 contact_email         = "support@example.com"
 bootstrap_admin_email = "admin@example.com" # first administrator; read its password with the bootstrap_admin_password_command output
 
