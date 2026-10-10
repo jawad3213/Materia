@@ -1,5 +1,4 @@
 package com.materia.backend.contexts.masterData.infrastructure.adapters.in.web.dtos.supplier;
-import com.materia.backend.common.domain.enums.CurrencyCode;
 
 import java.util.UUID;
 

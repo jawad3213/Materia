@@ -17,7 +17,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.context.annotation.Configuration;
 
 /**
  * CONFIGURATION KAFKA (Producer & Consumer)

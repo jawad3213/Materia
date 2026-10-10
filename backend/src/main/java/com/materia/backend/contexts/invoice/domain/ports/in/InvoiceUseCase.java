@@ -5,7 +5,6 @@ import com.materia.backend.contexts.invoice.application.dtos.CreateInvoiceInput;
 import com.materia.backend.contexts.invoice.application.dtos.InvoiceOutput;
 import com.materia.backend.contexts.invoice.application.dtos.UpdateInvoiceInput;
 
-import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 

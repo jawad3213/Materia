@@ -1,7 +1,6 @@
 package com.materia.backend.contexts.invoice.infrastructure.adapters.in.web.dtos.invoice;
 
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 import java.time.LocalDate;

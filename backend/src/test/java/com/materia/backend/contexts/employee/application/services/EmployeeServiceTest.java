@@ -310,4 +310,22 @@ class EmployeeServiceTest {
         assertEquals("Old", leaver.getFullName().getFirstName());
         verify(employeeRepository, never()).save(any(Employee.class));
     }
+
+    @Test
+    @DisplayName("sync: without a user id nothing is looked up; without a full name the employee keeps theirs")
+    void syncFromAccount_partialInput() {
+        employeeService.syncContactDetailsFromAccount(null, "Ada", "Lovelace", "1");
+        verify(employeeRepository, never()).findByUserId(any());
+
+        UUID userId = UUID.randomUUID();
+        Employee linked = Employee.builder().id(UUID.randomUUID()).code(EmployeeCode.of("EMP-0044"))
+                .fullName(com.materia.backend.contexts.employee.domain.valueObjects.EmployeeFullName.of("Old", "Name"))
+                .email("keep@materia.test").userId(userId).hireDate(LocalDate.of(2024, 3, 1)).build();
+        when(employeeRepository.findByUserId(userId)).thenReturn(Optional.of(linked));
+
+        employeeService.syncContactDetailsFromAccount(userId, "Ada", null, "+212 700");
+
+        assertEquals("Old", linked.getFullName().getFirstName(), "half a name does not replace the full one");
+        assertEquals("+212 700", linked.getPhone());
+    }
 }

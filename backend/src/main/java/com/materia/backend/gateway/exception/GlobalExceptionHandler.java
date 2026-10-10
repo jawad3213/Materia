@@ -46,7 +46,6 @@ import com.materia.backend.contexts.purchaseOrder.domain.exceptions.PurchaseOrde
 import com.materia.backend.contexts.purchaseRequisition.domain.exceptions.RequisitionBusinessException;
 import com.materia.backend.contexts.employee.domain.exceptions.EmailAlreadyInUseException;
 import com.materia.backend.contexts.employee.domain.exceptions.EmployeeCodeAlreadyExistsException;
-import com.materia.backend.contexts.employee.domain.exceptions.EmployeeNotFoundException;
 import com.materia.backend.contexts.masterData.domain.exceptions.DuplicateMaterialCodeException;
 import com.materia.backend.contexts.auth.domain.exceptions.AccountLockedException;
 import com.materia.backend.contexts.auth.domain.exceptions.InvalidCredentialsException;

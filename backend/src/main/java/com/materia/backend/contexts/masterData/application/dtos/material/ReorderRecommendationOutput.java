@@ -1,5 +1,4 @@
 package com.materia.backend.contexts.masterData.application.dtos.material;
-import com.materia.backend.common.domain.enums.CurrencyCode;
 
 import com.materia.backend.common.application.BaseOutput;
 import lombok.AllArgsConstructor;

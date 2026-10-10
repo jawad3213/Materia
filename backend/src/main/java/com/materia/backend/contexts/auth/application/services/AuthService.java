@@ -14,7 +14,6 @@ import com.materia.backend.contexts.auth.domain.entities.User;
 import com.materia.backend.contexts.auth.domain.exceptions.AuthenticationFailedException;
 import com.materia.backend.contexts.auth.domain.exceptions.InvalidTokenException;
 import com.materia.backend.contexts.auth.domain.exceptions.TokenExpiredException;
-import com.materia.backend.contexts.auth.domain.exceptions.UserAlreadyExistsException;
 import com.materia.backend.contexts.auth.domain.exceptions.UserNotFoundException;
 import com.materia.backend.contexts.auth.domain.ports.in.AuthUseCase;
 import com.materia.backend.contexts.auth.domain.ports.out.PasswordResetTokenRepository;

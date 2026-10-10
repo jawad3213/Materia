@@ -62,4 +62,17 @@ class UserProfileServiceTest {
                 .updateProfile(id, new UpdateProfileInput("A", "B", null)));
         verifyNoInteractions(events);
     }
+
+    @Test
+    @DisplayName("profile: missing or blank names clear the full name rather than keeping the old one")
+    void update_blankNames_clearTheFullName() {
+        UUID id = UUID.randomUUID();
+        when(users.findById(id)).thenReturn(Optional.of(user(id)));
+        when(users.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+        UserProfileService service = new UserProfileService(users, events);
+
+        assertNull(service.updateProfile(id, new UpdateProfileInput(null, "  ", null)).fullName());
+        assertEquals("Ada", service.updateProfile(id, new UpdateProfileInput("Ada", null, null)).fullName());
+        assertEquals("Lovelace", service.updateProfile(id, new UpdateProfileInput(" ", "Lovelace", "0600")).fullName());
+    }
 }

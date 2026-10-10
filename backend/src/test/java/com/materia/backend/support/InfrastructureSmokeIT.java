@@ -20,7 +20,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * runs during context startup, so reaching any test method here is itself that proof: a fresh
  * install builds a schema the application accepts.
  */
-class InfrastructureSmokeTest extends AbstractIntegrationTest {
+class InfrastructureSmokeIT extends AbstractIntegrationTest {
 
     /** db/migration holds V1__init.sql to V12__create_processed_events.sql; raise this with each new migration. */
     private static final int EXPECTED_MIGRATIONS = 12;

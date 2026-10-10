@@ -1,6 +1,5 @@
 package com.materia.backend.contexts.payment.infrastructure.adapters.in.web.dtos;
 
-import jakarta.validation.constraints.NotBlank;
 
 public class UpdatePaymentWebRequest {
 

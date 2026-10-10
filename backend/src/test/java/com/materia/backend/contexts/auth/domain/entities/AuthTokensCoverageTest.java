@@ -123,4 +123,46 @@ class AuthTokensCoverageTest {
         assertNotEquals(a, "same");
         assertEquals(a.hashCode(), a.hashCode());
     }
+
+    @Test
+    @DisplayName("tokens: without a token value, a token is identified by its id, and hashes like it")
+    void identity_withoutTokenValue_fallsBackToTheId() {
+        RefreshToken a = refresh(null, null);
+        RefreshToken sameId = refresh(null, null);
+        sameId.setId(a.getId());
+        RefreshToken otherId = refresh(null, null);
+
+        assertEquals(a, sameId);
+        assertEquals(a.hashCode(), sameId.hashCode());
+        assertNotEquals(a, otherId);
+        assertNotEquals(a, refresh("value", null), "a valued token is not an unvalued one");
+        assertNotEquals(refresh("value", null), a);
+
+        PasswordResetToken r = reset(null, null);
+        PasswordResetToken rSameId = reset(null, null);
+        rSameId.setId(r.getId());
+        assertEquals(r, rSameId);
+        assertEquals(r.hashCode(), rSameId.hashCode());
+        assertNotEquals(r, reset(null, null));
+        assertNotEquals(r, reset("value", null));
+        assertNotEquals(reset("value", null), r);
+    }
+
+    @Test
+    @DisplayName("tokens: two tokens with neither a value nor an id are not equal")
+    void identity_withNothing_isNotEqual() {
+        RefreshToken a = refresh(null, null);
+        a.setId(null);
+        RefreshToken b = refresh(null, null);
+        b.setId(null);
+        assertNotEquals(a, b);
+        assertEquals(0, a.hashCode());
+
+        PasswordResetToken r = reset(null, null);
+        r.setId(null);
+        PasswordResetToken s = reset(null, null);
+        s.setId(null);
+        assertNotEquals(r, s);
+        assertEquals(0, r.hashCode());
+    }
 }

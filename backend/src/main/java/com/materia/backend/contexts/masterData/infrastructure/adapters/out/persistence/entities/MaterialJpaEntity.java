@@ -1,6 +1,5 @@
 package com.materia.backend.contexts.masterData.infrastructure.adapters.out.persistence.entities;
 import com.materia.backend.common.audit.application.Audited;
-import com.materia.backend.common.domain.valueObjects.Money;
 
 import com.materia.backend.common.infrastructure.persistence.BaseJpaEntity;
 import com.materia.backend.common.domain.enums.CurrencyCode;
