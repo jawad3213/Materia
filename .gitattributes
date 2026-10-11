@@ -1,0 +1,7 @@
+# The repository stores text with LF line endings (it already does); checkouts keep LF on every OS,
+# so files written with LF on Windows no longer warn "LF will be replaced by CRLF".
+* text=auto eol=lf
+
+# Windows scripts need CRLF.
+*.cmd text eol=crlf
+*.bat text eol=crlf

@@ -327,7 +327,10 @@ public class GoodsReceipt extends BaseEntity {
         }
         
         this.status = this.hasDiscrepancy ? ReceiptStatus.PARTIAL : ReceiptStatus.COMPLETED;
-        this.receiptDate = LocalDate.now();
+        // The date the goods arrived, as entered; today when missing or not yet come.
+        if (this.receiptDate == null || this.receiptDate.isAfter(LocalDate.now())) {
+            this.receiptDate = LocalDate.now();
+        }
         this.setUpdatedAt(LocalDateTime.now());
         this.setUpdatedBy(userId);
     }

@@ -36,4 +36,10 @@ public interface EmployeeUseCase {
      * Does nothing when no employee is linked, or when the employee has left (their record is frozen).
      */
     void syncContactDetailsFromAccount(UUID userId, String firstName, String lastName, String phone);
+
+    /**
+     * Links an existing user account to the employee, for an employee onboarded without credentials whose account
+     * already exists. Refused when the account is linked to another employee.
+     */
+    EmployeeOutput linkUserAccount(UUID employeeId, UUID userId);
 }

@@ -16,15 +16,14 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * Guards against the suite silently depending on the machine it runs on (FR-011, FR-012).
  *
- * <p>Today a developer's .env never reaches the test context. {@code DotenvEnvironmentPostProcessor}
- * is registered in a {@code META-INF/spring/*.imports} file, a location Spring Boot does not
- * read post-processors from, so its highest-precedence {@code addFirst} never runs. The .env
- * file is loaded only by {@code Backend2Application.main()}, which tests never call.
+ * <p>A developer's .env never reaches the test context: {@code DotenvEnvironmentPostProcessor} is
+ * deliberately not registered as a post-processor (FINDING-009), so the .env file is loaded only by
+ * {@code Backend2Application.main()}, which tests never call.
  *
- * <p>That is fragile. If someone corrects the registration (see FINDING-009), .env would load
- * at highest precedence in every test, could activate the dev profile, and could point the
- * suite at a real database and SMTP server. The suite would then also behave differently
- * locally than in CI, where no .env exists. These checks are the tripwire for that change.
+ * <p>If someone registers it (in {@code META-INF/spring.factories}), .env would load at highest
+ * precedence in every test, could activate the dev profile, and could point the suite at a real
+ * database and SMTP server. The suite would then also behave differently locally than in CI, where
+ * no .env exists. These checks are the tripwire for that change.
  */
 @WebMvcTest(CategoryController.class)
 @Import(CategoryWebMapper.class)

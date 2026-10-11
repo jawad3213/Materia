@@ -132,6 +132,24 @@ public class EmployeeService implements EmployeeUseCase {
     }
 
     @Override
+    public EmployeeOutput linkUserAccount(UUID employeeId, UUID userId) {
+        if (employeeId == null || userId == null) {
+            throw new IllegalArgumentException("Employee ID and user ID are required");
+        }
+        Employee employee = employeeRepository.findById(employeeId)
+                .orElseThrow(() -> new EmployeeNotFoundException(employeeId));
+        employeeRepository.findByUserId(userId)
+                .filter(other -> !other.getId().equals(employeeId))
+                .ifPresent(other -> {
+                    throw new IllegalArgumentException("User " + userId + " is already linked to employee " + other.getId());
+                });
+        employee.linkUserId(userId);
+        Employee saved = employeeRepository.save(employee);
+        log.info("[EMPLOYEE-SERVICE] Linked user {} to employee {}", userId, saved.getId());
+        return employeeDtoMapper.toOutput(saved);
+    }
+
+    @Override
     public EmployeeOutput update(UUID id, UpdateEmployeeInput input) {
         if (id == null) {
             throw new IllegalArgumentException("Employee ID cannot be null");

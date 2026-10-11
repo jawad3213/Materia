@@ -28,14 +28,18 @@ import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Optional;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
- * Dev only: a purchase order converted from the approved requisition {@link DevSeed#REQUISITION_TO_ORDER}, submitted by
- * the dev purchaser, confirmed by the dev admin and assigned to the dev receiver (ready for receipt), plus a draft
- * order for another supplier. Skipped once any purchase order exists.
+ * Dev only: {@link DevSeed#DOCUMENTS_PER_MODULE} purchase orders. Every approved requisition but the last
+ * {@link DevSeed#APPROVED_REQUISITIONS_LEFT} is converted into an order; the rest are ordered directly. A few orders stay
+ * in draft, submitted, confirmed or cancelled; all others are submitted by the dev purchaser, confirmed by the dev admin
+ * and assigned to the dev receiver, ready for the goods receipt seeder. Skipped once any purchase order exists.
  */
 @Component
 @Profile(DevSeed.PROFILE)
@@ -44,6 +48,12 @@ import java.util.UUID;
 public class DevPurchaseOrdersSeeder implements ApplicationRunner {
 
     private static final Logger log = LoggerFactory.getLogger(DevPurchaseOrdersSeeder.class);
+
+    private enum Stage { DRAFT, SUBMITTED, CONFIRMED, CANCELLED, READY_FOR_RECEIPT }
+
+    /** Stages of the direct orders, in creation order; any further order is made ready for receipt. */
+    private static final List<Stage> DIRECT_ORDER_STAGES =
+            List.of(Stage.DRAFT, Stage.SUBMITTED, Stage.CONFIRMED, Stage.CANCELLED, Stage.DRAFT);
 
     private final PurchaseOrderUseCase orders;
     private final RequisitionUseCase requisitions;
@@ -69,34 +79,77 @@ public class DevPurchaseOrdersSeeder implements ApplicationRunner {
             log.info("[DEV-SEED] Purchase orders already present, nothing seeded");
             return;
         }
-        Optional<UserSummary> purchaser = users.findUserByEmail(DevSeed.PURCHASER_EMAIL);
-        Optional<UserSummary> admin = users.findUserByEmail(DevSeed.ADMIN_EMAIL);
-        Optional<UserSummary> receiver = users.findUserByEmail(DevSeed.RECEIVER_EMAIL);
-        Optional<RequisitionOutput> requisition = requisitions.getByStatus("APPROVED").stream()
-                .filter(r -> DevSeed.REQUISITION_TO_ORDER.equals(r.getTitle()))
-                .findFirst();
-        if (purchaser.isEmpty() || admin.isEmpty() || receiver.isEmpty() || requisition.isEmpty()) {
-            log.warn("[DEV-SEED] No purchase order seeded: the dev accounts or the approved requisition are missing");
+        UserSummary purchaser = users.findUserByEmail(DevSeed.PURCHASER_EMAIL).orElse(null);
+        UserSummary admin = users.findUserByEmail(DevSeed.ADMIN_EMAIL).orElse(null);
+        UserSummary receiver = users.findUserByEmail(DevSeed.RECEIVER_EMAIL).orElse(null);
+        List<List<MaterialOutput>> bySupplier = orderableMaterialsBySupplier();
+        if (purchaser == null || admin == null || receiver == null || bySupplier.isEmpty()) {
+            log.warn("[DEV-SEED] No purchase order seeded: the dev accounts or orderable materials are missing");
             return;
         }
 
-        UUID readyOrder = orderRequisition(requisition.get(), purchaser.get());
-        String adminId = admin.get().id().toString();
-        orders.submit(readyOrder, purchaser.get().id().toString());
-        orders.confirm(readyOrder, adminId);
-        orders.assignReceiver(readyOrder, adminId, admin.get().displayName(),
-                receiver.get().id().toString(), receiver.get().displayName());
+        List<RequisitionOutput> approved = requisitions.getByStatus("APPROVED").stream()
+                .sorted(Comparator.comparing(RequisitionOutput::getRequisitionCode))
+                .toList();
+        List<RequisitionOutput> toConvert = approved.subList(0, Math.max(0, approved.size() - DevSeed.APPROVED_REQUISITIONS_LEFT));
 
-        UUID orderedSupplier = requisition.get().getLineSummaries().get(0).supplierId();
-        boolean draftCreated = draftOrderForAnotherSupplier(orderedSupplier, purchaser.get());
-
-        log.info("[DEV-SEED] Created a purchase order ready for receipt{}", draftCreated ? " and a draft order" : "");
+        int created = 0;
+        int converted = 0;
+        for (int i = 0; i < toConvert.size(); i++) {
+            int index = i;
+            RequisitionOutput requisition = toConvert.get(i);
+            if (DevSeed.attempt(log, "order of requisition " + requisition.getRequisitionCode(), () -> {
+                UUID order = orderRequisition(requisition, purchaser, index);
+                makeReady(order, purchaser, admin, receiver);
+            })) {
+                converted++;
+                created++;
+            }
+        }
+        int directOrders = DevSeed.DOCUMENTS_PER_MODULE - toConvert.size();
+        for (int direct = 0; direct < directOrders; direct++) {
+            int index = direct;
+            List<MaterialOutput> lines = bySupplier.get(direct % bySupplier.size());
+            Stage stage = direct < DIRECT_ORDER_STAGES.size() ? DIRECT_ORDER_STAGES.get(direct) : Stage.READY_FOR_RECEIPT;
+            if (DevSeed.attempt(log, stage + " direct order " + (direct + 1), () -> {
+                UUID order = directOrder(lines, index, purchaser);
+                moveTo(stage, order, purchaser, admin, receiver);
+            })) {
+                created++;
+            }
+        }
+        log.info("[DEV-SEED] Created {} purchase orders ({} converted from requisitions)", created, converted);
     }
 
-    /** Orders exactly what the requisition asks for, at the materials' standard prices. */
-    private UUID orderRequisition(RequisitionOutput requisition, UserSummary purchaser) {
+    private void moveTo(Stage stage, UUID order, UserSummary purchaser, UserSummary admin, UserSummary receiver) {
+        String buyer = purchaser.id().toString();
+        String manager = admin.id().toString();
+        switch (stage) {
+            case DRAFT -> { }
+            case CANCELLED -> orders.cancel(order, buyer, "Supplier could not meet the delivery date");
+            case SUBMITTED -> orders.submit(order, buyer);
+            case CONFIRMED -> {
+                orders.submit(order, buyer);
+                orders.confirm(order, manager);
+            }
+            case READY_FOR_RECEIPT -> makeReady(order, purchaser, admin, receiver);
+        }
+    }
+
+    private void makeReady(UUID order, UserSummary purchaser, UserSummary admin, UserSummary receiver) {
+        String manager = admin.id().toString();
+        orders.submit(order, purchaser.id().toString());
+        orders.confirm(order, manager);
+        orders.assignReceiver(order, manager, admin.displayName(), receiver.id().toString(), receiver.displayName());
+    }
+
+    /**
+     * Orders exactly what the requisition asks for, at the materials' standard prices. Dated today: the requisition was
+     * only approved today.
+     */
+    private UUID orderRequisition(RequisitionOutput requisition, UserSummary purchaser, int index) {
         List<RequisitionLineSummary> requested = requisition.getLineSummaries();
-        CreatePurchaseOrderInput input = header(requested.get(0).supplierId(), purchaser, 14);
+        CreatePurchaseOrderInput input = header(requested.get(0).supplierId(), purchaser, LocalDate.now(), index);
         input.setRequisitionId(requisition.getId());
         input.setRequisitionCode(requisition.getRequisitionCode());
         input.setNotes("Converted from requisition " + requisition.getRequisitionCode());
@@ -110,32 +163,44 @@ public class DevPurchaseOrdersSeeder implements ApplicationRunner {
         return orders.create(input).getId();
     }
 
-    private boolean draftOrderForAnotherSupplier(UUID excludedSupplier, UserSummary purchaser) {
-        Optional<MaterialOutput> material = materials.getAll().stream()
-                .filter(m -> "ACTIVE".equals(m.getStatus()) && "MAD".equalsIgnoreCase(m.getCurrencyCode()))
-                .filter(m -> m.getSupplierId() != null && !m.getSupplierId().equals(excludedSupplier.toString()))
-                .findFirst();
-        if (material.isEmpty()) {
-            return false;
+    /** An order without requisition, placed in the last weeks: the oldest first, one every two days. */
+    private UUID directOrder(List<MaterialOutput> materialsOfSupplier, int direct, UserSummary purchaser) {
+        LocalDate orderDate = DevSeed.daysAgo(Math.max(1, 45 - direct * 2));
+        CreatePurchaseOrderInput input = header(UUID.fromString(materialsOfSupplier.get(0).getSupplierId()), purchaser,
+                orderDate, direct);
+        input.setNotes("Direct order, no requisition");
+        List<PurchaseOrderLineInput> lines = new ArrayList<>();
+        int count = 1 + direct % 2;
+        for (int i = 0; i < Math.min(count, materialsOfSupplier.size()); i++) {
+            MaterialOutput material = materialsOfSupplier.get((direct + i) % materialsOfSupplier.size());
+            Integer eoq = material.getEconomicOrderQuantity();
+            int base = eoq != null && eoq > 0 ? eoq : 50;
+            lines.add(line(material.getCode(), Math.max(10, base * (2 + direct % 3) / 4)));
         }
-        CreatePurchaseOrderInput input = header(UUID.fromString(material.get().getSupplierId()), purchaser, 30);
-        input.setNotes("Draft order, still to be submitted");
-        Integer eoq = material.get().getEconomicOrderQuantity();
-        input.setLines(List.of(line(material.get().getCode(), eoq != null && eoq > 0 ? eoq : 25)));
-        orders.create(input);
-        return true;
+        input.setLines(lines);
+        return orders.create(input).getId();
     }
 
-    private CreatePurchaseOrderInput header(UUID supplierId, UserSummary purchaser, int daysToDelivery) {
+    /** Active materials priced in MAD, one group per supplier. */
+    private List<List<MaterialOutput>> orderableMaterialsBySupplier() {
+        Map<String, List<MaterialOutput>> groups = materials.getAll().stream()
+                .filter(m -> "ACTIVE".equals(m.getStatus()) && "MAD".equalsIgnoreCase(m.getCurrencyCode()))
+                .filter(m -> m.getSupplierId() != null)
+                .collect(Collectors.groupingBy(MaterialOutput::getSupplierId, LinkedHashMap::new, Collectors.toList()));
+        return new ArrayList<>(groups.values());
+    }
+
+    /** An order placed on {@code orderDate}, delivered two to four weeks later. */
+    private CreatePurchaseOrderInput header(UUID supplierId, UserSummary purchaser, LocalDate orderDate, int index) {
         SupplierOutput supplier = suppliers.getById(supplierId);
         CreatePurchaseOrderInput input = new CreatePurchaseOrderInput();
         input.setSupplierId(supplierId);
         input.setSupplierName(supplier.getName());
         input.setSupplierCode(supplier.getCode());
-        input.setOrderDate(LocalDate.now());
-        input.setExpectedDeliveryDate(LocalDate.now().plusDays(daysToDelivery));
-        input.setPaymentTerms("NET_30");
-        input.setPaymentDelayDays(30);
+        input.setOrderDate(orderDate);
+        input.setExpectedDeliveryDate(orderDate.plusDays(14 + index % 3 * 7));
+        input.setPaymentTerms(index % 2 == 0 ? "NET_30" : "NET_60");
+        input.setPaymentDelayDays(index % 2 == 0 ? 30 : 60);
         input.setIncoterm("DAP");
         input.setDeliveryTerms("DAP Casablanca main warehouse");
         input.setCurrencyCode("MAD");

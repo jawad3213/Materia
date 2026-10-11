@@ -11,12 +11,19 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
+import java.security.CodeSource;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
- * Automatically loads properties from .env file into Spring Environment and System properties.
+ * Loads the properties of the .env file into the Spring Environment and the System properties.
+ *
+ * <p>Called by {@code Backend2Application.main()} only. It is deliberately not registered as a post-processor, so
+ * that tests never read a developer's .env (see {@code HermeticEnvironmentTest}).
  */
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class DotenvEnvironmentPostProcessor implements EnvironmentPostProcessor {
@@ -63,16 +70,44 @@ public class DotenvEnvironmentPostProcessor implements EnvironmentPostProcessor 
         }
     }
 
+    /**
+     * The .env file next to the working directory, else the one of the backend module the classes were loaded from
+     * ({@code backend/target/classes} or a jar in {@code backend/target}), so an IDE run configuration with another
+     * working directory still finds it.
+     */
     public static File findEnvFile() {
-        File[] candidates = new File[] {
+        List<File> candidates = new ArrayList<>(List.of(
             new File(".env"),
             new File("backend/.env"),
             new File("../.env")
-        };
+        ));
+        File module = moduleDirectory();
+        if (module != null) {
+            candidates.add(new File(module, ".env"));
+            candidates.add(new File(module.getParentFile(), ".env"));
+        }
         for (File f : candidates) {
             if (f.exists() && f.isFile()) {
                 return f;
             }
+        }
+        return null;
+    }
+
+    /** The module directory above {@code target}, from where this class was loaded; null when unknown. */
+    private static File moduleDirectory() {
+        try {
+            CodeSource source = DotenvEnvironmentPostProcessor.class.getProtectionDomain().getCodeSource();
+            if (source == null) {
+                return null;
+            }
+            for (File dir = new File(source.getLocation().toURI()); dir != null; dir = dir.getParentFile()) {
+                if ("target".equals(dir.getName())) {
+                    return dir.getParentFile();
+                }
+            }
+        } catch (URISyntaxException | SecurityException | IllegalArgumentException e) {
+            // not loaded from the file system: only the working directory is searched
         }
         return null;
     }
