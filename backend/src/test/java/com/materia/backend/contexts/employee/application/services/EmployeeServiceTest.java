@@ -328,4 +328,53 @@ class EmployeeServiceTest {
         assertEquals("Old", linked.getFullName().getFirstName(), "half a name does not replace the full one");
         assertEquals("+212 700", linked.getPhone());
     }
+
+    // ---- Link to an existing account ----
+
+    @Test
+    @DisplayName("link: an existing account is linked to the employee")
+    void linkUserAccount_linksTheAccount() {
+        UUID userId = UUID.randomUUID();
+        when(employeeRepository.findById(employeeId)).thenReturn(Optional.of(employee));
+        when(employeeRepository.findByUserId(userId)).thenReturn(Optional.empty());
+
+        EmployeeOutput out = employeeService.linkUserAccount(employeeId, userId);
+
+        assertEquals(userId, out.userId());
+        verify(employeeRepository).save(employee);
+    }
+
+    @Test
+    @DisplayName("link: relinking the same account to the same employee is accepted")
+    void linkUserAccount_sameEmployeeAgain() {
+        UUID userId = UUID.randomUUID();
+        when(employeeRepository.findById(employeeId)).thenReturn(Optional.of(employee));
+        when(employeeRepository.findByUserId(userId)).thenReturn(Optional.of(employee));
+
+        assertEquals(userId, employeeService.linkUserAccount(employeeId, userId).userId());
+    }
+
+    @Test
+    @DisplayName("link: an account already linked to another employee is refused")
+    void linkUserAccount_accountOfAnotherEmployee_isRefused() {
+        UUID userId = UUID.randomUUID();
+        Employee other = EmployeeFixtures.anEmployee().id(UUID.randomUUID()).code("EMP-0002")
+                .email("bob@example.com").build();
+        when(employeeRepository.findById(employeeId)).thenReturn(Optional.of(employee));
+        when(employeeRepository.findByUserId(userId)).thenReturn(Optional.of(other));
+
+        assertThrows(IllegalArgumentException.class, () -> employeeService.linkUserAccount(employeeId, userId));
+        verify(employeeRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("link: an unknown employee or a missing id is refused")
+    void linkUserAccount_unknownEmployeeOrMissingId() {
+        when(employeeRepository.findById(any())).thenReturn(Optional.empty());
+
+        assertThrows(EmployeeNotFoundException.class,
+                () -> employeeService.linkUserAccount(UUID.randomUUID(), UUID.randomUUID()));
+        assertThrows(IllegalArgumentException.class, () -> employeeService.linkUserAccount(employeeId, null));
+        assertThrows(IllegalArgumentException.class, () -> employeeService.linkUserAccount(null, UUID.randomUUID()));
+    }
 }
